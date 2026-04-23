@@ -1,0 +1,13 @@
+# Key# biz 설계서용 L1 DOC 룰 (설계서 내 특정 섹션 존재 여부)
+# load_doc_rules()가 rules/docs/*.yaml 을 읽으므로 이 파일이 자동 로드됨.
+
+rules:
+  - id: DOC-KEYBIZ-SELFTEST
+    doc_type: design
+    name: "Key# biz 자가시험 설명 존재 여부"
+    description: "Key# biz 보안정책서에 9장 자가시험 설명이 있어야 함"
+    pattern_type: regex
+    pattern: "9\\.\\s*자가시험"
+    severity: warning
+    kcmvp_ref: "§X.Y 자가시험"
+    r3_ref: "DESIGN_KEYBIZ_009_SELFTEST"

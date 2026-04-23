@@ -1,0 +1,2375 @@
+"""
+LLMService: L2 의미적 오류 탐지 + 패치 생성.
+
+Phase 1 개선 사항:
+- L2 대상 선정: COM-003 한정 → ast/regex/semantic 타입 + high severity 확장
+- 룰별 프롬프트 템플릿 분기 (PROMPT_TEMPLATES)
+- 구조화 출력 + 재시도 로직 (_call_gemini_with_retry)
+- 스니펫 해시 캐싱 (_l2_cache)
+- 배치 처리 (같은 파일 위반 묶기)
+- pattern_type별 코드 절삭 범위 분기
+"""
+
+import hashlib
+import json
+import re
+from typing import Any, Dict, List, Optional
+
+try:
+    import google.genai as genai
+    _HAS_GOOGLE_GENAI = True
+except ImportError:
+    genai = None  # type: ignore
+    _HAS_GOOGLE_GENAI = False
+
+from app.config import settings
+from app.services.code_slicer import slice_code
+from app.services.rag_service import search_evidence
+
+
+GEMINI_L2_MODEL = settings.GEMINI_L2_MODEL
+GOOGLE_API_KEY = settings.GOOGLE_API_KEY
+L2_PROVIDER = settings.L2_PROVIDER  # "gemini" | "openai" | "local"
+
+# OpenAI provider (Phase 3)
+OPENAI_API_KEY = settings.OPENAI_API_KEY
+OPENAI_L2_MODEL = settings.LLM_MODEL_L2      # default: "gpt-4o"
+OPENAI_PATCH_MODEL = settings.LLM_MODEL_PATCH # default: "gpt-4o"
+
+
+# ─────────────────────────────────────────────────────────────────
+# 룰별 L2 판정 프롬프트 템플릿
+# ─────────────────────────────────────────────────────────────────
+PROMPT_TEMPLATES: Dict[str, str] = {
+    # ════════════════════════════════════════
+    # COM — 공통 보안
+    # ════════════════════════════════════════
+    "COM-001": (
+        "잔존정보 제거 관점: 키/IV/라운드키/중간 연산 버퍼가 사용 후 "
+        "memset_s, SecureZeroMemory, explicit_bzero, lea_module_zeroize 등 "
+        "최적화 방지가 보장된 함수로 제로화되었는지 판단하라. "
+        "일반 memset은 컴파일러 최적화에 의해 제거될 수 있으므로 불충분하다. "
+        "volatile 포인터를 통한 직접 0화 루프는 허용된다."
+    ),
+    "COM-002": (
+        "에러 처리 관점: 암호 연산 실패 시 음수(-1)를 반환하고, 호출자가 반환값을 검사하는지 판단하라. "
+        "에러 메시지에 패딩 오류·키 길이 오류 등 구체적 실패 원인을 외부에 노출하지 않는지도 확인하라."
+    ),
+    "COM-003": (
+        "하드코딩 키/IV 관점: 이 16진수 상수 배열이 실제 암호키 또는 IV인지, "
+        "아니면 S-box/lookup table/공개 알고리즘 상수(delta, round constant)/테스트벡터인지 판단하라. "
+        "LEA delta 상수(0xc3efe9db 등)와 S-box, 테스트벡터는 허용된다. "
+        "변수명이 key/iv/secret 등 키를 암시하거나, 함수 인자로 직접 전달되면 위반이다.\n\n"
+        "【오탐 예시 — is_real_issue=false】\n"
+        "  static const uint32_t delta[8] = {0xc3efe9db, 0x44626b02, ...};  // LEA 델타 상수\n"
+        "  static const uint8_t sbox[256] = {0x63, 0x7c, 0x77, ...};        // S-box 치환표\n"
+        "  static const uint8_t test_pt[16] = {0x00, 0x11, ...};            // 테스트벡터\n"
+        "【위반 예시 — is_real_issue=true】\n"
+        "  static const uint8_t aes_key[16] = {0x2b, 0x7e, ...};            // 변수명 key\n"
+        "  uint8_t master_key[] = {0x01, 0x02, ...}; lea_set_key(ctx, master_key, 128); // 암호 함수에 직접 전달"
+    ),
+    "COM-004": (
+        "난수 생성 관점: rand(), srand(), random(), drand48() 등 비암호학적 PRNG가 "
+        "암호 연산(키·IV·Nonce 생성)에 사용되는지 판단하라. "
+        "단순 테스트·시퀀스 인덱싱 목적이면 허용한다."
+    ),
+    "COM-005": (
+        "API 호출 순서 관점: lea_online_init → lea_online_update(0회 이상 반복) → lea_online_final "
+        "순서가 보장되는지 판단하라. init 전 update 호출이나 final 없이 종료하는 경우를 탐지하라."
+    ),
+    "COM-006": (
+        "온라인 API 명칭 관점: 스트리밍 처리에 lea_online_init/update/final 표준 함수명을 사용하는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # LEA — 알고리즘 구현 (KS X 3246)
+    # ════════════════════════════════════════
+    "LEA-003": (
+        "라운드 수 관점: 키 길이에 따라 정확한 라운드 수(LEA-128→24, LEA-192→28, LEA-256→32)가 "
+        "설정되는지 판단하라. switch/if 분기 또는 상수 배열로 구현될 수 있으며, "
+        "매크로 상수(LEA_128_ROUNDS 등)를 사용하는 경우도 허용된다.\n\n"
+        "【위반 예시 — is_real_issue=true】\n"
+        "  rounds = 32;  // 키 길이에 무관하게 고정 → 128/192비트 키에서 위반\n"
+        "  for (i = 0; i < 32; i++) { ... }  // keyLen==128인데 32라운드 수행 → 위반\n"
+        "  ctx->rounds = 24;  // 256비트 키인데 24로 하드코딩 → 위반\n"
+        "【정상 예시 — is_real_issue=false】\n"
+        "  if (keyLen == 128) ctx->rounds = 24;\n"
+        "  else if (keyLen == 192) ctx->rounds = 28;\n"
+        "  else ctx->rounds = 32;  // 키 길이별 정확한 분기 → 정상\n"
+        "  // 또는 매크로: #define LEA_128_ROUNDS 24 → 정상\n"
+        "※ 코드에서 키 길이와 라운드 수의 연관 관계를 반드시 추적하여 판단하라."
+    ),
+    "LEA-005": (
+        "바이트→워드 변환 관점: 입력 바이트 배열을 32비트 워드로 변환 시 "
+        "리틀 엔디안(B[i] = a[4i]|(a[4i+1]<<8)|(a[4i+2]<<16)|(a[4i+3]<<24)) 규약을 따르는지 판단하라. "
+        "loadU32LE 또는 memcpy(little-endian)로 구현될 수 있다."
+    ),
+    "LEA-010": (
+        "키 스케줄 ARX 구조 관점(KS X 3246 §5.2.2): "
+        "키 스케줄 함수 내에 ① 마스터키→내부 상태T 초기화 "
+        "② 델타 상수(δ[0]~δ[7]) 기반 모듈러 덧셈(⊞) "
+        "③ 비트 좌회전(ROL1/ROL3/ROL6/ROL11) — 이 세 요소가 모두 존재하는지 판단하라. "
+        "ROL은 매크로(<<|>>)로 확장될 수 있으며, 그 경우도 허용된다.\n"
+        "LEA 표준 델타 상수값(KS X 3246 부록): "
+        "δ[0]=0xc3efe9db, δ[1]=0x44626b02, δ[2]=0x79e27c8a, δ[3]=0x78df30ec, "
+        "δ[4]=0xedeab813, δ[5]=0x0f23b0d3, δ[6]=0x5ab40b6d, δ[7]=0x3e6b9ae6. "
+        "이 값과 다른 상수를 사용하면 비표준 구현으로 위반이다. "
+        "ROL 회전량: T[0]는 ROL1, T[1]는 ROL3, T[2]는 ROL6, T[3]는 ROL11이 표준이다."
+    ),
+    "LEA-014": (
+        "키 스케줄 모듈러 덧셈 관점: 키 스케줄 내부 상태 T 업데이트 시 "
+        "32비트 모듈러 덧셈(+, uint32_t 오버플로우 wrapping)이 사용되는지 판단하라."
+    ),
+    "LEA-015": (
+        "델타 상수 인덱싱 관점: 키 길이별로 delta 배열을 순환 인덱싱(LEA-128: i mod 4, "
+        "LEA-192: i mod 6, LEA-256: i mod 8)하는지 판단하라."
+    ),
+    "LEA-021": (
+        "LEA-128 라운드키 구성 관점: 각 라운드키가 "
+        "RK[i] = (T[0], T[1], T[2], T[1], T[3], T[1]) 순서 6워드로 구성되는지 판단하라."
+    ),
+    "LEA-022": (
+        "LEA-256 키 스케줄 인덱싱 관점: T[(6i+j) mod 8] 형태의 워드 선택 규칙이 구현되는지 판단하라."
+    ),
+    "LEA-023": (
+        "복호화 라운드키 역순 관점: 복호화에 사용되는 라운드키가 암호화 라운드키의 역순 "
+        "(RK_dec[i] = RK_enc[Nr-1-i])으로 구성되거나 동일한 키를 역순으로 참조하는지 판단하라."
+    ),
+    "LEA-025": (
+        "복호화 키 스케줄 상수 관점: 복호화 키 생성 시 암호화와 동일한 델타 상수(δ[0]~δ[7])가 사용되는지 판단하라."
+    ),
+    "LEA-030": (
+        "암호화 라운드 워드 스왑 관점(KS X 3246 §5.2.1 알고리즘 2): "
+        "라운드 함수 마지막에 Xi+1[3] = Xi[0] 워드 이동이 수행되는지 판단하라. "
+        "배열 구현: X[3]=X[0] 대입. 스칼라 구현: 다음 라운드에서 X3 역할이 이전 X0로 교체되는 패턴. "
+        "매크로(LEA_ENC_ROUND) 기반이면 내부에 포함된 것으로 간주하여 판단 보류."
+    ),
+    "LEA-031": (
+        "【GPTScan 체크리스트: LEA-031 XOR→ADD 순서 (KS X 3246 §5.2.1)】\n"
+        "아래 Q1→Q4를 순서대로 확인하여 판정하라.\n\n"
+        "Q1. 파일에 encrypt/enc 포함 LEA 암호화 함수가 존재하는가?\n"
+        "    → NO: 해당없음 → false\n\n"
+        "Q2. 라운드 함수가 LEA_ENC_ROUND 등 매크로로만 구현되어 내부 연산이 보이지 않는가?\n"
+        "    → YES: 판단불가 → insufficient_context=true\n\n"
+        "Q3. ★핵심 위반 탐지: 코드에 '(a + b) ^ c' 또는 'a ^ (b + c)' 형태(ADD 후 XOR)가 있는가?\n"
+        "    → YES: 위반(true) — KS X 3246은 반드시 XOR 먼저, ADD 나중을 요구\n"
+        "    위반 예: t = (X[0] + RK[0]) ^ (X[3] + RK[5]);   // ADD→XOR → 위반\n"
+        "             t = (X[1] + RK[2]) ^ X[2];             // 혼재 → 위반\n\n"
+        "Q4. 코드에 '(a ^ b) + (c ^ d)' 형태(XOR 후 ADD)가 주된 패턴인가?\n"
+        "    → YES: 정상(false)\n"
+        "    정상 예: t = (X[0] ^ RK[0]) + (X[3] ^ RK[5]);   // XOR→ADD → 정상\n\n"
+        "【판정 규칙】 Q3=YES이고 Q4=NO → 위반. Q4=YES → 정상. 양쪽 모두 존재 → 위반."
+    ),
+    "LEA-032": (
+        "마지막 라운드 구조 관점: LEA는 AES와 달리 마지막 라운드도 중간 라운드와 완전히 동일한 구조여야 한다. "
+        "마지막 라운드에서만 회전·덧셈·XOR 중 일부를 생략하거나 다르게 처리하면 위반이다."
+    ),
+    "LEA-034": (
+        "【GPTScan 체크리스트: LEA-034 복호화 모듈러 뺄셈 (KS X 3246 §5.3.1)】\n"
+        "아래 Q1→Q5를 순서대로 확인하여 판정하라.\n\n"
+        "Q1. 파일에 decrypt/dec 포함 LEA 복호화 함수가 존재하는가?\n"
+        "    → NO: 해당없음 → false\n\n"
+        "Q2. 복호화 함수가 LEA_DEC_ROUND 등 매크로로만 구현되어 내부 연산이 보이지 않는가?\n"
+        "    → YES: 판단불가 → insufficient_context=true\n\n"
+        "Q3. ★핵심 위반 탐지: 복호화 함수 내에 뺄셈(-) 연산이 전혀 없는가?\n"
+        "    → YES(뺄셈 없음): 위반(true) — 역연산 누락, LEA 복호화는 반드시 ⊟ 필요\n"
+        "    위반 예: X[0] = ROR((X[0]^RK[0]) + (X[1]^RK[1]), 9);  // + → 위반\n\n"
+        "Q4. 복호화 함수에 뺄셈(-) 연산이 있는가?\n"
+        "    → YES: 정상(false)\n"
+        "    정상 예: X[0] = (ROR(X[0],9) - (X[1]^RK[1])) ^ RK[0];  // - → 정상\n\n"
+        "Q5. 암·복호화 함수 구분: 현재 분석 대상이 암호화(encrypt) 함수인가?\n"
+        "    → YES: 해당없음 → false (암호화 함수 내 +는 정상)\n\n"
+        "【판정 규칙】 Q3=YES이고 Q4=NO → 위반. Q4=YES → 정상. Q5=YES → 정상."
+    ),
+    "LEA-035": (
+        "복호화 역 워드 스왑 관점(KS X 3246 §5.3.1 알고리즘 7): "
+        "복호화 라운드 함수에서 Xi+1[0] = Xi[3] 역 워드 이동이 수행되는지 판단하라. "
+        "암호화의 Xi+1[3]=Xi[0]에 대응하는 역방향 스왑이어야 한다."
+    ),
+    "LEA-039": (
+        "라운드트립 정합성 관점: Decrypt(Encrypt(P,K),K)=P가 성립하는 검증 코드 또는 테스트가 존재하는지 판단하라. "
+        "KAT/테스트 벡터로 확인하거나 함수 내 자체 검증 루틴이 있으면 허용."
+    ),
+    "LEA-040": (
+        "루프 경계 조건 관점: LEA 라운드 루프 변수가 정확히 Nr번(0~Nr-1 또는 1~Nr) 반복하는지 판단하라. "
+        "키 길이별 정확한 라운드 수: LEA-128=24, LEA-192=28, LEA-256=32. "
+        "'i <= Nr' 또는 'i <= 24/28/32' 처럼 '<=' 사용 시 off-by-one으로 1회 초과 실행된다. "
+        "반드시 'i < Nr' 또는 'i < 24/28/32'여야 한다.\n\n"
+        "【위반 예시 — is_real_issue=true】\n"
+        "  for (i = 0; i <= 24; i++) { ... }    // 25회 반복 (off-by-one) → 위반\n"
+        "  for (i = 0; i <= Nr; i++) { ... }    // Nr+1회 반복 (off-by-one) → 위반\n"
+        "  for (i = 0; i <= rounds; i++) { ... } // rounds+1회 반복 → 위반\n"
+        "  for (i = 1; i <= 32; i++) { ... }    // 1-based이고 <=이면 32회이지만 인덱스 혼동 가능 → 검토\n"
+        "【정상 예시 — is_real_issue=false】\n"
+        "  for (i = 0; i < 24; i++) { ... }     // LEA-128 정확히 24회 → 정상\n"
+        "  for (i = 0; i < Nr; i++) { ... }     // 변수 Nr이 키 길이별 정확한 값 → 정상\n"
+        "  for (i = 0; i < ctx->rounds; i++) { ... } // 구조체 rounds 필드 사용 → 정상\n"
+        "※ 루프 카운터가 rounds/Nr/num_rounds 변수를 참조할 경우, "
+        "해당 변수가 키 길이에 따라 24/28/32 중 올바른 값으로 설정되는지도 추적하라."
+    ),
+    "LEA-041": (
+        "S-box 배제 관점: LEA는 ARX 설계로 S-box 또는 lookup table을 사용하지 않는다. "
+        "s_box, sbox, S_box 배열 인덱싱이 암호화/복호화 라운드 함수 내부에 있으면 위반이다. "
+        "테스트·디버그 코드의 단순 출력 목적은 허용한다."
+    ),
+    "LEA-042": (
+        "상수 시간 연산 관점(타이밍 공격 방지): 비밀 데이터(키·평문·중간 상태)에 의존한 "
+        "조건 분기(if/switch) 또는 조기 return이 암호화 함수 내부에 있는지 판단하라. "
+        "memcmp 대신 constant_time_memcmp/CRYPTO_memcmp 등을 사용해야 한다. "
+        "입력 검증(키 길이 체크 등)의 early return은 허용한다."
+    ),
+    "LEA-043": (
+        "레지스터 스필링 방지 관점: 중간 상태 변수가 로컬 스택 배열이 아닌 레지스터 변수(register 키워드 또는 "
+        "스칼라 변수)로 선언되는지 판단하라. 스택 배열 사용 시 민감 데이터가 메모리에 잔존할 수 있다."
+    ),
+    "LEA-044": (
+        "LEA 키 잔존정보 제거 관점: lea_set_key 또는 키 스케줄 함수 종료 후 "
+        "내부 임시 변수(T[], 중간 계산 버퍼)와 원본 마스터키 버퍼가 "
+        "memset_s/explicit_bzero 등으로 제로화되는지 판단하라."
+    ),
+    "LEA-046": (
+        "MCT 이중 루프 구조 관점(LEA 검증시스템 §6.4): "
+        "외부 루프 100회(i=0..99) × 내부 루프 1000회(j=0..999) 구조가 정확히 구현되는지 판단하라. "
+        "내부 루프 종료 후 키 갱신(128비트: Key⊕CT[999], 192비트: Key⊕CT64[998]||CT[999], "
+        "256비트: Key⊕CT[998]||CT[999])이 수행되는지 확인하라.\n\n"
+        "【위반 예시 — is_real_issue=true】\n"
+        "  for (i=0;i<100;i++) for (j=0;j<100;j++) { ... }   // 내부 루프 100회(1000회 아님) → 위반\n"
+        "  for (i=0;i<=99;i++) for (j=0;j<=999;j++) { ... }  // 각각 100, 1000회지만 <= 주의 확인\n"
+        "  // 키 갱신 없이 내부 루프만 반복 → 위반\n"
+        "【정상 예시 — is_real_issue=false】\n"
+        "  for (i=0;i<100;i++) {\n"
+        "    for (j=0;j<1000;j++) { CT=encrypt(PT,Key); PT=CT; }\n"
+        "    Key ^= CT;  // 키 갱신 → 정상\n"
+        "  }"
+    ),
+    "LEA-049": (
+        "Variable Key KAT 구현 관점(LEA 검증시스템 §6.2): "
+        "고정 평문에 대해 키 값을 비트 단위로 변화시키며 암호화하고, "
+        "각 결과를 RESPONSE 파일(.rsp)에 기록하는 Variable Key KAT가 구현되는지 판단하라."
+    ),
+    "LEA-050": (
+        "Variable Text KAT 구현 관점(LEA 검증시스템 §6.2): "
+        "고정 키에 대해 평문 값을 비트 단위로 변화시키며 암호화하고, "
+        "각 결과를 RESPONSE 파일(.rsp)에 기록하는 Variable Text KAT가 구현되는지 판단하라."
+    ),
+    "LEA-056": (
+        "MCT 루프 구조 검증 관점: 100×1000 몬테카를로 테스트의 외부/내부 루프 카운터가 "
+        "정확히 100회, 1000회인지 판단하라."
+    ),
+    "LEA-057": (
+        "MCT 키 갱신 수식 관점: MCT 수행 중 키 갱신이 이전 키와 마지막 암호문 블록의 XOR로 "
+        "올바르게 구현되는지 판단하라."
+    ),
+    "LEA-060": (
+        "KAT 참조구현값 일치 관점: 고정 입력값에 대한 출력이 LEA 표준 규격서 부록 I의 "
+        "참조구현값과 일치하는지 검증하는 코드가 있는지 판단하라."
+    ),
+    "LEA-061": (
+        "키 길이 지원 관점: 128/192/256비트 모든 키 길이에 대해 암복호화와 키 스케줄이 "
+        "분기 처리(switch/if)로 지원되는지 판단하라."
+    ),
+    "LEA-062": (
+        "KAT REQUEST/RESPONSE 파일 처리 관점: .req 파일 파싱과 .rsp 파일 생성 기능이 구현되는지, "
+        "Variable Key KAT 및 Variable Text KAT 입출력 처리 로직이 있는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # CBC — 운영 모드
+    # ════════════════════════════════════════
+    "CBC-001": (
+        "CBC 암호화 연쇄 수식 관점(LEA 검증시스템 §5.2): "
+        "각 블록 암호화 시 CT[i] = ENC(Key, PT[i] ⊕ CT[i-1]) 수식에 따라 "
+        "현재 평문 블록과 이전 암호문 블록을 XOR(^)한 결과를 암호화 입력으로 사용하는지 판단하라. "
+        "XOR 없이 평문을 직접 암호화하면 위반이다."
+    ),
+    "CBC-002": (
+        "CBC 복호화 연쇄 수식 관점: PT[i] = DEC(Key, CT[i]) ⊕ CT[i-1] 수식에 따라 "
+        "복호화 출력과 이전 암호문 블록을 XOR하여 평문을 복구하는지 판단하라."
+    ),
+    "CBC-003": (
+        "CBC IV 난수 생성 관점: IV가 getrandom(), /dev/urandom, BCryptGenRandom, DRBG 등 "
+        "암호학적으로 안전한 난수 생성기로 생성되는지 판단하라. "
+        "고정 IV, 0으로 채운 IV, 이전 암호문 블록 재사용은 위반이다."
+    ),
+    "CBC-004": (
+        "CBC IV/Key 잔존정보 제거 관점: 사용 완료된 IV와 키가 memset_s/explicit_bzero 등으로 "
+        "제로화되는지 판단하라."
+    ),
+    "CBC-005": (
+        "패딩 오라클 공격 방지 관점: CBC 복호화 실패 시 패딩 오류와 같은 구체적 원인을 "
+        "외부에 노출하면 오라클 공격이 가능해진다. 실패 시 동일한 음수 코드만 반환해야 한다."
+    ),
+    # ════════════════════════════════════════
+    # CTR — 운영 모드
+    # ════════════════════════════════════════
+    "CTR-001": (
+        "CTR 카운터 초기화 관점: 같은 키로 동일한 카운터/Nonce 초기값을 재사용하면 "
+        "keystream이 겹쳐 평문이 노출된다. 카운터 초기값이 CSPRNG로 생성되거나 단조 증가하는지 판단하라."
+    ),
+    "CTR-002": (
+        "CTR 카운터 유일성 관점: 동일 키로 동일한 카운터 블록을 두 번 사용하는 코드가 있는지, "
+        "카운터 증가 방향(LE/BE)이 규격과 일치하는지 판단하라."
+    ),
+    "CTR-003": (
+        "CTR 카운터 오버플로우 처리 관점: 카운터가 최대값(2^128-1)에 도달했을 때 "
+        "오버플로우 체크 또는 재초기화 처리가 있는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # GCM — 운영 모드
+    # ════════════════════════════════════════
+    "GCM-001": (
+        "GCM Nonce 유일성 관점: GCM에서 동일한 키로 Nonce를 재사용하면 인증 키(H)가 복구되어 "
+        "기밀성과 무결성이 모두 파괴된다. Nonce(12바이트 권장)가 매 호출마다 고유하게 생성되는지, "
+        "정적 변수나 고정값을 사용하지 않는지 판단하라."
+    ),
+    "GCM-002": (
+        "GCM 태그 길이 관점: 인증 태그 길이가 4바이트 이상 16바이트 이하인지 판단하라. "
+        "KCMVP에서는 8바이트(64비트) 이상을 권장한다."
+    ),
+    "GCM-003": (
+        "GCM API 순서 관점: lea_gcm_init → lea_gcm_set_ctr → (lea_gcm_set_aad) → "
+        "lea_gcm_encrypt/decrypt → lea_gcm_final 순서가 지켜지는지 판단하라."
+    ),
+    "GCM-004": (
+        "GCM 인증 태그 검증 관점: 복호화 후 인증 태그 검증 실패 시 복호화된 평문을 "
+        "반환하거나 사용하면 안 된다. 태그 검증 전 평문 출력/사용 코드가 있으면 위반이다."
+    ),
+    "GCM-005": (
+        "GCM GHASH 연산 관점: GHASH는 GF(2^128) 위의 다항식 곱셈으로 구현되어야 한다. "
+        "단순 XOR만으로 구현하거나 다항식 환원(0x87 또는 x^128+x^7+x^2+x+1)이 누락되면 위반이다."
+    ),
+    # ════════════════════════════════════════
+    # CCM — 운영 모드
+    # ════════════════════════════════════════
+    "CCM-001": (
+        "CCM Nonce 길이 관점: CCM의 Nonce 길이는 7~13바이트여야 하며, "
+        "Nonce 길이(N)에 따라 메시지 길이 필드 q=15-N이 결정된다. "
+        "Nonce 길이가 범위 밖이거나 q 계산이 틀리면 위반이다."
+    ),
+    "CCM-002": (
+        "CCM CBC-MAC 관점: CCM의 인증은 CBC-MAC으로 계산되어야 한다. "
+        "태그 생성 시 별도의 MAC 함수를 사용하거나 블록 암호화 체인이 없으면 위반이다."
+    ),
+    # ════════════════════════════════════════
+    # CFB / OFB / ECB / CMAC
+    # ════════════════════════════════════════
+    "CFB-001": (
+        "CFB 피드백 구조 관점: CFB 암호화 시 암호문이 다음 블록의 암호화 입력 레지스터로 "
+        "피드백되는지, 피드백 세그먼트 크기(1/8/128비트)가 설정값과 일치하는지 판단하라."
+    ),
+    "OFB-001": (
+        "OFB keystream 재사용 방지 관점: OFB에서 동일한 키와 IV를 재사용하면 "
+        "동일한 keystream이 생성되어 기밀성이 파괴된다. IV가 고유하게 생성되는지 판단하라."
+    ),
+    "ECB-001": (
+        "ECB 사용 제한 관점: ECB 모드는 동일한 평문 블록이 동일한 암호문을 생성하여 "
+        "패턴이 노출된다. 민감 데이터 암호화에 ECB를 사용하는지 판단하라. "
+        "KAT/MCT 테스트 목적이나 단일 블록 암호화는 허용될 수 있다."
+    ),
+    "CMAC-001": (
+        "CMAC 서브키 생성 관점(NIST SP 800-38B): CMAC 서브키 K1, K2가 "
+        "AES/LEA 블록 암호화 결과에서 GF(2^128) 연산(최상위 비트 기반 0x87 XOR)으로 도출되는지 판단하라."
+    ),
+    "CMAC-002": (
+        "CMAC 태그 검증 관점: CMAC 검증 시 memcmp 대신 constant-time 비교(CRYPTO_memcmp 등)를 사용하는지, "
+        "태그 길이가 최소 8바이트(64비트) 이상인지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # LEA — 추가 구조 규칙
+    # ════════════════════════════════════════
+    "LEA-024": (
+        "키 스케줄 워드 인터리빙 배제 관점: LEA 키 스케줄은 32비트 워드 간 혼합(인터리빙) 없이 "
+        "T[0]~T[key_words-1]를 독립적으로 업데이트해야 한다. "
+        "서로 다른 T 인덱스가 교차 참조하거나 복잡한 혼합 연산이 있으면 위반이다."
+    ),
+    "LEA-047": (
+        "운영모드별 MCT 내부 상태 갱신 관점(LEA 검증시스템 §6.4): "
+        "ECB-MCT: 내부 루프 종료 후 CT[j]가 다음 PT가 된다(PT←CT). "
+        "CBC-MCT: 내부 루프 종료 후 새 IV가 갱신되어야 한다(IV←CT[j-1] 또는 CT[j]). "
+        "CTR-MCT: 카운터가 매 블록마다 증가해야 한다. "
+        "각 모드의 갱신 방식이 코드에서 확인되는지 판단하라."
+    ),
+    "LEA-059": (
+        "MMT(Multi-block Message Test) 구조 관점(LEA 검증시스템 §6.3): "
+        "1블록(128비트)부터 10블록(1280비트)까지 가변 길이 메시지를 순차적으로 처리하는 "
+        "루프 구조가 구현되어 있는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # CTR / CBC 모드 추가 규칙
+    # ════════════════════════════════════════
+    "CTR-005": (
+        "CTR 모드 SSP 보안 요구사항 관점: 단순 암복호화 구현 외에 "
+        "SSP(보안민감매개변수) 생성·설정·주입·저장·제로화 절차가 구현되는지 판단하라. "
+        "사용 완료 후 키와 카운터 버퍼가 제로화되지 않으면 위반이다."
+    ),
+    "CTR-LEA-006": (
+        "CTR-MCT 카운터 증가 및 키 갱신 관점(LEA 검증시스템 §6.4): "
+        "매 MCT 내부 연산마다 카운터를 (CTR+1) mod 2^128로 증가시키고, "
+        "내부 루프 종료 후 결과 암호문으로 키를 갱신(Key⊕CT)하는 LEA 전용 로직이 "
+        "구현되는지 판단하라. 카운터 증가 없이 고정 카운터를 재사용하면 위반이다."
+    ),
+    "CBC-LEA-005": (
+        "CBC-MCT 키 갱신 수식 관점(LEA 검증시스템 §6.4): "
+        "MCT 외부 루프 종료 시 키 갱신이 Key[i+1] = Key[i] ⊕ CT[j] 수식을 따르는지, "
+        "키 길이에 따라 추가 CT 블록을 XOR하는 처리(192/256비트 키 갱신)가 맞는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # CFB / OFB 피드백 구조
+    # ════════════════════════════════════════
+    "CFB-002": (
+        "【GPTScan 체크리스트: CFB-002 CFB-128 피드백 구조】\n"
+        "아래 Q1→Q5를 순서대로 확인하여 판정하라.\n\n"
+        "Q1. 파일에 cfb_enc/cfb_dec/lea_cfb 등 CFB 함수가 존재하는가?\n"
+        "    → NO: 해당없음 → false\n\n"
+        "Q2. ★핵심 위반 탐지 — DEC 호출: CFB 함수 내부에서 lea_decrypt/dec 등 복호화 함수를 직접 호출하는가?\n"
+        "    → YES: 위반(true) — CFB는 암·복호화 모두 ENC 방향만 사용\n\n"
+        "Q3. XOR 연산 존재: CT[i] = PT[i] ⊕ ENC(...) 수식의 XOR(^)이 있는가?\n"
+        "    → NO: 위반(true) — 피드백 XOR 연산 누락\n\n"
+        "Q4. 피드백 소스 확인: 암호화 시 이전 암호문(CT[i-1])이 ENC 입력으로 사용되는가?\n"
+        "    → PT가 피드백으로 사용되면 위반(true) — CFB는 CT 피드백 필요\n\n"
+        "Q5. IV 초기화 존재: 첫 블록 초기값(CT[0]=IV 또는 feedback=IV)이 있는가?\n"
+        "    → NO: 위반(true)\n\n"
+        "【판정 규칙】 Q2=YES 또는 Q3=NO 또는 Q4=PT피드백 또는 Q5=NO → 위반. 모두 정상 → false."
+    ),
+    "OFB-002": (
+        "【GPTScan 체크리스트: OFB-002 OFB 키스트림 생성 구조】\n"
+        "아래 Q1→Q5를 순서대로 확인하여 판정하라.\n\n"
+        "Q1. 파일에 ofb_enc/ofb_dec/lea_ofb 등 OFB 함수가 존재하는가?\n"
+        "    → NO: 해당없음 → false\n\n"
+        "Q2. ★핵심 위반 탐지 — DEC 호출: OFB 함수 내부에서 lea_decrypt/dec 등 복호화 함수를 직접 호출하는가?\n"
+        "    → YES: 위반(true) — OFB는 암·복호화 모두 ENC 방향만 사용\n\n"
+        "Q3. 키스트림 피드백 확인: OT[i] = ENC(Key, OT[i-1]) 형태로 이전 출력 블록(OT)이 피드백되는가?\n"
+        "    → CT 또는 PT가 피드백으로 사용되면 위반(true) — OFB는 출력 블록(OT) 피드백\n\n"
+        "Q4. XOR 연산 존재: CT[i]=PT[i]⊕OT[i] 또는 PT[i]=CT[i]⊕OT[i] 수식의 XOR(^)이 있는가?\n"
+        "    → NO: 위반(true) — XOR 연산 누락\n\n"
+        "Q5. IV 초기화 존재: OT[0]=IV 초기화가 있는가?\n"
+        "    → NO: 위반(true)\n\n"
+        "【판정 규칙】 Q2=YES 또는 Q3=CT/PT피드백 또는 Q4=NO 또는 Q5=NO → 위반. 모두 정상 → false."
+    ),
+    # ════════════════════════════════════════
+    # CCM — 추가 규칙
+    # ════════════════════════════════════════
+    "CCM-003": (
+        "CCM 인증값(Tag) 길이 제약 관점: Tag 바이트 길이(Tlen/tag_len/t_len)가 4,6,8,10,12,14,16 "
+        "중 하나인지 판단하라. KCMVP는 8바이트 이상을 권장한다. "
+        "유효하지 않은 길이(예: 5, 7, 9, 15 등)가 하드코딩되거나 검증 없이 사용되면 위반이다. "
+        "매크로 상수로 정의된 경우 실제 값을 추적하여 판단하라."
+    ),
+    "CCM-004": (
+        "CCM 복호화 후 평문 보호 관점: lea_ccm_decrypt() 호출 후 인증값 불일치 시 "
+        "-1을 반환하고 복호화 버퍼를 반드시 0으로 초기화(memset)해야 한다. "
+        "복호화 성공 여부 검사 없이 평문을 바로 사용하거나, 실패 시 버퍼를 초기화하지 않으면 위반이다. "
+        "인증 실패 분기가 명확히 있고 memset/SecureZeroMemory 등으로 버퍼를 소거하는지 확인하라."
+    ),
+    # ════════════════════════════════════════
+    # ECB — 추가 규칙
+    # ════════════════════════════════════════
+    "ECB-002": (
+        "ECB 입력 길이 검증 관점: ECB 모드 암호화 입력 평문 길이가 반드시 16바이트(블록 크기) "
+        "배수여야 한다. len%16 또는 ptLen%16 검증이 있거나, 호출 전 패딩(PKCS7 등)이 "
+        "적용되면 허용된다. 길이 검증 없이 임의 길이 입력을 그대로 처리하면 위반이다."
+    ),
+    # ════════════════════════════════════════
+    # CTR — 추가 규칙
+    # ════════════════════════════════════════
+    "CTR-LEA-001": (
+        "LEA CTR 카운터 길이 관점: LEA 블록 크기인 128비트에 맞추어 초기 카운터(ctr)의 "
+        "길이가 정확히 16바이트여야 한다. ctr[16] 이외의 크기(예: ctr[8], ctr[12])로 "
+        "선언되면 위반이다. 단, 포인터로 받거나 동적 할당의 경우 추적하여 판단하라."
+    ),
+    "CTR-LEA-006": (
+        "MCT-CTR 키/카운터 갱신 관점: 몬테카를로 테스트에서 매 암호화 연산 후 "
+        "카운터를 (CTR+1) mod 2^128로 증가시키고, 결과 암호문으로 키를 갱신하는 로직이 있는지 판단하라. "
+        "CTR 증가 또는 키 갱신 로직이 없거나 잘못된 수식이면 위반이다."
+    ),
+    # ════════════════════════════════════════
+    # CBC — 추가 규칙
+    # ════════════════════════════════════════
+    "CBC-061": (
+        "LEA CBC IV 길이 관점: LEA 블록 크기인 128비트에 맞추어 IV 배열 길이가 "
+        "정확히 16바이트여야 한다. iv[16] 이외의 크기(예: iv[8], iv[12])로 선언되면 위반이다. "
+        "포인터로 전달받는 경우 선언 위치를 추적하여 판단하라."
+    ),
+    "CBC-LEA-005": (
+        "MCT-CBC LEA 키 갱신 관점: 몬테카를로 테스트에서 LEA 키 길이에 따라 "
+        "Key[i+1] = Key[i] ⊕ CT[j] 수식으로 키를 갱신하는 로직이 있는지 판단하라. "
+        "XOR 갱신이 없거나 다른 수식을 사용하면 위반이다. "
+        "128비트 키는 마지막 암호문 블록, 192비트는 일부, 256비트는 두 블록을 사용한다."
+    ),
+    # ════════════════════════════════════════
+    # ARIA — 추가 규칙
+    # ════════════════════════════════════════
+    "ARIA-001": (
+        "ARIA 키 스케줄링 관점: ARIA 키 확장 함수(aria_set_key, AriaKeyExpansion 등)가 "
+        "호출되거나 구현되어 있는지, KS X 1213-1 규격에 따른 라운드 키 생성 로직이 있는지 판단하라. "
+        "키 스케줄 없이 원본 키를 직접 라운드 함수에 사용하면 위반이다."
+    ),
+    "ARIA-002": (
+        "ARIA S-Box 사용 관점: ARIA 표준 S-Box(SB1~SB4 또는 aria_sbox)가 사용되는지 판단하라. "
+        "ARIA 표준(KS X 1213-1)에 정의된 S-Box가 아닌 임의 치환표를 사용하거나 "
+        "S-Box 참조 자체가 없으면 위반이다. 상수 배열이 S-Box인지는 크기(256엔트리)와 "
+        "변수명으로 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # LEA — 추가 규칙
+    # ════════════════════════════════════════
+    "LEA-006": (
+        "LEA 비트 색인 방향 관점: 워드 내 비트 색인이 31(MSB)에서 0(LSB) 방향으로 "
+        "올바르게 사용되는지 판단하라. >>31, <<31, bit[31] 등의 표현에서 MSB가 31번 비트로 "
+        "처리되는지 확인하라. 비트 번호 혼동(0이 MSB로 사용 등)이 있으면 위반이다."
+    ),
+    # ════════════════════════════════════════
+    # CM — 형상관리 (문서 규칙)
+    # ════════════════════════════════════════
+    "CM-002": (
+        "형상관리 항목 식별 관점: 형상관리 대상(문서·소스코드·테스트 프로그램)이 명시되고, "
+        "각 항목에 Major/Minor 버전 체계로 유일한 버전이 부여되는지 판단하라."
+    ),
+    "CM-003": (
+        "형상관리 변경 통제 관점: 형상관리위원회(CCB)를 통한 변경 요청·승인·이력 추적 절차와 "
+        "개정 이력 관리 방법이 문서에 명세되는지 판단하라."
+    ),
+    "CM-004": (
+        "형상관리 배포·폐기 절차 관점: 인가된 사용자에게의 안전한 배포(매체, 해시 검증) 절차와 "
+        "수명 종료 시 안전 삭제(소거) 절차가 문서에 명세되는지 판단하라."
+    ),
+    # ════════════════════════════════════════
+    # TEST — 시험 문서 규칙
+    # ════════════════════════════════════════
+    "TEST-002": (
+        "테스트벡터 출처 명세 관점: 암호알고리즘 시험에 사용된 테스트벡터(평문·암호문·키)와 "
+        "그 출처(참조 표준, 암호모듈 사전검증 시스템 등)가 문서에 명시되는지 판단하라."
+    ),
+    "TEST-003": (
+        "시험 결과 객관적 증빙 관점: 시험목적·시험단계·예상결과·실제결과가 포함되고, "
+        "실제결과는 화면 캡처나 디버깅 출력으로 객관적으로 증빙되는지 판단하라."
+    ),
+    "TEST-005": (
+        "오류 처리 시험 관점: 잘못된 키 길이·알고리즘 ID 등 비정상 입력에 대해 "
+        "설계서에 명세된 오류코드가 정확히 반환되고, 오류 상태에서 암호 서비스 수행과 "
+        "데이터 출력이 금지됨을 증빙하는 시험 내역이 있는지 판단하라."
+    ),
+    "DEFAULT": (
+        "KCMVP 암호모듈 보안 관점에서 해당 코드가 KS X 3246(LEA) 또는 관련 운영모드 규격을 "
+        "위반하는지 판단하라. 위반 여부가 불분명하면 is_real_issue=false로 판단하라."
+    ),
+}
+
+# ─────────────────────────────────────────────────────────────────
+# 고위험 규칙 — 배치에서 분리하여 단독 판정
+# (컨텍스트 오염 방지 + 집중 판정 필요)
+# ─────────────────────────────────────────────────────────────────
+_HIGH_ISOLATION_RULES = {
+    "COM-001", "COM-003",
+    "LEA-010", "LEA-031", "LEA-034", "LEA-040", "LEA-041", "LEA-042",
+    "LEA-046", "LEA-047",
+    "CBC-001", "CBC-002", "CBC-LEA-005",
+    "GCM-001", "GCM-004", "GCM-005",
+    "CTR-001", "CTR-002", "CTR-LEA-006",
+    "CCM-001", "CMAC-001",
+    "CFB-002", "OFB-002",
+}
+
+# ─────────────────────────────────────────────────────────────────
+# RAG 가이드라인 텍스트 로드 (L2 프롬프트 주입용)
+# ─────────────────────────────────────────────────────────────────
+def _fetch_guideline_text(rule_id: str, max_chars: int = 800) -> str:
+    """search_evidence()로 가이드라인 청크 로드 → 프롬프트 주입용 텍스트 반환."""
+    try:
+        chunks = search_evidence(rule_id, top_k=2)
+        if not chunks:
+            return ""
+        parts = []
+        total = 0
+        for c in chunks:
+            title = c.get("title", "")
+            content = c.get("content", "")
+            piece = f"[{title}]\n{content}" if title else content
+            parts.append(piece)
+            total += len(piece)
+            if total >= max_chars:
+                break
+        return "\n\n".join(parts)[:max_chars]
+    except Exception as e:
+        print(f"[L2][RAG] guideline fetch 실패 ({rule_id}): {e}")
+        return ""
+
+
+# ─────────────────────────────────────────────────────────────────
+# pattern_type별 코드 절삭 범위 (라인 수)
+# missing은 위치 정보가 없으므로 절삭 불필요 → L2 호출 자체를 스킵
+# ─────────────────────────────────────────────────────────────────
+_WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
+    "regex": 30,
+    "semantic": 50,
+    "ast": 50,
+    "missing": 0,
+}
+
+# ─────────────────────────────────────────────────────────────────
+# L2 결과 캐시 (스니펫 해시 기반, in-memory)
+# ─────────────────────────────────────────────────────────────────
+_l2_cache: Dict[str, Dict[str, Any]] = {}
+
+
+def _l2_cache_key(rule_id: str, code_block: str) -> str:
+    return hashlib.sha256(f"{rule_id}:{code_block}".encode()).hexdigest()[:16]
+
+
+# ─────────────────────────────────────────────────────────────────
+# JSON 추출 헬퍼
+# ─────────────────────────────────────────────────────────────────
+def _extract_json_from_text(raw: str) -> Optional[Dict[str, Any]]:
+    """Gemini 응답에서 JSON 객체 하나 추출."""
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip()
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if code_block:
+        raw = code_block.group(1).strip()
+    start = raw.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    end = -1
+    for i in range(start, len(raw)):
+        if raw[i] == "{":
+            depth += 1
+        elif raw[i] == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end == -1:
+        return None
+    try:
+        return json.loads(raw[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_json_array_from_text(raw: str) -> Optional[List[Any]]:
+    """Gemini 응답에서 JSON 배열 추출 (배치 처리용)."""
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip()
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if code_block:
+        raw = code_block.group(1).strip()
+    start = raw.find("[")
+    if start == -1:
+        return None
+    depth = 0
+    end = -1
+    for i in range(start, len(raw)):
+        if raw[i] == "[":
+            depth += 1
+        elif raw[i] == "]":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end == -1:
+        return None
+    try:
+        return json.loads(raw[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────
+# Gemini 호출 헬퍼
+# ─────────────────────────────────────────────────────────────────
+def _call_openai(prompt: str, model: Optional[str] = None) -> Optional[str]:
+    """OpenAI ChatCompletion API 호출. API 키 없으면 None 반환."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        resp = client.chat.completions.create(
+            model=model or OPENAI_L2_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        text = resp.choices[0].message.content if resp.choices else None
+        return text if isinstance(text, str) else None
+    except Exception as e:
+        print(f"[L2][OpenAI] 호출 실패: {e}")
+        return None
+
+
+def _call_llm(prompt: str, model: Optional[str] = None) -> Optional[str]:
+    """
+    L2_PROVIDER 설정에 따라 LLM 호출.
+    - L2_PROVIDER=gemini (기본): Gemini API
+    - L2_PROVIDER=openai: OpenAI ChatCompletion
+    - L2_PROVIDER=local: local_llm_service.call_local()
+    """
+    if L2_PROVIDER == "local":
+        try:
+            from app.services.local_llm_service import call_local
+            return call_local(prompt)
+        except Exception as e:
+            print(f"[LLM] local 호출 실패, gemini로 fallback: {e}")
+            return _call_gemini(prompt)
+    if L2_PROVIDER == "openai":
+        result = _call_openai(prompt, model=model)
+        if result is not None:
+            return result
+        print("[LLM] OpenAI 실패, Gemini로 fallback")
+        return _call_gemini(prompt)
+    return _call_gemini(prompt)
+
+
+class _Gemini503Error(Exception):
+    """Gemini 503 UNAVAILABLE — 프롬프트 과부하 또는 일시적 오류."""
+
+
+def _strip_gcfs_from_prompt(prompt: str) -> str:
+    """프롬프트에서 GCFS 블록 제거 (503 오류 시 폴백용)."""
+    return re.sub(
+        r"=== 코드베이스 전체 구조 요약.*?={3,}\n\n",
+        "",
+        prompt,
+        flags=re.DOTALL,
+    )
+
+
+def _call_gemini(prompt: str) -> Optional[str]:
+    """Google Gemini API 호출. 키 없으면 None 반환. 503 시 _Gemini503Error 발생."""
+    if not GOOGLE_API_KEY or not _HAS_GOOGLE_GENAI:
+        return None
+    try:
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_L2_MODEL,
+            contents=prompt,
+        )
+        text = getattr(response, "text", None)
+        if text and isinstance(text, str):
+            return text
+        cands = getattr(response, "candidates", None) or []
+        if cands:
+            content = getattr(cands[0], "content", None)
+            if content:
+                parts = getattr(content, "parts", None) or []
+                if parts:
+                    pt = getattr(parts[0], "text", None)
+                    if pt and isinstance(pt, str):
+                        return pt
+        print("[L2][Gemini] 응답에 텍스트가 없습니다.")
+        return None
+    except Exception as e:
+        err_str = str(e)
+        if "503" in err_str or "UNAVAILABLE" in err_str:
+            print(f"[L2][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
+            raise _Gemini503Error(err_str)
+        print(f"[L2][Gemini] 호출 실패: {e}")
+        return None
+
+
+_RETRY_SUFFIX_OBJ = "\n\n위 JSON 객체 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
+_RETRY_SUFFIX_ARR = "\n\n위 JSON 배열 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
+
+
+def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[str, Any]]:
+    """재시도 포함 LLM 호출 → 단일 JSON 객체 반환. 503 시 GCFS 제거 후 재시도."""
+    for attempt in range(max_retries + 1):
+        try:
+            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ)
+        except _Gemini503Error:
+            stripped = _strip_gcfs_from_prompt(prompt)
+            if stripped != prompt:
+                print("[L2] 503 → GCFS 제거 후 재시도")
+                try:
+                    raw = _call_llm(stripped)
+                except _Gemini503Error:
+                    return None
+            else:
+                return None
+            if not raw:
+                return None
+            obj = _extract_json_from_text(raw)
+            return obj  # 성공이든 실패든 한 번만
+        if not raw:
+            break
+        obj = _extract_json_from_text(raw)
+        if obj is not None:
+            return obj
+    return None
+
+
+def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional[List[Any]]:
+    """재시도 포함 LLM 호출 → JSON 배열 반환 (배치용). 503 시 GCFS 제거 후 재시도."""
+    for attempt in range(max_retries + 1):
+        try:
+            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR)
+        except _Gemini503Error:
+            stripped = _strip_gcfs_from_prompt(prompt)
+            if stripped != prompt:
+                print("[L2] 503 → GCFS 제거 후 배치 재시도")
+                try:
+                    raw = _call_llm(stripped)
+                except _Gemini503Error:
+                    return None
+            else:
+                return None
+            if not raw:
+                return None
+            arr = _extract_json_array_from_text(raw)
+            return arr
+        if not raw:
+            break
+        arr = _extract_json_array_from_text(raw)
+        if arr is not None:
+            return arr
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────
+# 코드 절삭 (code_slicer 위임)
+# ─────────────────────────────────────────────────────────────────
+def _find_func_boundary_from_sg(
+    line: int,
+    symbol_graph: Dict[str, Any],
+) -> tuple:
+    """symbol_graph["definitions"]에서 주어진 라인을 포함하는 함수를 찾아 (start, end) 반환.
+
+    반환: (start_line, end_line) 1-based, 못 찾으면 (-1, -1)
+    """
+    definitions = symbol_graph.get("definitions") or {}
+    best_start, best_end = -1, -1
+    best_size = float("inf")
+    for func_name, entries in definitions.items():
+        if not isinstance(entries, list):
+            entries = [entries]
+        for entry in entries:
+            s = entry.get("line") or entry.get("start_line")
+            e = entry.get("end_line")
+            if not s or not e:
+                continue
+            try:
+                s, e = int(s), int(e)
+            except (TypeError, ValueError):
+                continue
+            if s <= line <= e:
+                size = e - s
+                if size < best_size:
+                    best_size = size
+                    best_start, best_end = s, e
+    return best_start, best_end
+
+
+def _get_code_context(
+    content: str,
+    line: Optional[int],
+    pattern_type: str,
+    violation: Optional[Dict[str, Any]] = None,
+    symbol_graph: Optional[Dict[str, Any]] = None,
+) -> str:
+    """code_slicer.slice_code로 위임. line=None 이면 함수명 기반 절삭 시도.
+
+    ast 타입에서 line=None인 경우:
+      1. violation의 message/rule_id 에서 함수 키워드 추출
+      2. 파일에서 해당 함수 본체 절삭 (전역 스켈레톤 포함)
+      3. 실패 시 파일 앞부분 100줄
+
+    symbol_graph가 있고 line이 주어진 경우:
+      symbol_graph["definitions"]에서 해당 라인을 포함하는 함수를 찾아
+      end_line을 이용해 정확한 함수 본체를 반환한다.
+    """
+    lines = content.splitlines()
+
+    if line:
+        # symbol_graph의 end_line으로 정확한 함수 경계 사용
+        if symbol_graph:
+            sg_start, sg_end = _find_func_boundary_from_sg(line, symbol_graph)
+            if sg_start != -1 and sg_end != -1:
+                # 함수 전체를 반환 (최대 150줄)
+                func_lines = lines[sg_start - 1: sg_end]
+                if len(func_lines) > 150:
+                    func_lines = func_lines[:150]
+                return "\n".join(func_lines)
+        result = slice_code(lines, line, pattern_type)
+        return result if result is not None else ""
+
+    # line=None 처리
+    if pattern_type not in ("ast", "semantic"):
+        return ""
+
+    from app.services.code_slicer import extract_global_skeleton, _find_function_boundary
+    import re as _re
+
+    # rule_id → 관련 함수 키워드 매핑
+    # ast: 구조 검사 대상 함수, semantic: 보안 패턴이 있어야 할 함수
+    _RULE_FUNC_KEYWORDS: Dict[str, List[str]] = {
+        # AST 규칙
+        "lea-010": ["key_schedule", "set_key", "keygen", "key_setup", "key_expand"],
+        "lea-030": ["encrypt", "enc_block", "lea_enc"],
+        "lea-031": ["encrypt", "enc_block", "round"],
+        "lea-034": ["decrypt", "dec_block", "lea_dec"],
+        "lea-035": ["decrypt", "dec_block"],
+        "lea-040": ["encrypt", "decrypt"],
+        "cbc-001": ["cbc_encrypt", "cbc"],
+        "cbc-002": ["cbc_decrypt", "cbc"],
+        "gcm-001": ["gcm_encrypt", "gcm_init", "gcm"],
+        # Semantic 규칙 — 보안 패턴이 있어야 할 함수 위치
+        "com-001": ["encrypt", "decrypt", "cbc", "gcm", "ctr", "final"],
+        "com-002": ["encrypt", "decrypt", "init", "update", "final", "set_key"],
+        "com-005": ["online", "init", "update", "final", "stream"],
+        "lea-044": ["encrypt", "decrypt", "final", "cbc", "gcm", "ctr"],
+        "lea-049": ["kat", "test", "variable", "vector"],
+        "lea-050": ["kat", "test", "variable", "vector"],
+        "lea-060": ["kat", "test", "known", "reference", "verify"],
+        "lea-061": ["set_key", "key_schedule", "init", "encrypt"],
+        "lea-062": ["kat", "variable", "req", "rsp"],
+        "cbc-003": ["cbc", "iv", "init", "encrypt", "csprng", "random"],
+        "cbc-004": ["cbc", "encrypt", "decrypt", "final", "free"],
+        "gcm-003": ["gcm", "init", "encrypt", "decrypt", "final"],
+        "gcm-004": ["gcm", "decrypt", "final", "verify", "auth"],
+        "gcm-005": ["gcm", "final", "free", "clear"],
+        "ctr-003": ["ctr", "iv", "nonce", "init", "random"],
+        "ctr-004": ["ctr", "final", "free", "clear"],
+        "ccm-004": ["ccm", "decrypt", "verify", "auth"],
+        "ccm-005": ["ccm", "final", "free", "clear"],
+        "cmac-002": ["cmac", "verify", "compare", "final"],
+        "cmac-003": ["cmac", "final", "free", "clear"],
+        "cfb-001": ["cfb", "iv", "init", "random"],
+    }
+
+    # violation 메시지에서 함수명 직접 추출 (우선순위 높음)
+    func_keywords: List[str] = []
+    if violation:
+        msg_match = _re.search(r"함수\s+'([^']+)'", violation.get("message") or "")
+        if msg_match:
+            func_keywords.append(msg_match.group(1).lower())
+
+        rid = (violation.get("rule_id") or "").lower()
+        # rule_id 기반 키워드 매핑
+        for kw, hints in _RULE_FUNC_KEYWORDS.items():
+            if rid.startswith(kw):
+                func_keywords.extend(hints)
+                break
+        # 매핑 없으면 rid 자체에서 추론 (cbc-003 → ["cbc"])
+        if not func_keywords:
+            parts = rid.replace("-", "_").split("_")
+            func_keywords.extend(p for p in parts if len(p) > 2 and not p.isdigit())
+
+    # 키워드로 함수 찾기
+    found_start = -1
+    found_end = -1
+    if func_keywords:
+        func_pattern = "|".join(func_keywords)
+        for i, raw_line in enumerate(lines):
+            stripped = raw_line.strip()
+            # 함수 정의 줄 (반환형 + 이름 + 괄호 패턴)
+            import re as _re
+            if (
+                "(" in stripped
+                and _re.search(func_pattern, stripped, _re.IGNORECASE)
+                and not stripped.startswith("//")
+                and not stripped.startswith("*")
+            ):
+                s, e = _find_function_boundary(lines, i + 1)
+                if s != -1:
+                    found_start, found_end = s, e
+                    break
+
+    skeleton = extract_global_skeleton(lines)
+
+    if found_start != -1:
+        func_body = "\n".join(lines[found_start - 1: found_end])
+        if skeleton:
+            return (
+                f"// === 전역 구조 요약 ===\n{skeleton}\n\n"
+                f"// === 관련 함수 본체 ===\n{func_body}"
+            )
+        return func_body
+
+    # 함수 못 찾으면 전역 스켈레톤 + 파일 앞 100줄
+    header = "\n".join(lines[:100])
+    if skeleton:
+        ctx = f"// === 전역 구조 요약 ===\n{skeleton}\n\n// === 파일 앞부분 ===\n{header}"
+    else:
+        ctx = header
+
+    # semantic 위반은 코드가 전혀 없더라도 최소한 파일 앞 50줄을 반환
+    # (패턴 부재를 확인하기 위해 AI가 파일 전체 맥락을 볼 필요가 있음)
+    if not ctx and pattern_type == "semantic":
+        ctx = "\n".join(lines[:50])
+
+    return ctx
+
+
+# ─────────────────────────────────────────────────────────────────
+# L1.5 이름 기반 사전 필터 (L2 호출 전 결정론적 필터링)
+# ─────────────────────────────────────────────────────────────────
+
+# 변수명·함수명에 이 키워드가 포함되면 → FP 가능성 높음 → L2 스킵
+_L15_FP_NAMES = frozenset({
+    "sbox", "s_box", "delta", "lookup", "lut", "table",
+    "test", "kat", "vector", "sample", "example",
+    "round_const", "rcon", "permut", "mds", "mask",
+    "rand_index", "rand_count", "rand_loop", "random_index",
+})
+
+# 변수명·함수명에 이 키워드가 포함되면 → TP 가능성 높음 → L2 강제 포함
+_L15_TP_NAMES = frozenset({
+    "key", "iv", "nonce", "secret", "priv", "master",
+    "session_key", "encrypt_key", "aes_key", "des_key", "lea_key",
+})
+
+
+def _l15_name_filter(violation: Dict[str, Any]) -> Optional[bool]:
+    """
+    L1.5 이름 기반 필터.
+    반환값:
+      True  → TP 확실 → L2 강제 포함
+      False → FP 확실 → L2 제외
+      None  → 판단 불가 → 기존 로직대로
+    """
+    snippet = (violation.get("snippet") or "").lower()
+    if not snippet:
+        return None
+
+    # 변수명 추출 (배열·포인터 선언 패턴)
+    name_match = re.search(r'\b(\w+)\s*[\[=(*]', snippet)
+    var_name = name_match.group(1).lower() if name_match else ""
+
+    # TP 우선 판정
+    if any(kw in var_name for kw in _L15_TP_NAMES):
+        return True
+
+    # FP 판정
+    if any(kw in var_name or kw in snippet[:150] for kw in _L15_FP_NAMES):
+        return False
+
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────
+# L2 대상 선정
+# ─────────────────────────────────────────────────────────────────
+def _select_l2_candidates(
+    l1_violations: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    L2 판정 대상 선정 — 타입별 버킷 방식 + 위반 수에 따른 동적 cap.
+
+    위반 총 수(N)에 따른 전체 상한:
+      N ≤ 30  → 전체 심사 (cap = N)
+      N ≤ 80  → cap = 60 (기본)
+      N > 80  → cap = min(100, N // 2)  (대형 프로젝트 절반)
+
+    버킷 비율:
+      버킷 1 (ast):       cap의 42%, rule당 5건  ← 알고리즘 구조 위반 우선
+      버킷 2 (high sev):  cap의 42%, rule당 8건  ← regex/semantic 고위험
+      버킷 3 (기타):       cap의 16%, rule당 4건  ← medium/low
+    """
+    n_total = len(l1_violations)
+    if n_total <= 30:
+        total_cap = n_total
+    elif n_total <= 80:
+        total_cap = 80           # Phase 2: 60 → 80
+    else:
+        total_cap = min(150, n_total * 2 // 3)  # Phase 2: min(100,N//2) → min(150,2N/3)
+
+    b1_cap = max(8,  int(total_cap * 0.50))  # Phase 2: ast 비중 0.42 → 0.50
+    b2_cap = max(8,  int(total_cap * 0.35))  # Phase 2: high 비중 0.42 → 0.35
+    b3_cap = max(4,  total_cap - b1_cap - b2_cap)
+    needs_l2 = {"ast", "regex", "semantic"}
+    # L1.5: 이름 기반 사전 필터 적용
+    forced_in: List[Dict[str, Any]] = []
+    forced_out_ids: set = set()
+    for v in l1_violations:
+        verdict = _l15_name_filter(v)
+        if verdict is True:
+            forced_in.append(v)
+        elif verdict is False:
+            forced_out_ids.add(id(v))
+    forced_in_ids = {id(v) for v in forced_in}
+
+    eligible = [
+        v for v in l1_violations
+        if v.get("pattern_type") in needs_l2
+        and id(v) not in forced_out_ids
+    ]
+    print(f"[L1.5] 강제포함={len(forced_in)}건, 강제제외={len(forced_out_ids)}건")
+
+    severity_rank = {"high": 0, "medium": 1, "low": 2}
+
+    def _fill_bucket(
+        pool: List[Dict[str, Any]],
+        max_items: int,
+        per_rule_max: int,
+    ) -> List[Dict[str, Any]]:
+        sorted_pool = sorted(
+            pool, key=lambda v: severity_rank.get(v.get("severity", "low"), 2)
+        )
+        per_rule: Dict[str, int] = {}
+        bucket: List[Dict[str, Any]] = []
+        for v in sorted_pool:
+            rid = v.get("rule_id") or ""
+            per_rule[rid] = per_rule.get(rid, 0) + 1
+            if per_rule[rid] <= per_rule_max:
+                bucket.append(v)
+            if len(bucket) >= max_items:
+                break
+        return bucket
+
+    # 버킷 1: ast 타입
+    ast_pool = [v for v in eligible if v.get("pattern_type") == "ast"]
+    bucket_ast = _fill_bucket(ast_pool, max_items=b1_cap, per_rule_max=10)  # Phase 2: 5→10
+    selected_keys = {id(v) for v in bucket_ast}
+
+    # 버킷 2: high severity regex/semantic
+    high_pool = [
+        v for v in eligible
+        if id(v) not in selected_keys
+        and v.get("pattern_type") in ("regex", "semantic")
+        and v.get("severity") == "high"
+    ]
+    bucket_high = _fill_bucket(high_pool, max_items=b2_cap, per_rule_max=8)
+    selected_keys.update(id(v) for v in bucket_high)
+
+    # 버킷 3: 나머지
+    other_pool = [v for v in eligible if id(v) not in selected_keys]
+    bucket_other = _fill_bucket(other_pool, max_items=b3_cap, per_rule_max=4)
+
+    result = bucket_ast + bucket_high + bucket_other
+    print(
+        f"[L2] 대상 선정: N={n_total}, cap={total_cap}, "
+        f"ast={len(bucket_ast)}, high={len(bucket_high)}, "
+        f"other={len(bucket_other)}, 합계={len(result)}건"
+    )
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────
+# 프롬프트 빌더
+# ─────────────────────────────────────────────────────────────────
+def _get_prompt_template(rule_id: str) -> str:
+    """rule_id에 맞는 프롬프트 템플릿 반환. 없으면 모듈 접두어·DEFAULT로 fallback."""
+    if rule_id in PROMPT_TEMPLATES:
+        return PROMPT_TEMPLATES[rule_id]
+    # "COM-006" → "COM", "CBC-LEA-004" → "CBC" 순으로 시도
+    parts = rule_id.split("-")
+    # 앞 두 파트 매칭 (예: LEA-042)
+    if len(parts) >= 2:
+        two_part = f"{parts[0]}-{parts[1]}"
+        if two_part in PROMPT_TEMPLATES:
+            return PROMPT_TEMPLATES[two_part]
+    # 모듈 접두어만 (예: CBC, CTR, GCM …)
+    module = parts[0]
+    # 모듈별 범용 설명 매핑
+    _MODULE_DESC: Dict[str, str] = {
+        "LEA":  "LEA 블록암호 구현 관점: KS X 3246 규격 준수 여부를 판단하라.",
+        "CBC":  "CBC 운영 모드 관점: IV 무결성·패딩 처리·잔존정보 제거를 판단하라.",
+        "CTR":  "CTR 운영 모드 관점: 카운터 유일성과 올바른 증가 방식을 판단하라.",
+        "GCM":  "GCM 운영 모드 관점: Nonce 유일성·GHASH 연산·인증 태그 검증을 판단하라.",
+        "CCM":  "CCM 운영 모드 관점: Nonce 길이·CBC-MAC·카운터 모드 연산을 판단하라.",
+        "CMAC": "CMAC 관점: 서브키 생성과 인증 태그의 constant-time 검증을 판단하라.",
+        "CFB":  "CFB 운영 모드 관점: IV 관리와 피드백 세그먼트 크기를 판단하라.",
+        "OFB":  "OFB 운영 모드 관점: IV 유일성과 keystream 재사용 방지를 판단하라.",
+        "ECB":  "ECB 운영 모드 관점: ECB가 민감 데이터에 사용되는지(패턴 누출 위험) 판단하라.",
+        "ARIA": "ARIA 블록암호 관점: KS X 1213 규격 준수 여부를 판단하라.",
+    }
+    if module in _MODULE_DESC:
+        return _MODULE_DESC[module]
+    return PROMPT_TEMPLATES["DEFAULT"]
+
+
+def _build_single_prompt(
+    file_path: str,
+    v: Dict[str, Any],
+    code_block: str,
+    guideline_text: str = "",
+    use_cot: bool = False,
+) -> str:
+    """단일 위반 판정 프롬프트 (배치 실패 시 fallback 또는 격리 판정).
+
+    Parameters
+    ----------
+    guideline_text : RAG로 가져온 KCMVP 가이드라인 텍스트 (없으면 빈 문자열)
+    use_cot        : True이면 단계적 추론(CoT) 형식으로 판정 요청
+    """
+    rule_id = v.get("rule_id") or "UNKNOWN"
+    line = v.get("line") or "N/A"
+    l1_msg = v.get("message") or ""
+    template = _get_prompt_template(rule_id)
+    ai_ctx = v.get("ai_context", "")
+    ctx_line = f"\n규격 상세: {ai_ctx}" if ai_ctx else ""
+
+    guideline_section = (
+        f"\n📖 KCMVP 가이드라인 (참고):\n{guideline_text}\n"
+        if guideline_text
+        else ""
+    )
+
+    if use_cot:
+        reasoning_section = """
+판정 단계 (아래 순서로 분석 후 JSON 출력):
+STEP 1 [관찰]: 코드에서 실제로 발견한 패턴·함수·값을 구체적으로 기술하라.
+STEP 2 [비교]: 판정 기준 및 가이드라인과 비교하여 차이·부재 항목을 명확히 설명하라.
+STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
+    else:
+        reasoning_section = ""
+
+    pattern_type = v.get("pattern_type", "")
+    is_absence = pattern_type in ("semantic", "ast")
+
+    if is_absence:
+        judgment_criteria = """판정 지침 (엄격 적용):
+【이 위반은 "필수 보안 패턴의 부재"가 위반 — L1이 특정 패턴이 없음을 감지했음】
+【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
+  ① 변수명·배열명·주석이 S-box, delta, lookup_table, test_vector, KAT 등 공개 상수를 암시할 때
+  ② L1 탐지 메시지의 필수 패턴이 다른 방식(동등한 구현)으로 이미 충족되어 있을 때
+  ③ 판정 기준에 명시된 허용 예외에 해당할 때
+【위반(is_real_issue=true) 판정 조건】
+  ● L1 메시지에서 언급한 필수 패턴이 코드 내에 실제로 없음
+  ● 허용 예외에 해당하지 않음
+  ● confidence ≥ 65
+  ※ "패턴 부재" 확인: 함수 전체가 보이면 부재 여부를 판단할 수 있음
+  ※ insufficient_context=true는 코드가 실제로 너무 짧아 판단 자체가 불가한 경우에만 사용"""
+    else:
+        judgment_criteria = """판정 지침 (엄격 적용):
+【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
+  ① 변수명·배열명·주석이 S-box, delta, lookup_table, test_vector, KAT 등 공개 알고리즘 상수를 암시할 때
+  ② 코드 컨텍스트가 불충분하여 위반 여부를 확신할 수 없을 때 (→ insufficient_context=true 로 표시)
+  ③ 판정 기준에 명시된 허용 예외(테스트 목적, KAT, 단일 블록 암호화)에 해당할 때
+  ④ 위반이 의심되지만 증거가 약하거나 코드 흐름상 다른 해석이 가능할 때
+【위반(is_real_issue=true) 판정 조건 — 모두 충족 시에만 true】
+  ● 코드에서 위반 패턴이 명확히 확인됨
+  ● 허용 예외에 해당하지 않음
+  ● confidence ≥ 75"""
+
+    return f"""당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다.
+
+파일: {file_path}
+라인: {line}
+rule_id: {rule_id}
+판정 기준: {template}{ctx_line}{guideline_section}
+L1 탐지 메시지: {l1_msg}
+
+코드:
+```c
+{code_block}
+```
+{reasoning_section}
+{judgment_criteria}
+- confidence: 판정 확신도 (0=오탐/불확실, 100=위반 확실)
+- insufficient_context: 코드 절삭이 너무 짧아 판단 불가이면 true
+
+반드시 아래 JSON 형식의 객체만 출력하라:
+{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false}}""".strip()
+
+
+def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
+    """같은 파일의 여러 위반을 한 번에 판정하는 배치 프롬프트.
+
+    각 항목은 독립적으로 판정하며, 앞 항목의 결과가 뒤 항목에 영향을 주지 않도록 주의한다.
+    항목별 KCMVP 가이드라인이 있으면 간략히 포함한다 (최대 300자).
+    """
+    items_text_parts = []
+    for i, entry in enumerate(batch):
+        v = entry["violation"]
+        code_block = entry["code_block"]
+        rule_id = v.get("rule_id") or "UNKNOWN"
+        template = _get_prompt_template(rule_id)
+        ai_ctx = v.get("ai_context", "")
+        ctx_part = f"\n  규격 상세: {ai_ctx}" if ai_ctx else ""
+        # 항목별 가이드라인 (pre-fetched, 없으면 빈 문자열)
+        guide = entry.get("guideline_text", "")
+        guide_part = f"\n  가이드라인: {guide[:800]}" if guide else ""
+        ptype = v.get("pattern_type", "")
+        threshold_note = (
+            "  [패턴 부재 위반 — confidence≥65 시 true, insufficient_context는 코드 자체가 너무 짧을 때만]\n"
+            if ptype in ("semantic", "ast") else
+            "  [패턴 존재 위반 — confidence≥75 시 true]\n"
+        )
+        items_text_parts.append(
+            f"[위반 {i + 1}]\n"
+            f"  rule_id: {rule_id}\n"
+            f"  line: {v.get('line') or 'N/A'}\n"
+            f"  판정 기준: {template}{ctx_part}{guide_part}\n"
+            f"{threshold_note}"
+            f"  L1 탐지: {v.get('message') or ''}\n"
+            f"  코드:\n```c\n{code_block}\n```"
+        )
+    items_text = "\n\n".join(items_text_parts)
+    n = len(batch)
+
+    return f"""당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다.
+
+파일: {file_path}
+
+아래 {n}개의 위반 후보를 각각 독립적으로 판정하라.
+
+【오탐(is_real_issue=false) 기준 — 아래 중 하나라도 해당하면 반드시 false】
+  ① S-box·delta·lookup_table·test_vector·KAT 등 공개 상수임이 변수명·주석으로 드러날 때
+  ② 코드 컨텍스트 불충분으로 확신 불가 시 (→ insufficient_context=true, 단 "패턴 부재 위반"은 함수 전체가 보이면 판단 가능)
+  ③ 판정 기준의 허용 예외(테스트 목적, KAT, 단일 블록)에 해당할 때
+  ④ 위반 증거가 약하거나 다른 해석이 가능할 때
+【위반(is_real_issue=true) 기준】
+  - 패턴 존재 위반: 코드에서 명확히 확인되고 confidence≥75일 때만
+  - 패턴 부재 위반 ([패턴 부재 위반] 표시된 항목): 필수 패턴이 없음이 확인되고 confidence≥65일 때
+
+{items_text}
+
+반드시 아래 JSON 배열 형식만 출력하라 (입력과 동일한 순서, idx는 1부터):
+[
+  {{"idx": 1, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false}},
+  {{"idx": 2, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false}}
+]""".strip()
+
+
+# ─────────────────────────────────────────────────────────────────
+# 신뢰도 재판정 (Direction 4: confidence 65-74 구간 재검토)
+# ─────────────────────────────────────────────────────────────────
+def _build_rejudge_prompt(
+    file_path: str,
+    v: Dict[str, Any],
+    code_block: str,
+    first_obj: Dict[str, Any],
+    guideline_text: str = "",
+) -> str:
+    """신뢰도 65-74 구간 항목에 대한 재판정 프롬프트.
+
+    1차 판정 결과를 명시적으로 보여주고, 더 엄격한 기준으로 재검토하도록 요청.
+    """
+    rule_id = v.get("rule_id") or "UNKNOWN"
+    template = _get_prompt_template(rule_id)
+    first_desc = first_obj.get("description", "")
+    first_conf = first_obj.get("confidence", "N/A")
+    guideline_section = (
+        f"\n📖 KCMVP 가이드라인:\n{guideline_text}\n" if guideline_text else ""
+    )
+    return f"""당신은 KCMVP 암호모듈 보안 수석 심사관입니다.
+아래 항목은 1차 AI 판정에서 신뢰도 {first_conf}점(경계값)으로 판정되었습니다.
+더 엄격하고 신중하게 재검토하십시오.
+
+파일: {file_path}
+rule_id: {rule_id}
+판정 기준: {template}{guideline_section}
+1차 판정 설명: {first_desc}
+
+코드:
+```c
+{code_block}
+```
+
+재판정 기준:
+- 위반이 코드에서 명확히 확인되는 경우에만 is_real_issue=true를 유지하라.
+- 코드 전체 컨텍스트가 불명확하거나 위반 여부가 애매하면 is_real_issue=false로 수정하라.
+- confidence를 0~100 범위에서 재산정하라 (1차와 다르게 평가해도 무방).
+
+반드시 아래 JSON 형식만 출력하라:
+{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "재판정 한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄"}}""".strip()
+
+
+# ─────────────────────────────────────────────────────────────────
+# 결과 변환
+# ─────────────────────────────────────────────────────────────────
+def _make_l2_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    L2 판정 결과를 표준 위반 형식으로 변환.
+
+    - confidence_score(0~100): Gemini 확신도. 70 이상이면 "확정", 미만이면 "후보"
+    - rule_id는 원본 그대로 유지
+    - l2_confirmed=True 로 L2 판정 통과 표시
+    """
+    raw_score = obj.get("confidence")
+    try:
+        score = int(raw_score) if raw_score is not None else 80
+        score = max(0, min(100, score))
+    except (TypeError, ValueError):
+        score = 80
+
+    # 70점 이상 → 확정, 미만 → 후보 (is_real_issue=true이지만 확신도 낮음)
+    confidence_label = "확정" if score >= 70 else "후보"
+
+    result = {
+        "source": "L2",
+        "file": v.get("file") or v.get("file_path") or "",
+        "line": v.get("line"),
+        "rule_id": v.get("rule_id") or "UNKNOWN",
+        "message": obj.get("description") or "[L2] 의미적 위반",
+        "severity": v.get("severity", "medium"),
+        "suggestion": obj.get("suggestion") or "",
+        "confidence": confidence_label,
+        "confidence_score": score,
+        "l2_confirmed": True,
+        "pattern_type": v.get("pattern_type", ""),
+    }
+    # insufficient_context: 코드 절삭 부족 피드백 전달
+    if obj.get("insufficient_context"):
+        result["insufficient_context"] = True
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────
+# 메인 L2 실행
+# ─────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────
+# Phase 1: Structured Evidence Injection
+# symbol_graph(array_inits, type_aliases)를 활용해 AI에게
+# raw 코드 대신 "기대값 vs 실제값" 구조화 증거를 제공.
+# 토큰 40~60% 절감 + FP 필터링 정확도 15~25% 향상 (ZeroFalse 2024).
+# ─────────────────────────────────────────────────────────────────
+
+# KS X 3246 LEA 표준 delta 상수 (소문자 hex)
+_LEA_DELTA_STANDARD_LC: List[str] = [
+    "0xc3efe9db", "0x44626b02", "0x79e27c8a", "0x78df30ec",
+    "0x715ea49e", "0xc785da0a", "0xe04ef22a", "0xe5c40957",
+]
+
+# 알고리즘 공개 상수 이름 패턴 → COM-003 FP 힌트
+_SAFE_CONST_PATTERNS: List[str] = [
+    "delta", "sbox", "s_box", "rcon", "round_const", "lookup",
+    "lut", "table", "mds", "perm", "mask", "test", "kat", "vector",
+]
+
+
+def _build_global_flow_summary(
+    symbol_graph: Dict[str, Any],
+    preprocess_result: Optional[Dict[str, Any]] = None,
+    max_lines: int = 20,
+) -> str:
+    """symbol_graph에서 전체 코드베이스 흐름 요약 생성 (Global Code Flow Summary, GCFS).
+
+    모든 L2 프롬프트 앞에 prepend하여 AI가 코드 전체 구조를 이해한 상태에서 판정하도록 함.
+    max_lines: 요약 최대 줄 수 (토큰 절약, 503 오류 방지를 위해 20줄로 제한)
+    """
+    if not symbol_graph:
+        return ""
+
+    definitions: Dict[str, Any] = symbol_graph.get("definitions") or {}
+    call_graph: List[Dict[str, Any]] = symbol_graph.get("call_graph") or []
+    type_aliases: Dict[str, Any] = symbol_graph.get("type_aliases") or {}
+
+    if not definitions:
+        return ""
+
+    parts: List[str] = []
+
+    # ── 1. 파일별 함수 그룹핑 ──────────────────────────────────────
+    file_funcs: Dict[str, List[str]] = {}
+    for fname, entries in definitions.items():
+        if not isinstance(entries, list):
+            entries = [entries]
+        for entry in entries:
+            ffile = entry.get("file") or ""
+            # job_root prefix 제거 (storage/jobs/UUID/ → 상대 경로만)
+            rel = re.sub(r"storage/jobs/[a-f0-9\-]+/", "", ffile)
+            file_funcs.setdefault(rel, []).append(fname)
+
+    parts.append("[모듈 구조]")
+    for ffile, funcs in sorted(file_funcs.items()):
+        # 시스템/벤치마크 파일 제외
+        if any(kw in ffile.lower() for kw in ("benchmark", "test", "main_0tv")):
+            continue
+        shown = funcs[:3]
+        suffix = f" ... (+{len(funcs)-3}개)" if len(funcs) > 3 else ""
+        parts.append(f"  {ffile}: {', '.join(shown)}{suffix}")
+
+    # ── 2. 공개 API 시그니처 (함수 포인터 typedef) ─────────────────
+    api_aliases = {
+        k: v for k, v in type_aliases.items()
+        if k.endswith("_ptr") and "(*)" in v
+    }
+    if api_aliases:
+        parts.append("\n[공개 API 시그니처]")
+        for k, v in list(api_aliases.items())[:5]:
+            # lea_cbc_enc_ptr → lea_cbc_enc
+            func_name = k[:-4] if k.endswith("_ptr") else k
+            # 파라미터 부분만 추출
+            m = re.search(r"\(\*\)\s*\(([^)]*)\)", v)
+            params = m.group(1)[:80] if m else v[:80]
+            ret_m = re.match(r"^(\S+)\s+\(\*\)", v)
+            ret = ret_m.group(1) if ret_m else "?"
+            parts.append(f"  {ret} {func_name}({params})")
+
+        # ── 4. 키 흐름 요약 ────────────────────────────────────────────
+    key_setters = [e for e in call_graph if re.search(r"set_key|key_schedule|keygen", e.get("callee_name") or "", re.I)]
+    key_users   = [e for e in call_graph if re.search(r"encrypt|decrypt|cbc|ctr|gcm|cfb|ofb", e.get("callee_name") or "", re.I)]
+    key_zeros   = [e for e in call_graph if re.search(r"memset_s|zeroize|explicit_bzero|SecureZeroMemory|bzero", e.get("callee_name") or "", re.I)]
+    if key_setters or key_users or key_zeros:
+        parts.append("\n[키 생명주기 관련 호출]")
+        for e in key_setters[:3]:
+            caller = re.sub(r"storage/jobs/[a-f0-9\-]+/", "", e.get("caller_file") or "")
+            parts.append(f"  키 생성: {caller} → {e.get('callee_name')}")
+        for e in key_users[:3]:
+            caller = re.sub(r"storage/jobs/[a-f0-9\-]+/", "", e.get("caller_file") or "")
+            parts.append(f"  키 사용: {caller} → {e.get('callee_name')}")
+        if key_zeros:
+            for e in key_zeros[:2]:
+                caller = re.sub(r"storage/jobs/[a-f0-9\-]+/", "", e.get("caller_file") or "")
+                parts.append(f"  키 제거: {caller} → {e.get('callee_name')}")
+        else:
+            parts.append("  키 제거: ❌ 미발견 — 잔존 정보 제거 호출 없음")
+
+    text = "\n".join(parts)
+    # 줄 수 제한
+    text_lines = text.splitlines()
+    if len(text_lines) > max_lines:
+        text_lines = text_lines[:max_lines] + [f"  ... (요약 {max_lines}줄 제한)"]
+        text = "\n".join(text_lines)
+
+    if not text.strip():
+        return ""
+
+    header = "=== 코드베이스 전체 구조 요약 (Global Code Flow Summary) ==="
+    footer = "=" * len(header)
+    return header + "\n" + text + "\n" + footer + "\n\n"
+
+
+def _build_structured_evidence(
+    v: Dict[str, Any],
+    symbol_graph: Dict[str, Any],
+) -> str:
+    """symbol_graph 데이터를 이용해 위반에 대한 구조화된 증거 문자열 생성.
+
+    반환값: 증거 문자열 (없으면 빈 문자열)
+    증거가 있을 때 code_block 앞에 prepend해서 AI에게 전달.
+    """
+    if not symbol_graph:
+        return ""
+
+    rule_id = (v.get("rule_id") or "").upper()
+    array_inits: Dict[str, Any] = symbol_graph.get("array_inits") or {}
+    type_aliases: Dict[str, Any] = symbol_graph.get("type_aliases") or {}
+
+    parts: List[str] = []
+
+    # 타입 별칭: 모든 규칙에 공통 제공 (uint32_t=unsigned int 등)
+    if type_aliases:
+        alias_str = ", ".join(
+            f"{k}={val}" for k, val in list(type_aliases.items())[:6]
+        )
+        parts.append(f"[타입 정보] {alias_str}")
+
+    # ── LEA-010: delta 상수 실제값 vs 표준값 ──────────────────────
+    if rule_id == "LEA-010":
+        delta_arrays = {
+            k: info for k, info in array_inits.items()
+            if re.search(r"(?i)delta", k)
+        }
+        if delta_arrays:
+            parts.insert(0, "[LEA-010 Delta 상수 검증]")
+            for varname, info in delta_arrays.items():
+                found_raw: List[str] = info.get("values") or []
+                found_lc = [x.lower() for x in found_raw]
+                size = info.get("size") or len(found_raw)
+                expected = _LEA_DELTA_STANDARD_LC[:size]
+                mismatches = [
+                    f"[{i}] 기대={e} / 실제={f}"
+                    for i, (e, f) in enumerate(zip(expected, found_lc))
+                    if e != f
+                ]
+                parts.append(f"  배열: {varname}[{size}]")
+                parts.append(f"  KS X 3246 표준: {expected}")
+                parts.append(f"  소스 실제값:    {found_lc}")
+                if mismatches:
+                    parts.append(f"  불일치 {len(mismatches)}개: " + " | ".join(mismatches))
+                    parts.append(f"  → 비표준 상수 확실 (is_real_issue=true)")
+                else:
+                    parts.append(f"  → 표준값과 일치 (is_real_issue=false 강력 권고)")
+
+    # ── COM-003: 배열 분류 힌트 ───────────────────────────────────
+    elif rule_id == "COM-003":
+        snippet = v.get("snippet") or v.get("message") or ""
+        # 배열 이름 추출 (snippet 첫 줄)
+        var_m = re.search(r"([A-Za-z_]\w*)\s*(?:\[|=)", snippet)
+        if var_m:
+            varname = var_m.group(1)
+            is_safe_name = any(p in varname.lower() for p in _SAFE_CONST_PATTERNS)
+            info = array_inits.get(varname) or {}
+            parts.insert(0, "[COM-003 배열 분류]")
+            parts.append(f"  배열명: {varname}")
+            if info:
+                parts.append(f"  크기: {info.get('size','?')}, 타입: {info.get('type','?')}")
+                parts.append(f"  값 샘플: {(info.get('values') or [])[:4]}")
+            if is_safe_name:
+                parts.append(f"  이름 힌트: 알고리즘 공개 상수 패턴 포함 → FP 가능성 높음")
+            else:
+                parts.append(f"  이름 힌트: 공개 상수 패턴 없음 → 키/IV 여부 신중히 판단")
+
+    # ── LEA-040: 라운드 수 기준 명시 ─────────────────────────────
+    elif rule_id == "LEA-040":
+        parts.insert(0, "[LEA-040 라운드 수 기준]")
+        parts.append("  KS X 3246: LEA-128=24라운드, LEA-192=28라운드, LEA-256=32라운드")
+        parts.append("  위반 조건: i<=24 (off-by-one → 25회 실행), i<=28, i<=32 등")
+        parts.append("  정상 조건: i<24 또는 i<ctx->rounds (키 길이별 동적)")
+
+    # ── LEA-031/034/035: 타입 기반 포인터 판별 ───────────────────
+    elif rule_id in ("LEA-031", "LEA-034", "LEA-035"):
+        if type_aliases:
+            parts.insert(0, f"[{rule_id} 피연산자 타입 컨텍스트]")
+            parts.append("  포인터 vs 정수 피연산자 구분에 위 타입 정보를 활용하라.")
+
+    # ── 15개 fallback 규칙: 파라미터 타입 + 배열 초기화 맥락 주입 ────────────
+    _FALLBACK_RULES = {
+        "LEA-005", "LEA-006", "LEA-022", "LEA-023", "LEA-024", "LEA-025",
+        "LEA-032", "LEA-039", "LEA-059", "ARIA-002", "CTR-005",
+        "OFB-002", "CFB-002", "CBC-005",
+    }
+    if rule_id in _FALLBACK_RULES and not any(rule_id in p for p in parts):
+        # 파라미터 정보: definitions에서 관련 함수 찾기
+        file_path_hint = v.get("file") or ""
+        definitions = symbol_graph.get("definitions") or {}
+        if definitions:
+            related_funcs = []
+            for fname, entries in list(definitions.items())[:20]:
+                if not isinstance(entries, list):
+                    entries = [entries]
+                for entry in entries:
+                    if entry.get("file") and file_path_hint and file_path_hint not in entry.get("file", ""):
+                        continue
+                    params = entry.get("params") or []
+                    if params:
+                        param_str = ", ".join(
+                            p["type"] + " " + p["name"] if isinstance(p, dict) else str(p)
+                            for p in params[:6]
+                        )
+                        related_funcs.append(f"  {fname}({param_str})")
+                        break
+            if related_funcs:
+                parts.insert(0, f"[{rule_id} 함수 파라미터 정보]")
+                parts.extend(related_funcs[:5])
+
+        # 관련 배열 초기화값 (알고리즘 상수 맥락)
+        if array_inits:
+            algo_arrays = {
+                k: info for k, info in array_inits.items()
+                if not re.search(r"(?i)delta", k)  # delta는 LEA-010이 처리
+            }
+            if algo_arrays:
+                parts.append(f"[배열 상수 정보]")
+                for varname, info in list(algo_arrays.items())[:3]:
+                    vals = (info.get("values") or [])[:4]
+                    parts.append(f"  {varname}[{info.get('size','?')}]: {vals}")
+
+    if not parts:
+        return ""
+
+    header = "=== 구조화된 증거 (Structured Evidence) ==="
+    footer = "=" * len(header)
+    return header + "\n" + "\n".join(parts) + "\n" + footer + "\n\n"
+
+
+def run_l2_contextualizer(
+    preprocess_result: Dict[str, Any],
+    l1_violations: List[Dict[str, Any]],
+    rules_meta: Optional[Dict[str, Any]] = None,
+    _rejected_tracker: Optional[set] = None,
+    symbol_graph: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    L2: 의미적(맥락 기반) 위반 재판정.
+
+    Parameters
+    ----------
+    preprocess_result  : 전처리 결과 (run_preprocess 출력)
+    l1_violations      : L1 룰 엔진에서 생성된 위반 리스트
+    rules_meta         : (선택) 룰 메타데이터
+    _rejected_tracker  : (선택) L2가 오탐으로 판정한 항목의 (file, rule_id, line) 튜플을
+                         채워 넣을 set. analyze.py에서 post_process_violations 연동용.
+    symbol_graph       : (선택) build_symbol_graph 출력 — array_inits/type_aliases 활용.
+                         Structured Evidence Injection (Phase 1)에 사용.
+
+    Returns
+    -------
+    list[dict] : L2가 실제 위반으로 확정한 항목 리스트
+    """
+    # gemini 프로바이더는 API 키 필수; local은 키 불필요
+    if L2_PROVIDER == "gemini" and not GOOGLE_API_KEY:
+        return []
+
+    results: List[Dict[str, Any]] = []
+    files = preprocess_result.get("files", [])
+    file_content_cache: Dict[str, str] = {}
+
+    def get_file_content(path: str) -> Optional[str]:
+        """
+        preprocess_result["files"] 에서 path에 매칭되는 파일 내용을 반환.
+        preprocess_result의 path는 job_root 기준 상대경로이므로,
+        파일을 다시 열지 않고 item["lines"]를 사용한다.
+        """
+        if path in file_content_cache:
+            return file_content_cache[path]
+        for item in files:
+            item_path = item.get("path")
+            if not isinstance(item_path, str):
+                continue
+            # 상대경로 직접 일치 또는 절대경로 suffix 매칭
+            if item_path == path or item_path.endswith(path) or path.endswith(item_path):
+                # 방법 1: preprocess에서 파싱한 lines 사용 (경로 독립적)
+                lines = item.get("lines")
+                if lines is not None:
+                    content = "\n".join(lines)
+                    file_content_cache[path] = content
+                    return content
+                # 방법 2: 절대경로인 경우 직접 읽기 (fallback)
+                try:
+                    with open(item_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    file_content_cache[path] = content
+                    return content
+                except OSError:
+                    return None
+        return None
+
+    # L2 대상 선정
+    candidates = _select_l2_candidates(l1_violations)
+    if not candidates:
+        print("[L2] L2 판정 대상 없음")
+        return []
+
+    print(f"[L2] 판정 대상 {len(candidates)}건 선정 (전체 L1 위반: {len(l1_violations)}건)")
+
+    # Direction 1: rule_id별 가이드라인 사전 로드 (중복 호출 방지)
+    guideline_cache: Dict[str, str] = {}
+    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in candidates}
+    for rid in unique_rule_ids:
+        guideline_cache[rid] = _fetch_guideline_text(rid)
+    print(f"[L2][RAG] 가이드라인 로드: {sum(1 for g in guideline_cache.values() if g)}건 (/{len(guideline_cache)})")
+
+    # Phase 2: Global Code Flow Summary — 코드베이스 전체 구조 요약 (GCFS)
+    gcfs_prefix = _build_global_flow_summary(symbol_graph, preprocess_result)
+    if gcfs_prefix:
+        print(f"[L2][GCFS] 전체 코드 흐름 요약 생성됨 ({len(gcfs_prefix.splitlines())}줄)")
+
+    # 파일별로 묶어서 배치 처리
+    by_file: Dict[str, List[Dict[str, Any]]] = {}
+    for v in candidates:
+        fp = v.get("file") or v.get("file_path")
+        if not fp:
+            continue
+        by_file.setdefault(fp, []).append(v)
+
+    for file_path, violations in by_file.items():
+        content = get_file_content(file_path)
+        if not content:
+            print(f"[L2] 파일 읽기 실패: {file_path}")
+            continue
+
+        # 캐시 확인 + 항목 준비
+        isolated_items: List[Dict[str, Any]] = []  # 단독 처리 (고위험 규칙)
+        batch_items: List[Dict[str, Any]] = []     # 배치 처리
+        for v in violations:
+            raw_line = v.get("line")
+            line = int(raw_line) if raw_line else None
+            pattern_type = v.get("pattern_type") or "regex"
+            code_block = _get_code_context(content, line, pattern_type, violation=v, symbol_graph=symbol_graph)
+            if not code_block:
+                print(f"[L2] 코드 컨텍스트 없음, 스킵: {v.get('rule_id')} @ {file_path}")
+                continue
+            # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
+            structured_ev = _build_structured_evidence(v, symbol_graph)
+            if structured_ev:
+                code_block = structured_ev + code_block
+                print(f"[L2][SE] 구조화 증거 추가: {v.get('rule_id')} @ {file_path}:{line}")
+            # Phase 1-B: 키 생명주기 분석 결과 prepend (COM-001 전용)
+            if v.get("rule_id") == "COM-001" and v.get("key_lifecycle"):
+                lifecycle_block = (
+                    "=== 키 생명주기 분석 (Key Lifecycle Analysis) ===\n"
+                    + v["key_lifecycle"]
+                    + "\n" + "=" * 50 + "\n\n"
+                )
+                code_block = lifecycle_block + code_block
+                print(f"[L2][KL] 키 생명주기 분석 추가: COM-001 @ {file_path}")
+            # Phase 2: GCFS — 전체 코드 흐름 요약을 code_block 맨 앞에 prepend
+            # DOC 규칙(DOC-xxx)은 설계서 판정이므로 코드 흐름 요약 주입 제외
+            _is_doc_rule = (v.get("rule_id") or "").startswith("DOC")
+            if gcfs_prefix and not _is_doc_rule:
+                code_block = gcfs_prefix + code_block
+            rule_id = v.get("rule_id") or "UNKNOWN"
+            cache_key = _l2_cache_key(rule_id, code_block)
+
+            if cache_key in _l2_cache:
+                print(f"[L2] 캐시 히트: {rule_id} @ {file_path}:{line}")
+                obj = _l2_cache[cache_key]
+                if obj.get("is_real_issue"):
+                    results.append(_make_l2_result(v, obj))
+            else:
+                entry = {
+                    "violation": v,
+                    "code_block": code_block,
+                    "cache_key": cache_key,
+                    "guideline_text": guideline_cache.get(rule_id, ""),
+                }
+                if rule_id in _HIGH_ISOLATION_RULES:
+                    isolated_items.append(entry)
+                else:
+                    batch_items.append(entry)
+
+        # ── 고위험 규칙 단독 처리 (Direction 1: guideline, Direction 3: CoT) ──
+        for entry in isolated_items:
+            v = entry["violation"]
+            rule_id = v.get("rule_id") or ""
+            guideline_text = entry.get("guideline_text", "")
+            print(f"[L2] 격리 판정 (CoT+RAG): {rule_id} @ {file_path}:{v.get('line')}")
+            obj = _call_gemini_with_retry(
+                _build_single_prompt(
+                    file_path, v, entry["code_block"],
+                    guideline_text=guideline_text,
+                    use_cot=True,  # Direction 3: CoT for HIGH_ISOLATION_RULES
+                )
+            )
+            if obj:
+                _l2_cache[entry["cache_key"]] = obj
+                score = obj.get("confidence", 80)
+                try:
+                    score = int(score)
+                except (TypeError, ValueError):
+                    score = 80
+
+                # Direction 4: 신뢰도 65-74 구간 재판정
+                if obj.get("is_real_issue") and 65 <= score <= 74:
+                    print(f"[L2] 재판정 요청 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    rejudge_prompt = _build_rejudge_prompt(
+                        file_path, v, entry["code_block"], obj, guideline_text
+                    )
+                    rejudge_obj = _call_gemini_with_retry(rejudge_prompt)
+                    if rejudge_obj:
+                        obj = rejudge_obj
+                        _l2_cache[entry["cache_key"]] = obj
+                        score = obj.get("confidence", score)
+                        print(f"[L2] 재판정 완료 (score={score}): {rule_id}")
+
+                if obj.get("is_real_issue"):
+                    results.append(_make_l2_result(v, obj))
+                    print(f"[L2] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                else:
+                    print(f"[L2] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    if _rejected_tracker is not None:
+                        _rejected_tracker.add((
+                            (v.get("file") or v.get("file_path") or "").strip(),
+                            rule_id,
+                            v.get("line"),
+                        ))
+
+        if not batch_items:
+            continue
+
+        # ── 일반 규칙 배치 처리 (최대 8건씩 분할 → 집중력 유지) ──
+        _BATCH_CHUNK = 8
+        for chunk_start in range(0, len(batch_items), _BATCH_CHUNK):
+            chunk = batch_items[chunk_start: chunk_start + _BATCH_CHUNK]
+            print(f"[L2] 배치 판정: {file_path} ({len(chunk)}건, {chunk_start+1}~{chunk_start+len(chunk)})")
+            prompt = _build_batch_prompt(file_path, chunk)
+            arr = _call_gemini_batch_with_retry(prompt)
+
+            if arr is None:
+                print(f"[L2] 배치 응답 실패 → 개별 처리로 전환: {file_path}")
+                for entry in chunk:
+                    v = entry["violation"]
+                    obj = _call_gemini_with_retry(
+                        _build_single_prompt(
+                            file_path, v, entry["code_block"],
+                            guideline_text=entry.get("guideline_text", ""),
+                        )
+                    )
+                    if obj:
+                        _l2_cache[entry["cache_key"]] = obj
+                        if obj.get("is_real_issue"):
+                            results.append(_make_l2_result(v, obj))
+                continue
+
+            # 청크 결과 처리
+            for i, entry in enumerate(chunk):
+                v = entry["violation"]
+                obj = None
+                for r in arr:
+                    if isinstance(r, dict) and r.get("idx") == i + 1:
+                        obj = r
+                        break
+                if obj is None and i < len(arr) and isinstance(arr[i], dict):
+                    obj = arr[i]
+
+                if not isinstance(obj, dict):
+                    print(f"[L2] 배치 결과 파싱 실패: idx={i + 1}, {file_path}")
+                    continue
+
+                _l2_cache[entry["cache_key"]] = obj
+                score = obj.get("confidence", 80)
+                if obj.get("is_real_issue"):
+                    results.append(_make_l2_result(v, obj))
+                    print(f"[L2] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                else:
+                    print(f"[L2] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                    if _rejected_tracker is not None:
+                        _rejected_tracker.add((
+                            (v.get("file") or v.get("file_path") or "").strip(),
+                            (v.get("rule_id") or "").strip(),
+                            v.get("line"),
+                        ))
+
+    rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0
+    print(f"[L2] 최종 L2 확정 위반: {len(results)}건, 오탐 제거: {rejected_count}건")
+    return results
+
+
+def _build_patch_prompt(
+    file_path: str,
+    line: int,
+    snippet: str,
+    violation_message: str,
+    evidence: str,
+) -> str:
+    """패치 생성 프롬프트 빌드."""
+    evidence_section = f"\n📖 참고 가이드라인:\n{evidence}\n" if evidence else ""
+    fname = file_path.split("/")[-1] if "/" in file_path else file_path
+    return f"""당신은 KCMVP 암호모듈 보안 전문가입니다.
+아래 위반 코드를 분석하고 KCMVP 규격에 맞게 수정하십시오.
+
+📍 파일: {fname}  (줄: {line if line else "파일 전체"})
+⚠️ 위반: {violation_message}
+{evidence_section}
+위반 코드:
+```c
+{snippet}
+```
+
+아래 형식을 정확히 지켜서 출력하라. 다른 텍스트는 포함하지 말 것.
+
+### ⚠️ 문제 코드
+```diff
+{snippet.strip() if snippet else "// (코드 없음)"}
+```
+
+### ✅ 수정 코드
+```diff
++ // 여기에 KCMVP 규격에 맞는 수정 코드 작성
+```
+
+### 📝 수정 이유
+한국어로 2~3문장. 왜 문제인지, 무엇으로 바꿔야 하는지 명확히 설명.""".strip()
+
+
+def generate_patch_for_violation(
+    file_path: str,
+    line: int,
+    snippet: str,
+    violation_message: str,
+    rule_id: str = "",
+    evidence: str = "",
+) -> str:
+    """
+    단일 위반에 대한 수정 예시 마크다운 생성.
+
+    Parameters
+    ----------
+    rule_id   : KCMVP 룰 ID. evidence가 없으면 RAG에서 자동 로드.
+    evidence  : 이미 가져온 가이드라인 텍스트 (없으면 빈 문자열).
+
+    GOOGLE_API_KEY 및 OPENAI_API_KEY 없으면 stub 마크다운 반환.
+    """
+    no_key = (L2_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
+             (L2_PROVIDER == "openai" and not OPENAI_API_KEY)
+    if no_key and L2_PROVIDER not in ("local",):
+        return (
+            f"## {file_path}:{line}\n\n"
+            f"**위반**: {violation_message}\n\n"
+            f"**근거**: {evidence or '(가이드라인 없음)'}\n\n"
+            f"_(API 키 미설정 — 자동 패치 생성 불가)_"
+        )
+
+    # evidence 없으면 RAG에서 직접 로드
+    if not evidence and rule_id:
+        evidence = _fetch_guideline_text(rule_id, max_chars=600)
+
+    # OpenAI는 패치 전용 모델 사용
+    _model = OPENAI_PATCH_MODEL if L2_PROVIDER == "openai" else None
+    prompt = _build_patch_prompt(file_path, line, snippet, violation_message, evidence)
+    raw = _call_llm(prompt, model=_model)
+
+    if raw and raw.strip():
+        return raw.strip()
+
+    # fallback stub
+    return (
+        f"## {file_path}:{line}\n\n"
+        f"**위반**: {violation_message}\n\n"
+        f"**근거**: {evidence or '(가이드라인 없음)'}\n\n"
+        f"_(LLM 응답 실패 — 수동 수정 필요)_"
+    )
+
+
+def generate_doc_patch_for_violation(
+    rule_id: str,
+    violation_message: str,
+    doc_type: str = "design",
+    evidence: str = "",
+) -> str:
+    """
+    문서 위반에 대한 수정 가이드(패치노트) 마크다운 생성.
+
+    코드 패치와 달리 문서 위반은 "어떤 내용을 추가해야 하는가"를 안내함.
+    evidence가 없으면 RAG에서 자동 로드.
+    API 키 없으면 stub 마크다운 반환.
+    """
+    doc_type_label = {"design": "기본/상세 설계서", "config_mgmt": "형상관리 계획서", "test": "시험서"}.get(
+        doc_type, doc_type
+    )
+
+    # evidence 없으면 RAG에서 직접 로드
+    if not evidence and rule_id:
+        evidence = _fetch_guideline_text(rule_id, max_chars=600)
+
+    evidence_section = f"\n📖 KCMVP 가이드라인 근거:\n{evidence}\n" if evidence else ""
+
+    no_key = (L2_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
+             (L2_PROVIDER == "openai" and not OPENAI_API_KEY)
+    stub_md = (
+        f"## {rule_id} — {violation_message}\n\n"
+        f"**문서 유형**: {doc_type_label}\n\n"
+        f"**위반**: {violation_message}\n\n"
+        f"{evidence_section if evidence else ''}"
+        f"_(API 키 미설정 — 자동 작성 예시 생성 불가)_"
+    )
+
+    if no_key and L2_PROVIDER not in ("local",):
+        return stub_md
+
+    prompt = f"""당신은 KCMVP 암호모듈 검증 전문가입니다.
+아래 문서 위반 항목을 분석하고, {doc_type_label}에 추가해야 할 내용을 구체적으로 작성하십시오.
+
+📋 문서 유형: {doc_type_label}
+⚠️ 위반 룰: {rule_id}
+⚠️ 위반 내용: {violation_message}
+{evidence_section}
+아래 형식을 정확히 지켜서 출력하라. 다른 텍스트는 포함하지 말 것.
+
+### ⚠️ 누락/미흡 항목
+{violation_message}에 대한 설명 1~2문장.
+
+### ✅ 추가해야 할 내용 (작성 예시)
+마크다운 또는 표 형식으로 실제 문서에 삽입 가능한 수준의 예시 작성.
+KCMVP 가이드라인 근거를 반영할 것.
+
+### 📝 수정 이유
+한국어로 2~3문장. KCMVP 심사 관점에서 왜 필수인지 설명.""".strip()
+
+    raw = _call_llm(prompt)
+
+    if raw and raw.strip():
+        return raw.strip()
+
+    return stub_md
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOC GPTScan 체크리스트 프롬프트 (ICSE 2024 방법론 기반)
+# rule_id가 이 dict에 있으면 단일 서술형 대신 Q&A 체크리스트로 심사
+# ─────────────────────────────────────────────────────────────────────────────
+_DOC_PROMPT_TEMPLATES: Dict[str, str] = {
+    "DOC-003": (
+        "【GPTScan 체크리스트: DOC-003 암호알고리즘 + CSP 명세 (KCMVP §3.1)】\n"
+        "설계서 내용을 읽고 Q1~Q3를 순서대로 확인하라.\n\n"
+        "Q1. 문서에 사용하는 암호알고리즘 목록(LEA, ARIA, SEED, SHA 등)이 명시적으로 나열되어 있는가?\n"
+        "    → NO: 알고리즘 명세 자체가 없음 → is_real_issue=true\n\n"
+        "Q2. CSP(핵심보안매개변수: 비밀키, 개인키, 세션키, DRBG 씨앗값 등)가 구체적으로 열거되어 있는가?\n"
+        "    → NO: CSP 목록 누락 → is_real_issue=true\n\n"
+        "Q3. 각 CSP의 생명주기(생성·저장·사용·소멸 중 1개 이상)가 구체적으로 기술되어 있는가?\n"
+        "    (단순히 '관리한다'·'보호한다'는 불충분; 생성 방법 또는 삭제 시점 기술 시 충족)\n"
+        "    → NO: 생명주기 기술 누락 → is_real_issue=true\n\n"
+        "【판정 규칙】 Q1~Q3 중 하나라도 NO → 위반(true). 모두 YES → 정상(false).\n"
+        "정상 예: '비밀키(128-bit)는 DRBG로 생성하여 HSM에 암호화 저장하고 세션 종료 시 제로화한다'\n"
+        "위반 예: '알고리즘은 LEA를 사용한다' (CSP 목록·생명주기 없음)"
+    ),
+    "DOC-012": (
+        "【GPTScan 체크리스트: DOC-012 서비스별 논리적 인터페이스 + 출력 명세 (KCMVP §4.2)】\n"
+        "설계서 내용을 읽고 Q1~Q4를 순서대로 확인하라.\n\n"
+        "Q1. 암호 서비스(암호화, 복호화, 서명, 검증 등)별 인터페이스 목록 또는 API 명세가 존재하는가?\n"
+        "    → NO: 인터페이스 명세 자체가 없음 → is_real_issue=true\n\n"
+        "Q2. 각 서비스의 입력 데이터(파라미터명, 데이터 타입, 크기)가 명세되어 있는가?\n"
+        "    → NO: 입력 명세 누락 → is_real_issue=true\n\n"
+        "Q3. 각 서비스의 출력 데이터(암호문, 서명값, 반환코드 등)가 명세되어 있는가?\n"
+        "    → NO: 출력 명세 누락 → is_real_issue=true\n\n"
+        "Q4. 출력에 암호문/처리 결과가 인터페이스 항목으로 명시적으로 기재되어 있는가?\n"
+        "    (단순히 '결과를 반환한다'는 불충분; 암호문 크기·형식 포함 시 충족)\n"
+        "    → NO: 출력 내용 불충분 → is_real_issue=true\n\n"
+        "【판정 규칙】 Q1~Q4 중 하나라도 NO → 위반(true). 모두 YES → 정상(false).\n"
+        "정상 예: 'LEA_Encrypt(key, keyLen, plain, plainLen) → cipher[plainLen]'\n"
+        "위반 예: '암호화 함수를 제공한다' (파라미터·출력 명세 없음)"
+    ),
+    "DOC-022": (
+        "【GPTScan 체크리스트: DOC-022 제로화 서비스 동작 명세 (KCMVP §5.3)】\n"
+        "설계서 내용을 읽고 Q1~Q3를 순서대로 확인하라.\n\n"
+        "Q1. 문서에 제로화(zeroization, 메모리 초기화, 키 삭제) 서비스 또는 기능이 언급되어 있는가?\n"
+        "    → NO: 제로화 개념 자체가 없음 → is_real_issue=true\n\n"
+        "Q2. 제로화 대상 CSP(비밀키, 세션키, 중간값 등)가 명시적으로 특정되어 있는가?\n"
+        "    → NO: 대상 불명확 → is_real_issue=true\n\n"
+        "Q3. 제로화 동작이 구체적으로 기술되어 있는가?\n"
+        "    (단순히 '제로화를 수행한다'·'삭제한다'만으로는 불충분;\n"
+        "     memset/volatile 사용·덮어쓰기 방법·시점(세션 종료, 오류 발생 등) 기술 시 충족)\n"
+        "    → NO: 동작 기술 불충분 → is_real_issue=true\n\n"
+        "【판정 규칙】 Q1~Q3 중 하나라도 NO → 위반(true). 모두 YES → 정상(false).\n"
+        "정상 예: '세션 종료 시 volatile memset으로 비밀키·세션키 버퍼를 0x00으로 덮어씀'\n"
+        "위반 예: '키를 안전하게 삭제한다' (대상·방법·시점 미명시)"
+    ),
+    "DOC-040": (
+        "【GPTScan 체크리스트: DOC-040 절차적·운영적 제로화 명세 (KCMVP §5.3.2)】\n"
+        "설계서 내용을 읽고 Q1~Q3를 순서대로 확인하라.\n\n"
+        "Q1. 문서에 절차적(procedural) 또는 운영적(operational) 제로화 방법이 언급되어 있는가?\n"
+        "    → NO: 제로화 절차 자체가 없음 → is_real_issue=true\n\n"
+        "Q2. 컴파일러 최적화 방지 기법이 언급되어 있는가?\n"
+        "    (volatile 키워드, SecureZeroMemory, explicit_bzero, memset_s 등 중 하나라도 있으면 YES)\n"
+        "    → NO: 최적화 방지 기술 없음 → is_real_issue=true\n\n"
+        "Q3. 제로화 완료 후 해당 CSP가 복구 불가능함이 명세되어 있는가?\n"
+        "    (덮어쓰기 횟수, 덮어쓰기 후 확인, '복구 불가' 표현 포함 시 YES)\n"
+        "    → NO: 복구 불가능성 기술 없음 → is_real_issue=true\n\n"
+        "【판정 규칙】 Q1~Q3 중 하나라도 NO → 위반(true). 모두 YES → 정상(false).\n"
+        "정상 예: 'volatile 선언 버퍼에 memset_s 호출 후 복구 불가 상태 확인'\n"
+        "위반 예: '키를 0으로 초기화한다' (volatile·복구불가 기술 없음)"
+    ),
+    "DOC-048": (
+        "【GPTScan 체크리스트: DOC-048 유한상태모델 (FSM) 명세 (KCMVP §6.1)】\n"
+        "설계서 내용을 읽고 Q1~Q3를 순서대로 확인하라.\n\n"
+        "Q1. 문서에 상태 천이도(State Transition Diagram) 또는 상태 천이표(State Transition Table)가 존재하는가?\n"
+        "    (그림이 PDF에 있거나 표로 기재된 경우 YES)\n"
+        "    → NO: FSM 도식 자체 없음 → is_real_issue=true\n\n"
+        "Q2. 다음 5개 필수 상태가 정의되어 있는가?\n"
+        "    ① 초기화(Initialization/Power-On) ② 자기시험(Self-Test) ③ 정상동작(Operational)\n"
+        "    ④ 오류(Error/Crypto-Error) ⑤ 잠금/종료(Locked/Power-Off)\n"
+        "    (다른 명칭이라도 동등한 상태이면 YES; 1개라도 누락이면 NO)\n"
+        "    → NO: 필수 상태 누락 → is_real_issue=true\n\n"
+        "Q3. 각 상태 간 천이를 유발하는 이벤트 또는 조건이 기술되어 있는가?\n"
+        "    (화살표 레이블, 표 내 입력/조건 열, 또는 본문 설명 포함)\n"
+        "    → NO: 천이 조건 기술 없음 → is_real_issue=true\n\n"
+        "【판정 규칙】 Q1~Q3 중 하나라도 NO → 위반(true). 모두 YES → 정상(false).\n"
+        "정상 예: 상태 천이표에 5개 상태 + 이벤트(전원 인가·자기시험 통과·오류 감지) 기재\n"
+        "위반 예: '모듈은 정상 동작과 오류 상태를 가진다' (도식·나머지 상태·천이 없음)"
+    ),
+}
+
+
+def run_doc_l2_contextualizer(
+    violations_doc: List[Dict[str, Any]],
+    doc_preprocess_result: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """
+    DOC 위반 중 semantic + high-severity missing 타입(needs_ai_review=True)을 AI 재판정.
+
+    - regex 타입은 객관적 사실 기반이므로 그대로 통과.
+    - semantic 타입은 키워드 미존재만으로 판단했으므로 AI가 실제 위반인지 재검토.
+    - missing 타입은 섹션 자체가 없는 경우이지만, AI가 동등 내용 존재 여부를 재검토.
+    - AI가 is_real_issue=False로 판정하면 최종 위반 목록에서 제외.
+    - API 키 없거나 실패 시 원본 목록 그대로 반환 (안전 fallback).
+    """
+    has_key = (L2_PROVIDER == "gemini" and GOOGLE_API_KEY) or \
+              (L2_PROVIDER == "openai" and OPENAI_API_KEY) or \
+              (L2_PROVIDER == "local")
+    if not has_key:
+        return violations_doc
+
+    # needs_ai_review=True 인 위반 전체를 AI 재판정 대상으로 한다.
+    # (pattern_type은 doc_rule_service가 violation dict에 저장하므로 필터로도 활용 가능,
+    #  하지만 needs_ai_review 플래그 자체가 AI 판단 필요 여부의 단일 진실 소스)
+    semantic_violations = [
+        v for v in violations_doc
+        if v.get("needs_ai_review") is True
+    ]
+    if not semantic_violations:
+        return violations_doc
+
+    # doc_type별 풀텍스트 캐시 (섹션 title + text 결합)
+    def _build_doc_fulltext(doc_type: str) -> str:
+        sections = doc_preprocess_result.get("sections") or []
+        chunks = []
+        for s in sections:
+            dt = (s.get("doc_type") or "").lower().strip()
+            if dt == "scm":
+                dt = "config_mgmt"
+            if dt != doc_type:
+                continue
+            title = str(s.get("title") or "").strip()
+            text = str(s.get("text") or "").strip()
+            if title:
+                chunks.append(f"[{title}]")
+            if text:
+                chunks.append(text[:500])  # 섹션당 최대 500자
+        return "\n".join(chunks)[:3000]  # 전체 3000자 제한
+
+    fulltext_cache: Dict[str, str] = {}
+
+    # 판정 대상: rule_id별 최대 5건, 전체 최대 50건
+    # semantic 규칙이 항상 발동되므로 건수 증가에 대응해 상한 상향
+    per_rule: Dict[str, int] = {}
+    candidates: List[Dict[str, Any]] = []
+    for v in semantic_violations:
+        rid = v.get("rule_id") or ""
+        per_rule[rid] = per_rule.get(rid, 0) + 1
+        if per_rule[rid] <= 5 and len(candidates) < 50:
+            candidates.append(v)
+
+    print(f"[DOC-L2] 판정 대상 {len(candidates)}건 (전체 AI검토대상: {len(semantic_violations)}건)")
+
+    # [P3] 판정 결과 저장: 위반 인스턴스별 (id(v) → is_real_issue)
+    # 평가된 위반 인스턴스는 독립 판정, 미평가 인스턴스는 같은 rule_id의 결과 전파
+    judgment_by_instance: Dict[int, bool] = {}  # id(v) → bool
+    judgment_by_rule: Dict[str, bool] = {}       # rule_id → bool (fallback)
+
+    for v in candidates:
+        rule_id = v.get("rule_id") or "UNKNOWN"
+        doc_type = v.get("doc_type") or "design"
+        msg = v.get("message") or ""
+        section_title = v.get("section") or v.get("title") or ""
+
+        if doc_type not in fulltext_cache:
+            fulltext_cache[doc_type] = _build_doc_fulltext(doc_type)
+        doc_text = fulltext_cache[doc_type]
+
+        if not doc_text:
+            # 문서 텍스트 없으면 판정 불가 → 보수적으로 위반 유지
+            judgment_by_instance[id(v)] = True
+            judgment_by_rule.setdefault(rule_id, True)
+            continue
+
+        section_hint = f"\n[관련 섹션] {section_title}" if section_title else ""
+        # rule description: name보다 구체적인 요건 기술 (YAML description 필드)
+        rule_desc = v.get("rule_description") or ""
+        desc_hint = f"\n[상세 요건] {rule_desc}" if rule_desc else ""
+        keyword_found = v.get("keyword_found")  # True/False/None
+        if keyword_found is True:
+            keyword_hint = "\n[주의] 관련 키워드가 문서에 존재하지만, 다른 섹션/맥락에서 나타남. 해당 키워드가 이 규칙이 요구하는 맥락에서 사용되었는지 반드시 확인하라."
+        elif keyword_found is False:
+            keyword_hint = "\n[주의] 관련 키워드가 문서 어디에도 존재하지 않음. 요건 자체가 누락된 강한 신호."
+        else:
+            keyword_hint = ""
+        # GPTScan 체크리스트 템플릿 적용 (rule_id가 _DOC_PROMPT_TEMPLATES에 있으면 우선 사용)
+        if rule_id in _DOC_PROMPT_TEMPLATES:
+            _cl = _DOC_PROMPT_TEMPLATES[rule_id]
+            _sec = f"\n[관련 섹션] {section_title}" if section_title else ""
+            prompt = (
+                "당신은 KCMVP(국가 암호모듈 검증) 문서 심사 전문가입니다.\n\n"
+                + _cl + "\n\n"
+                + f"[설계서 관련 섹션 내용 (발췌)]\n{doc_text}" + _sec + "\n\n"
+                + "반드시 아래 JSON 형식만 출력하라:\n"
+                + '{"is_real_issue": true 또는 false, "reason": "판정 근거 한 줄 (한국어)"}'
+            )
+        else:
+            prompt = f"""당신은 KCMVP(국가 암호모듈 검증) 문서 심사 전문가입니다.
+
+아래 KCMVP 설계서 내용을 분석하여, 해당 규칙 요건이 실제로 누락되었는지 판정하세요.
+
+[규칙 ID] {rule_id}
+[규칙 내용] {msg}{desc_hint}{section_hint}{keyword_hint}
+
+[설계서 관련 섹션 내용 (발췌)]
+{doc_text}
+
+위 설계서에서 [{rule_id}] 요건이 실제로 누락/위반되었습니까?
+판정 기준:
+- 키워드가 없더라도 동등한 의미의 다른 표현으로 요건을 명확히 충족하면 is_real_issue=false
+- 키워드가 있어도 이 규칙이 요구하는 특정 맥락(상세 요건 참조)에서 사용되지 않았다면 요건 미충족으로 판단
+- 내용 자체가 없거나 한 문장으로 얼버무린 경우(예: "수행한다" 단독) 불충분 → is_real_issue=true
+- 함수명이 테이블에 나열된 것만으로는 동작 기술로 보지 않음
+
+반드시 아래 JSON 형식만 출력하라:
+{{"is_real_issue": true 또는 false, "reason": "판정 근거 한 줄 (한국어)"}}"""
+
+        obj = _call_gemini_with_retry(prompt)
+        if obj is None:
+            print(f"[DOC-L2] {rule_id} 판정 실패 → 위반 유지")
+            judgment_by_instance[id(v)] = True
+            judgment_by_rule.setdefault(rule_id, True)
+            continue
+
+        is_real = bool(obj.get("is_real_issue", True))
+        reason = obj.get("reason", "")
+        judgment_by_instance[id(v)] = is_real
+        # rule_id fallback: 첫 번째 확정 판정을 기준으로 저장
+        if rule_id not in judgment_by_rule:
+            judgment_by_rule[rule_id] = is_real
+        print(f"[DOC-L2] {rule_id}: {'위반 확정' if is_real else '오탐 제거'} — {reason}")
+
+    # 원본 목록에서 AI가 오탐으로 판정한 위반 제거
+    # 인스턴스별 판정 우선, 없으면 rule_id 수준 판정 사용
+    result = []
+    for v in violations_doc:
+        rid = v.get("rule_id") or ""
+        if v.get("needs_ai_review"):
+            vid = id(v)
+            if vid in judgment_by_instance:
+                is_real = judgment_by_instance[vid]
+            elif rid in judgment_by_rule:
+                is_real = judgment_by_rule[rid]
+            else:
+                result.append(v)
+                continue
+
+            if not is_real:
+                print(f"[DOC-L2] {rid} 제거 (오탐)")
+                continue
+            # 확정 위반으로 표시
+            v = dict(v)
+            v["confidence"] = "확정"
+            v["needs_ai_review"] = False
+        result.append(v)
+
+    return result
+
+
+def generate_ai_summary(
+    violations: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+    meta: Dict[str, Any],
+) -> str:
+    """
+    전체 위반 목록을 기반으로 AI가 종합 평가 요약을 생성.
+    API 키 없거나 호출 실패 시 None 반환.
+    """
+    if not GOOGLE_API_KEY:
+        return None
+
+    total     = summary.get("total", len(violations))
+    confirmed = summary.get("confirmed", 0)
+    candidate = summary.get("candidate", 0)
+    high      = summary.get("high", 0)
+    algo      = meta.get("algorithm") or "미지정"
+    mode      = meta.get("mode") or "미지정"
+
+    # 위반 항목 요약 (최대 20건, 중복 rule_id 제거)
+    seen_rules: set = set()
+    rule_lines: List[str] = []
+    for v in violations:
+        rid = v.get("rule_id", "")
+        if rid in seen_rules:
+            continue
+        seen_rules.add(rid)
+        sev = v.get("severity", "")
+        msg = v.get("message", "")[:80]
+        rule_lines.append(f"- [{rid}] ({sev}) {msg}")
+        if len(rule_lines) >= 20:
+            break
+
+    rules_text = "\n".join(rule_lines) if rule_lines else "- 위반 없음"
+
+    prompt = f"""당신은 KCMVP 암호모듈 검증 전문가입니다.
+아래 분석 결과를 바탕으로 종합 평가 요약을 작성하십시오.
+
+분석 대상: {algo} / 운영 모드: {mode}
+전체 위반: {total}건 (확정 {confirmed}건, 후보 {candidate}건, 심각 {high}건)
+
+주요 위반 목록:
+{rules_text}
+
+다음 형식으로 정확히 출력하라. 다른 텍스트 포함 금지.
+
+**종합 판정**: (합격 가능성 / 불합격 위험 / 검토 필요 중 하나)
+
+**핵심 위험 요소**
+(가장 심각한 위반 2~3개를 골라 왜 위험한지 한 문장씩)
+
+**우선 수정 권고**
+(수정 순서를 1~3순위로 제시, 각 한 문장)
+
+**전반적 평가**
+(이 암호모듈의 KCMVP 적합성에 대한 전문가 의견, 3~4문장)""".strip()
+
+    raw = _call_llm(prompt)
+    if raw and raw.strip():
+        return raw.strip()
+    return None

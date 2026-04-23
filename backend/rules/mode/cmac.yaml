@@ -1,0 +1,48 @@
+# CMAC(Cipher-based MAC) 모드 특화 룰셋
+# 대상: LEA 블록암호를 CMAC 운영모드로 사용하는 C/Java/Python 구현체
+#
+# RAG 참조: database/LEA/02_운영모드/02_05_CMAC/CMAC_001_보조키_생성.md, CMAC_002_검증_로직.md
+
+rules:
+
+  - id: CMAC-001
+    category: mode
+    mode: CMAC
+    name: "CMAC 보조 비밀키(K1, K2) 생성 로직"
+    pattern_type: ast
+    pattern: 'K1|K2|<<\s*1'
+    severity: high
+    description: "CMAC 구현 시 L=ENC(Key,0^128)을 계산하고, msb(L)에 따라 좌시프트+조건부 XOR(Rb=0x87)로 K1을 생성하며, K1에 동일 절차를 적용하여 K2를 생성해야 함. lea_cmac_init에서 라운드키와 함께 사전 계산함"
+    fallback_pattern: '(?i)(lea_cmac_init|cmac_init|K1\s*\[|K2\s*\[|0x87\b|Rb\s*=|subkey|cmac_subkey)'
+    kcmvp_ref: "암호알고리즘 구현안내서 Part 2 §4"
+
+  - id: CMAC-002
+    category: mode
+    mode: CMAC
+    name: "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
+    pattern_type: missing
+    pattern: "constant_time|crypto_memcmp|CRYPTO_memcmp|timingsafe_memcmp"
+    severity: high
+    description: "CMAC 검증 시 수신 메시지에 대해 MAC을 재계산하고, 수신된 MAC(T)과 상수 시간(constant-time) 비교를 수행해야 함. memcmp는 타이밍 부채널 공격에 취약하므로 사용 금지. 불일치 시 Invalid(-1)를 반환하고 일치 바이트 수/위치를 외부에 노출하지 않아야 함"
+    kcmvp_ref: "암호알고리즘 구현안내서 Part 2 §4"
+
+  - id: CMAC-003
+    category: mode
+    mode: CMAC
+    name: "CMAC 보조키(K1, K2) 사용 후 제로화"
+    pattern_type: missing
+    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
+    severity: medium
+    description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
+    kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
+
+  - id: CMAC-LEA-001
+    category: mode
+    mode: CMAC
+    name: "LEA 전용 CMAC API 3종 명칭 사용"
+    pattern_type: missing
+    scope: project
+    pattern: "\\blea_cmac_(init|update|final)\\b"
+    severity: medium
+    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 CMAC 인터페이스 3종(lea_cmac_init, lea_cmac_update, lea_cmac_final)을 사용해야 하며, init→update→final 호출 순서를 준수해야 함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.24~§4.3.26"

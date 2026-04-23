@@ -1,0 +1,24 @@
+# ECB(Electronic Codebook) 모드 특화 룰셋
+# 2.2.1 운영모드별 입출력 규격 - 블록 독립 암호화
+
+rules:
+  - id: ECB-001
+    category: mode
+    mode: ECB
+    name: "ECB 필수 API 선언 확인"
+    pattern_type: "missing"
+    scope: project
+    pattern: '\blea_ecb_(enc|dec)\b'
+    severity: medium
+    description: "LEA ECB 모드를 사용하기 위한 암호화(lea_ecb_enc) 및 복호화(lea_ecb_dec) 함수가 명세되어야 함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.2, §4.3.3"
+
+  - id: ECB-002
+    category: mode
+    mode: ECB
+    name: "ECB 16바이트 배수 평문 제약 조건"
+    pattern_type: ast
+    severity: high
+    description: "ECB 모드의 입력 평문 길이는 반드시 16바이트(블록 크기)의 배수여야 함. 16의 배수가 아닌 경우 PKCS7 등 사전에 정해진 패딩을 적용하거나, 호출 전 길이 검증 로직을 포함해야 함"
+    fallback_pattern: '(?i)(len\s*%\s*16|ptLen\s*%\s*16|plain_len\s*%|ecb_enc|lea_ecb|ECB_encrypt|block_size\s*==\s*16)'
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §2.2.1"

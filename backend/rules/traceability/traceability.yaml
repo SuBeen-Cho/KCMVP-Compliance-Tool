@@ -1,0 +1,45 @@
+# Traceability 룰셋 (TRC-xxx)
+# 설계서–코드–시험서 간 인터페이스/에러 코드 일치성을 검사하는 룰 예시입니다.
+
+rules:
+  - id: TRC-001
+    type: "interface_match"
+    name: "설계서 인터페이스 명세 vs 헤더 파일 시그니처 일치성"
+    description: "설계서의 인터페이스 명세표와 실제 헤더 파일(예: lea.h)의 함수 시그니처가 일치해야 함"
+    design_source: "설계서:인터페이스 명세표"     # doc_preprocess_result 내 표 이름/ID와 연결
+    code_source: "header:lea.h"                   # code_index 내 헤더 시그니처 목록과 연결
+    fields: ["function_name", "params", "return_type"]
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 설계 및 검증 가이드 §3.1"
+
+  - id: TRC-002
+    type: "error_code_match"
+    name: "설계서 오류 코드 정의 vs 시험서 예상 결과 vs 코드 상수 일치성"
+    description: "설계서에서 정의한 오류 코드가 시험서 예상/실제 결과 및 코드 상수 정의와 일치해야 함"
+    design_source: "설계서:오류 코드 정의 표"
+    test_source: "시험서:시험결과표"
+    code_source: "source:error_codes"             # code_index 내 오류 코드 상수 목록과 연결
+    fields: ["error_code", "symbol_name"]
+    severity: medium
+    kcmvp_ref: "2025 최신 암호모듈 설계 및 검증 가이드 §4.3"
+
+  - id: TRC-003
+    type: "test_coverage"
+    name: "공개 함수 시험 커버리지"
+    description: "헤더 파일에 선언된 공개 함수가 시험서에서 테스트 항목으로 언급되어야 함"
+    code_source: "header:*.h"
+    test_source: "시험서:시험 항목"
+    min_coverage: 0.5                             # 50% 이상 커버리지 필요
+    severity: medium
+    kcmvp_ref: "2025 최신 암호모듈 설계 및 검증 가이드 §5.2"
+  - id: TRC-004
+    type: "api_mapping"
+    name: "symbol_graph 공개 API 시그니처 vs 설계서 명세 자동 매핑"
+    description: >
+      libclang symbol_graph에서 추출한 함수 포인터 typedef(*_ptr)를 설계서 API 테이블과
+      자동 대조한다. 코드에 공개 API로 정의된 함수가 설계서에 명세되지 않았거나,
+      설계서 API 테이블에 기재된 함수가 코드에서 구현되지 않은 경우 위반.
+    code_source: "symbol_graph:type_aliases(*_ptr)"
+    design_source: "설계서:인터페이스 명세표"
+    severity: medium
+    kcmvp_ref: "2025 최신 암호모듈 설계 및 검증 가이드 §3.1"

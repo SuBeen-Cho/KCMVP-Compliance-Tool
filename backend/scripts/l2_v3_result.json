@@ -1,0 +1,76 @@
+{
+  "description": "v3 GPTScan 체크리스트 효과 측정 (BEFORE=v2 AFTER, AFTER=v3)",
+  "checklist_rules": [
+    "CFB-002",
+    "LEA-031",
+    "LEA-034",
+    "OFB-002"
+  ],
+  "job": "27a4ebe9-8af5-42e3-ba97-ff7f44b1f505",
+  "total": 118,
+  "before": {
+    "true": 94,
+    "false": 23,
+    "none": 1
+  },
+  "after": {
+    "true": 89,
+    "false": 28,
+    "none": 1
+  },
+  "flips": {
+    "T2F": 7,
+    "F2T": 2,
+    "total": 9
+  },
+  "per_rule": {
+    "CFB-002": {
+      "before": {
+        "true": 13,
+        "false": 1,
+        "none": 0
+      },
+      "after": {
+        "true": 10,
+        "false": 4,
+        "none": 0
+      }
+    },
+    "LEA-031": {
+      "before": {
+        "true": 0,
+        "false": 0,
+        "none": 0
+      },
+      "after": {
+        "true": 0,
+        "false": 0,
+        "none": 0
+      }
+    },
+    "LEA-034": {
+      "before": {
+        "true": 2,
+        "false": 0,
+        "none": 0
+      },
+      "after": {
+        "true": 2,
+        "false": 0,
+        "none": 0
+      }
+    },
+    "OFB-002": {
+      "before": {
+        "true": 13,
+        "false": 1,
+        "none": 0
+      },
+      "after": {
+        "true": 11,
+        "false": 3,
+        "none": 0
+      }
+    }
+  }
+}

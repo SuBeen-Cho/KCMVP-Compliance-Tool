@@ -1,0 +1,88 @@
+# GCM(Galois/Counter Mode) 모드 특화 룰셋
+# 대상: LEA 블록암호를 GCM 운영모드로 사용하는 C/Java/Python 구현체
+#
+# 알고리즘 공통 검사(uint32_t, S-box 배제 등)는 algorithm/lea.yaml에서 처리하므로
+# 이 파일에는 GCM 모드 고유 규칙만 정의한다.
+# RAG 참조: database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md
+
+rules:
+
+  # ─────────────────────────────────────────────────
+  # [PART 1] 범용 GCM 운영모드 규칙
+  # ─────────────────────────────────────────────────
+
+  - id: GCM-001
+    name: "GCM IV/Nonce 유일성 보장"
+    category: mode
+    mode: GCM
+    description: "GCM 모드에서 동일한 키로 Nonce를 재사용하면 기밀성과 인증이 모두 파괴됨. 매 암호화 호출마다 반드시 고유한 Nonce를 사용해야 하며, 카운터 또는 CSPRNG로 생성해야 함"
+    pattern_type: "ast"
+    severity: high
+    fallback_pattern: '(?i)(gcm_init|lea_gcm_init|gcm_nonce|\bnonce\s*\[|GCM.*nonce|nonce.*gcm|lea_gcm_set_ctr)'
+    kcmvp_ref: "암호모듈 구현안내서 §2.2.7"
+
+  - id: GCM-002
+    name: "GCM 인증값(Tag) 길이 제약 (4~16바이트)"
+    category: mode
+    mode: GCM
+    pattern_type: regex
+    pattern: "(?i)(tag_?len|t_?len)\\s*[=:]\\s*([0-3]\\b|1[7-9]\\b|[2-9]\\d)"
+    severity: high
+    description: "GCM 인증값(Tag)의 바이트 길이는 4 이상 16 이하여야 함. 4 미만 입력 시 인증값을 계산하지 않고 -1을 반환함. KCMVP에서는 8바이트 이상 권장"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.23"
+
+  - id: GCM-003
+    name: "GCM API 호출 순서 체인 준수"
+    category: mode
+    mode: GCM
+    pattern_type: regex
+    pattern: "lea_gcm_set_ctr\\s*\\([^;]*\\);[^{}]*lea_gcm_init\\s*\\("
+    severity: high
+    description: "GCM 모드는 반드시 lea_gcm_init → lea_gcm_set_ctr → (lea_gcm_set_aad) → lea_gcm_encrypt/decrypt → lea_gcm_final 순서로 호출해야 함. set_ctr은 encrypt/decrypt 전에 반드시 선행되어야 하며, encrypt와 decrypt를 final 전에 혼용할 수 없음"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.18~§4.3.23"
+
+  - id: GCM-004
+    name: "GCM 복호화 인증 실패 시 -1 반환"
+    category: mode
+    mode: GCM
+    pattern_type: missing
+    pattern: "return\\s*-1|\\bauth_fail\\b|\\btag_mismatch\\b"
+    severity: high
+    description: "lea_gcm_final 복호화 시 인증값이 불일치하면 -1을 반환하고, 복호화된 평문 버퍼를 사용하지 않아야 함. 인증값 바이트 길이가 4 미만이면 인증값을 계산하지 않고 LEA_GCM_CTX를 초기화한 후 -1을 반환함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.23"
+
+  - id: GCM-005
+    name: "GCM SSP(Nonce/Key) 메모리 제로화"
+    category: mode
+    mode: GCM
+    pattern_type: missing
+    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
+    severity: medium
+    description: "사용이 끝난 Nonce, 비밀키, LEA_GCM_CTX 구조체는 memset_s, SecureZeroMemory, explicit_bzero 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
+    kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
+
+  # ─────────────────────────────────────────────────
+  # [PART 2] LEA 전용 GCM 구현 규칙
+  # ─────────────────────────────────────────────────
+
+  - id: GCM-LEA-001
+    name: "LEA 전용 GCM API 6종 명칭 사용"
+    category: mode
+    mode: GCM
+    pattern_type: missing
+    scope: project
+    pattern: "\\blea_gcm_(init|set_ctr|set_aad|encrypt|decrypt|final)\\b"
+    severity: medium
+    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 GCM 인터페이스 6종(lea_gcm_init, lea_gcm_set_ctr, lea_gcm_set_aad, lea_gcm_encrypt, lea_gcm_decrypt, lea_gcm_final)을 사용해야 함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.18~§4.3.23"
+
+  - id: GCM-LEA-002
+    name: "PCLMULQDQ GHASH 가속 권고"
+    category: mode
+    mode: GCM
+    pattern_type: missing
+    scope: project
+    pattern: "(?i)(pclmul|lea_gcm_pclmul|ghash.*accel)"
+    severity: low
+    description: "x86 환경에서 GHASH 연산의 캐리리스 곱셈(Carry-less Multiplication)을 PCLMULQDQ 명령어로 하드웨어 가속하여 인증값 생성 성능을 향상시키는 것을 권장함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §3"

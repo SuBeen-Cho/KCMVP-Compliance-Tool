@@ -1,0 +1,1895 @@
+{
+  "job": "27a4ebe9-8af5-42e3-ba97-ff7f44b1f505",
+  "before": [
+    {
+      "rule_id": "LEA-003",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/lea_locl.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_core.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_key.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-034",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-034",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 20,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "ECB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "ECB-002",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-LEA-006",
+      "file": "main_0tv.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-LEA-006",
+      "file": "main_0tv.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-001",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-001",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-002",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-LEA-005",
+      "file": "src/lea_cbc.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "main.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "main.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 50,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_core.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_neon.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_generic.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 85,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-003",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-012",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-018",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-022",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-024",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-025",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-026",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-027",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-028",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-032",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-034",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-035",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-036",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-037",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-041",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-043",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-046",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-051",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-052",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-054",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": null,
+      "confidence": null,
+      "reasoning": "Gemini 응답 없음"
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 85,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-023",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-030",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-033",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-038",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-039",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-049",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/lea_avx2.h",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    }
+  ],
+  "after": [
+    {
+      "rule_id": "LEA-003",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 10,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-005",
+      "file": "src/lea_locl.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-010",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_core.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_key.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-034",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-034",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "ECB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "ECB-002",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-LEA-006",
+      "file": "main_0tv.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-LEA-006",
+      "file": "main_0tv.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-001",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-001",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-002",
+      "file": "src/lea_t_fallback.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CBC-LEA-005",
+      "file": "src/lea_cbc.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "main.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_benchmark.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "main.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 30,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_core.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_avx2_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_neon.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_t_generic.c",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-032",
+      "file": "src/lea_xop.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_online.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/cpu_info_ia32.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/lea_core_xop.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-003",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-012",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 85,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-018",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-022",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-024",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-025",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-026",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-027",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-028",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-032",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-034",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-035",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-036",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-037",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-041",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-043",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-046",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-051",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-052",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-054",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_sse2.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "lea_vs.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "CTR-005",
+      "file": "src/lea_base.c",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-023",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-030",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-033",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-038",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-039",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "rule_id": "DOC-049",
+      "file": "",
+      "key_lifecycle": false,
+      "is_real_issue": null,
+      "confidence": null,
+      "reasoning": "Gemini 응답 없음"
+    },
+    {
+      "rule_id": "LEA-006",
+      "file": "src/lea_avx2.h",
+      "key_lifecycle": false,
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    }
+  ]
+}

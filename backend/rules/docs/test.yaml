@@ -1,0 +1,48 @@
+# 문서 룰셋 (시험서용 DOC-1xx)
+# 코드와 동일하게 pattern_type: missing/regex, pattern 필드 사용. 검사 대상은 doc_preprocess_result 풀텍스트.
+
+rules:
+  - id: TEST-001
+    doc_type: test
+    name: "시험환경 및 대상 알고리즘 목록 명세"
+    description: "암호모듈 시험서에 실제 시험을 수행한 하드웨어 및 소프트웨어 시험환경(운영체제, 32/64비트 여부 등)과 시험 대상이 되는 검증대상 암호알고리즘 목록이 명세되어야 함"
+    pattern_type: "missing"
+    pattern: '(?=.*시험\s*환경)(?=.*대상\s*알고리즘)'
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 제출물 작성 안내서 Ⅲ. 시험서 작성 안내서 2.가, 2.나"
+
+  - id: TEST-002
+    doc_type: test
+    name: "알고리즘별 테스트벡터 및 출처 명세"
+    description: "각 검증대상 암호알고리즘 시험에 사용된 테스트벡터 값(평문, 암호문, 키 등)과 해당 테스트벡터의 출처(참조 표준, 암호모듈 사전검증 시스템 등)가 문맥적으로 명세되어야 함"
+    pattern_type: "semantic"
+    pattern: '테스트벡터.*출처|사전검증\s*시스템|참조\s*표준'
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 제출물 작성 안내서 Ⅲ. 시험서 작성 안내서 2.다"
+
+  - id: TEST-003
+    doc_type: test
+    name: "알고리즘 시험 절차 및 증빙(캡쳐/로그) 명세"
+    description: "시험목적, 시험단계, 예상 시험결과, 실제 시험결과가 포함되어야 하며, 특히 실제 시험결과는 화면 캡쳐나 디버깅 메시지 출력을 통해 정상 동작(예: 암호화 후 복호화 시 원본 데이터 복원 등)을 객관적으로 증빙해야 함"
+    pattern_type: "semantic"
+    pattern: '예상\s*시험결과|실제\s*시험결과|화면\s*캡쳐|디버깅\s*메시지'
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 제출물 작성 안내서 Ⅲ. 시험서 작성 안내서 2.라"
+
+  - id: TEST-004
+    doc_type: test
+    name: "암호모듈 관리 API 동작 시험 명세 확인"
+    description: "알고리즘 시험뿐만 아니라 초기화(동작 전 자가시험), 상태확인(유한상태모델 천이 확인), 주기적 자가시험 등 암호 관리자가 수행하는 관리 API들의 정상 동작 여부를 확인하는 시험 절차와 결과가 포함되어야 함"
+    pattern_type: "missing"
+    pattern: '관리\s*API|상태확인.*시험|주기적\s*자가시험.*시험'
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 제출물 작성 안내서 Ⅲ. 시험서 작성 안내서 3"
+
+  - id: TEST-005
+    doc_type: test
+    name: "의도적 오류 주입을 통한 출력 금지 및 오류코드 확인 시험"
+    description: "잘못된 키 길이나 알고리즘 ID 등을 의도적으로 입력하여 설계서에 명세된 정확한 오류코드가 반환되는지 확인하고, 해당 오류 상태에서 암호 서비스 수행 및 데이터 출력이 철저히 금지됨을 증빙하는 시험 내역이 서술되어야 함"
+    pattern_type: "semantic"
+    pattern: '오류\s*출력\s*시험|데이터\s*출력\s*금지|의도적으로.*잘못|오류코드.*반환'
+    severity: high
+    kcmvp_ref: "2025 최신 암호모듈 제출물 작성 안내서 Ⅲ. 시험서 작성 안내서 4"

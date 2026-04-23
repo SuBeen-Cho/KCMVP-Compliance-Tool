@@ -1,0 +1,245 @@
+{
+  "job": "27a4ebe9-8af5-42e3-ba97-ff7f44b1f505",
+  "after_new": [
+    {
+      "idx": 12,
+      "rule_id": "LEA-034",
+      "file": "src/lea_base.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 13,
+      "rule_id": "LEA-034",
+      "file": "src/lea_t_fallback.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 23,
+      "rule_id": "OFB-002",
+      "file": "lea_benchmark.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 24,
+      "rule_id": "OFB-002",
+      "file": "main.c",
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "idx": 25,
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 26,
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 27,
+      "rule_id": "OFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 28,
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 29,
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "idx": 30,
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": true,
+      "confidence": 80,
+      "reasoning": ""
+    },
+    {
+      "idx": 31,
+      "rule_id": "OFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": false,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 32,
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_xop.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 33,
+      "rule_id": "CFB-002",
+      "file": "lea_benchmark.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 34,
+      "rule_id": "CFB-002",
+      "file": "main.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 35,
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 36,
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 37,
+      "rule_id": "CFB-002",
+      "file": "lea_vs.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 38,
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_avx2_sse2.c",
+      "is_real_issue": false,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 39,
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": true,
+      "confidence": 70,
+      "reasoning": ""
+    },
+    {
+      "idx": 40,
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": true,
+      "confidence": 95,
+      "reasoning": ""
+    },
+    {
+      "idx": 41,
+      "rule_id": "CFB-002",
+      "file": "src/lea_online.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 42,
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_xop.c",
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "idx": 95,
+      "rule_id": "OFB-002",
+      "file": "src/lea_t_sse2.c",
+      "is_real_issue": false,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 96,
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 97,
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 98,
+      "rule_id": "OFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    },
+    {
+      "idx": 99,
+      "rule_id": "CFB-002",
+      "file": "src/lea_t_sse2.c",
+      "is_real_issue": true,
+      "confidence": 100,
+      "reasoning": ""
+    },
+    {
+      "idx": 100,
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "idx": 101,
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": false,
+      "confidence": 0,
+      "reasoning": ""
+    },
+    {
+      "idx": 102,
+      "rule_id": "CFB-002",
+      "file": "src/lea_base.c",
+      "is_real_issue": true,
+      "confidence": 90,
+      "reasoning": ""
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# CFB(Cipher Feedback) 모드 특화 룰셋
+# 대상: LEA 블록암호를 CFB-128 운영모드로 사용하는 C/Java/Python 구현체
+#
+# RAG 참조: database/LEA/02_운영모드/02_06_CFB/CFB_001_기본_구조.md
+
+rules:
+
+  - id: CFB-001
+    category: mode
+    mode: CFB
+    name: "CFB IV 유일성 및 예측 불가능성"
+    pattern_type: missing
+    pattern: "getrandom|/dev/urandom|BCryptGenRandom|DRBG|drbg"
+    severity: high
+    description: "CFB 모드의 IV(16바이트)는 매 암호화 호출마다 유일하고 예측 불가능해야 하며, DRBG로 생성해야 함. 동일 키로 IV를 재사용하면 XOR 기반 평문 노출 위험이 발생함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.8"
+
+  - id: CFB-002
+    category: mode
+    mode: CFB
+    name: "CFB-128 암호화 수식 준수"
+    pattern_type: ast
+    severity: high
+    description: "CFB-128 암호화는 CT[i] = PT[i] ⊕ ENC(Key, CT[i-1]) 수식을 따라야 하며, CT[0] = IV이다. 복호화도 동일하게 ENC 함수만 사용해야 함 (DEC 불필요)"
+    fallback_pattern: '(?i)(cfb_enc|cfb_dec|lea_cfb|CFB_encrypt|feedback\s*\[|segment\s*\[|cfb_block)'
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.8, §4.3.9"
+
+  - id: CFB-LEA-001
+    category: mode
+    mode: CFB
+    name: "LEA 전용 CFB-128 API 명칭 사용"
+    pattern_type: missing
+    scope: project
+    pattern: "\\blea_cfb128_(enc|dec)\\b"
+    severity: medium
+    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 CFB-128 인터페이스 함수명(lea_cfb128_enc, lea_cfb128_dec)을 사용해야 함"
+    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.8, §4.3.9"

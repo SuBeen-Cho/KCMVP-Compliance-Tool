@@ -1,0 +1,594 @@
+rules:
+- id: LEA-001
+  category: algorithm
+  algorithm: LEA
+  name: LEA 블록 크기 준수 검증
+  pattern_type: missing
+  pattern: (?i)(block_?(size|len|length))\s*[=:]\s*(128|16\b)
+  severity: high
+  description: LEA의 블록 크기는 반드시 128비트(16바이트)로 고정되어야 함
+  kcmvp_ref: LEA 검증시스템 §4
+  scope: project
+- id: LEA-002
+  category: algorithm
+  algorithm: LEA
+  name: LEA-128/192/256 키 길이 규격 준수
+  pattern_type: missing
+  pattern: (?i)(mk_len|key_?len|keyLen)\s*[=!<>]+\s*(16|24|32)\b
+  severity: high
+  description: 지원되는 마스터키 길이는 반드시 128, 192, 256비트(16, 24, 32바이트)여야 함
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §1
+  scope: project
+- id: LEA-003
+  category: algorithm
+  algorithm: LEA
+  name: 키 길이별 라운드 수 일치 검증
+  pattern_type: ast
+  severity: high
+  description: 키 길이에 따른 정확한 라운드 수(128→24, 192→28, 256→32) 설정 확인
+  fallback_pattern: '(?i)(?:rounds?|nr|n_rounds?)\s*[=<>!]+\s*(24|28|32)\b'
+  kcmvp_ref: LEA 표준 규격서 §5.1 <표 5-1>
+- id: LEA-004
+  category: algorithm
+  algorithm: LEA
+  name: 32비트 워드 지향 연산 준수 여부
+  pattern_type: missing
+  pattern: (?i)(uint32_t|unsigned\s+int|u32)\s+.*(rk|round_?key|X\b|T\b|state|block|delta)
+  severity: high
+  description: LEA는 32비트 CPU 환경 최적화를 위해 라운드키(rk), 내부 상태(X, T), 블록 데이터 등 모든 핵심 연산이 32비트 워드 단위(uint32_t)로 수행되어야 함
+  kcmvp_ref: LEA 검증시스템 §4
+  scope: project
+- id: LEA-005
+  category: algorithm
+  algorithm: LEA
+  name: 바이트 배열→워드 변환(리틀 엔디안) 구현 확인
+  pattern_type: ast
+  severity: high
+  description: 입력 바이트 배열을 워드 배열로 변환 시 B[i]=a[4i+3]||a[4i+2]||a[4i+1]||a[4i] 리틀 엔디안 연접 규약을 따라야 함
+  fallback_pattern: '(?i)(loadU32LE|getU32LE|a\[4\s*\*|<<\s*8\s*\)|<<\s*16\s*\)|<<\s*24\s*\)|uint32_t.*\|.*<<)'
+  kcmvp_ref: LEA 논문 §2.2, LEA 표준 규격서 §4.2.3
+- id: LEA-006
+  category: algorithm
+  algorithm: LEA
+  name: 워드 내 비트 색인 방향성(31~0) 확인
+  pattern_type: ast
+  severity: low
+  description: 워드 내 비트 색인이 31(MSB)에서 0(LSB)으로 정확히 매핑되는지 확인
+  fallback_pattern: '(?i)(>>\s*31\b|<<\s*31\b|&\s*1\b.*<<\s*31|31\s*.*MSB|msb.*bit)'
+  kcmvp_ref: LEA 표준 규격서 <표 4-3>
+- id: LEA-007
+  category: algorithm
+  algorithm: LEA
+  name: 비밀키 바이트 배열(K) 크기 정의 확인
+  pattern_type: missing
+  pattern: (?i)(\bK\b|\bmk\b|\bkey\b)\s*\[\s*(16|24|32)\s*\]
+  severity: low
+  description: 비밀키는 키 길이에 따른 올바른 크기의 바이트 배열로 정의되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.1 <표 5-1>
+  scope: project
+- id: LEA-008
+  category: algorithm
+  algorithm: LEA
+  name: 내부 상태 변수(Xi) 4개 워드 배열 구성
+  pattern_type: missing
+  pattern: (?i)(uint32_t|unsigned\s+int)\s+(X|state|block)\s*\[\s*4\s*\]
+  severity: medium
+  description: 라운드 중간값 Xi는 반드시 4개의 32비트 워드 배열로 구성되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+  scope: project
+- id: LEA-009
+  category: algorithm
+  algorithm: LEA
+  name: 라운드키(RKi) 6개 워드(192비트) 구성
+  pattern_type: missing
+  scope: project
+  pattern: (?i)(uint32_t|unsigned\s+int)\s+(rk|round_?key|RK)\s*\[\s*6\s*\]
+  severity: medium
+  description: 각 라운드키는 반드시 192비트(32비트 워드 6개) 배열이어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+- id: LEA-010
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄 전체 구조(ARX + δ 기반 라운드키 생성)
+  pattern_type: ast
+  severity: high
+  description: 키 스케줄은 비밀키 K를 32비트 워드 배열 T로 변환한 후, 델타 상수 δ와 모듈러 덧셈(⊞), 비트 좌회전(ROL)을 반복 적용하여 라운드키를 생성해야 함
+  fallback_pattern: '(?i)(lea_set_key|key_?schedule|KeyExpand|key_setup|LeaKey|set_enc_key|LeaSetKey)'
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3, 4, 5
+- id: LEA-011
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄용 상수 δ[0]~δ[7] 정의 확인
+  pattern_type: missing
+  scope: project
+  pattern: (?i)(0xc3efe9db|0x44626b02|0x79e27c8a|0x78df30ec|0x715ea49e|0xc785da0a|0xe04ef22a|0xe5c40957)
+  severity: high
+  description: 표준에 정의된 8개의 델타 상수(δ[0]~δ[7])가 누락 없이 포함되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.2
+- id: LEA-012
+  category: algorithm
+  algorithm: LEA
+  name: 상수 δ의 유도 근거(√766995) 주석 확인
+  pattern_type: missing
+  pattern: '766995'
+  severity: low
+  description: 상수 δ가 'L','E','A'의 ASCII 코드(76,69,95)와 √766995에서 유도되었음을 주석으로 명시 권장
+  kcmvp_ref: LEA 논문 §2.3
+  scope: project
+- id: LEA-013
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄 내부 상태 T 초기화(T ← K)
+  pattern_type: missing
+  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K
+  severity: high
+  description: 키 스케줄링 시작 시 내부 상태 T는 마스터키 K로 초기화되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+  scope: project
+- id: LEA-014
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 모듈러 덧셈(⊞) 연산 적용
+  pattern_type: ast
+  severity: high
+  description: T 변수 업데이트 시 ARX 구조에 따른 32비트 모듈러 덧셈(⊞)을 사용해야 함
+  fallback_pattern: '(?i)\bT\s*\[\s*\d\s*\]\s*=[^;]+\+'
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+- id: LEA-015
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄 내 상수 δ 인덱싱 규칙 준수
+  pattern_type: ast
+  severity: high
+  description: 키 길이에 따라 델타 상수의 순환 인덱싱(i mod 4/6/8)을 정확히 적용해야 함
+  fallback_pattern: '(?i)(delta|dlt)\s*\[.*%\s*(?:4|6|8)|i\s*%\s*(?:4|6|8).*delta|\[\s*i\s*%\s*(?:4|6|8)\s*\]'
+  kcmvp_ref: LEA 표준 규격서 §5.2.2
+- id: LEA-016
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 ROL1 회전 연산 검증
+  pattern_type: missing
+  pattern: (?i)(\bROL1\b|<<\s*1\s*\)\s*\|\s*\(.*>>\s*31)
+  severity: high
+  description: 키 스케줄 T[0] 업데이트 수식 내 1비트 좌측 순환이동(ROL1) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+  scope: project
+- id: LEA-017
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 ROL3 회전 연산 검증
+  pattern_type: missing
+  pattern: (?i)(\bROL3\b|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
+  severity: high
+  description: 키 스케줄 T[1] 업데이트 수식 내 3비트 좌측 순환이동(ROL3) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+  scope: project
+- id: LEA-018
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 ROL6 회전 연산 검증
+  pattern_type: missing
+  pattern: (?i)(\bROL6\b|<<\s*6\s*\)\s*\|\s*\(.*>>\s*26)
+  severity: high
+  description: 키 스케줄 T[2] 업데이트 수식 내 6비트 좌측 순환이동(ROL6) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+  scope: project
+- id: LEA-019
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 ROL11 회전 연산 검증
+  pattern_type: missing
+  pattern: (?i)(\bROL11\b|<<\s*11\s*\)\s*\|\s*\(.*>>\s*21)
+  severity: high
+  description: 키 스케줄 T[3] 업데이트 수식 내 11비트 좌측 순환이동(ROL11) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+  scope: project
+- id: LEA-020
+  category: algorithm
+  algorithm: LEA
+  name: LEA-192/256 전용 ROL13/17 회전 검증
+  pattern_type: missing
+  pattern: (?i)(\bROL13\b|\bROL17\b|<<\s*13\s*\)\s*\|\s*\(.*>>\s*19|<<\s*17\s*\)\s*\|\s*\(.*>>\s*15)
+  severity: high
+  description: LEA-192/256 키 스케줄에서 추가되는 ROL13(T[4]) 및 ROL17(T[5]) 연산 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 4, 5
+  scope: project
+- id: LEA-021
+  category: algorithm
+  algorithm: LEA
+  name: LEA-128 라운드키(RK) 워드 연접 규칙
+  pattern_type: ast
+  severity: high
+  description: LEA-128 라운드키는 RKi=(T[0],T[1],T[2],T[1],T[3],T[1]) 순서로 구성되어야 함
+  fallback_pattern: '(?i)(rk|round_?key)\s*\[.*\]\s*\[.*\]\s*=.*\bT\s*\[|T\s*\[\s*1\s*\].*T\s*\[\s*1\s*\]'
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
+- id: LEA-022
+  category: algorithm
+  algorithm: LEA
+  name: LEA-256 키 스케줄 워드 인덱싱((6i+j) mod 8)
+  pattern_type: ast
+  severity: high
+  description: LEA-256 키 스케줄에서 T[(6i+j) mod 8] 형태의 워드 선택 규칙을 준수해야 함
+  fallback_pattern: '(?i)(6\s*\*\s*i|6\s*\*\s*\w)\s*\+|T\[.*%\s*8|T\s*\[\s*\(6'
+  kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 5
+- id: LEA-023
+  category: algorithm
+  algorithm: LEA
+  name: 암/복호화 라운드키의 역순 관계 검증
+  pattern_type: ast
+  severity: high
+  description: 복호화 라운드키는 암호화 라운드키의 역순(RKi_dec = RK_(Nr-1-i)_enc)이어야 함
+  fallback_pattern: '(?i)(Nr\s*-\s*1\s*-|rk_dec|dec_rk|RK_D\w|reverse.*key|Nr\s*-\s*i\b|lea_set_dec_key)'
+  kcmvp_ref: LEA 표준 규격서 §5.3.2
+- id: LEA-024
+  category: algorithm
+  algorithm: LEA
+  name: 키 스케줄링 내 워드 간 인터리빙 부재 확인
+  pattern_type: ast
+  severity: medium
+  description: LEA 키 스케줄은 32비트 워드 간 혼합(인터리빙)이 없는 단순 구조여야 함
+  fallback_pattern: '(?i)\bT\s*\[\s*0\s*\].*\bT\s*\[\s*1\s*\]|\bT\s*\[\s*[0-7]\s*\]\s*=.*ROL'
+  kcmvp_ref: LEA 논문 §3 (Simple key schedule)
+- id: LEA-025
+  category: algorithm
+  algorithm: LEA
+  name: 암/복호화 키 스케줄 상수 동일성 확인
+  pattern_type: ast
+  severity: high
+  description: 복호화 키 생성 시 암호화와 동일한 델타 상수(δ[0]~δ[7])가 사용되는지 확인
+  fallback_pattern: '(?i)(0xc3efe9db|0x44626b02|0x79e27c8a|0x78df30ec|lea_set_dec_key|dec.*delta)'
+  kcmvp_ref: LEA 표준 규격서 §5.3.2
+- id: LEA-026
+  category: algorithm
+  algorithm: LEA
+  name: 암호화 초기화 단계(X0 ← P) 준수
+  pattern_type: missing
+  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P)
+  severity: high
+  description: 암호화 시작 시 내부 상태 변수 X0는 평문 P로 초기화되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
+  scope: project
+- id: LEA-027
+  category: algorithm
+  algorithm: LEA
+  name: 암호화 라운드 함수 내 ROL9 적용
+  pattern_type: missing
+  pattern: (?i)(\bROL9\b|<<\s*9\s*\)\s*\|\s*\(.*>>\s*23)
+  severity: high
+  description: 암호화 라운드 함수에서 Xi+1[0] 계산 시 9비트 좌측 순환이동(ROL9) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+  scope: project
+- id: LEA-028
+  category: algorithm
+  algorithm: LEA
+  name: 암호화 라운드 함수 내 ROR5 적용
+  pattern_type: missing
+  pattern: (?i)(\bROR5\b|>>\s*5\s*\)\s*\|\s*\(.*<<\s*27)
+  severity: high
+  description: 암호화 라운드 함수에서 Xi+1[1] 계산 시 5비트 우측 순환이동(ROR5) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+  scope: project
+- id: LEA-029
+  category: algorithm
+  algorithm: LEA
+  name: 암호화 라운드 함수 내 ROR3 적용
+  pattern_type: missing
+  pattern: (?i)(\bROR3\b|>>\s*3\s*\)\s*\|\s*\(.*<<\s*29)
+  severity: high
+  description: 암호화 라운드 함수에서 Xi+1[2] 계산 시 3비트 우측 순환이동(ROR3) 적용 확인
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+  scope: project
+- id: LEA-030
+  category: algorithm
+  algorithm: LEA
+  name: 암호화 라운드 워드 스왑(Xi+1[3] ← Xi[0])
+  pattern_type: ast
+  severity: high
+  description: 라운드 함수 마지막 단계에서 Xi+1[3]=Xi[0] 워드 이동 규칙을 준수해야 함
+  fallback_pattern: '\b\w+\s*\[\s*3\s*\]\s*=\s*\w+\s*\[\s*0\s*\]'
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+- id: LEA-031
+  category: algorithm
+  algorithm: LEA
+  name: 라운드 함수 내 XOR→ADD 결합 순서 검증
+  pattern_type: ast
+  severity: high
+  description: 표준 ARX 수식에 따라 (Xi[n]⊕RKi[n]) ⊞ (Xi[m]⊕RKi[m]) 순서로 XOR 후 모듈러 덧셈을 수행해야 함
+  fallback_pattern: '(?i)\(\s*\w+\s*\^\s*rk|\(\w+\[.*\]\s*\^\s*rk\s*\[.*\]\s*\)\s*\+'
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
+- id: LEA-032
+  category: algorithm
+  algorithm: LEA
+  name: 마지막 라운드 함수 구조 동일성 확인
+  pattern_type: ast
+  severity: medium
+  description: LEA는 AES와 달리 마지막 라운드도 다른 라운드와 동일한 구조를 가져야 함
+  fallback_pattern: '(?i)(for\s*\([^)]*<\s*(?:24|28|32)\b|lea_enc|lea_encrypt|LEA_Encrypt|lea_block_encrypt)'
+  kcmvp_ref: LEA 논문 §1.1
+- id: LEA-033
+  category: algorithm
+  algorithm: LEA
+  name: 복호화 초기화 단계(X0 ← C) 준수
+  pattern_type: missing
+  pattern: (?i)(\bX\s*=\s*C\b|\bX0\s*=\s*C\b|memcpy\s*\(\s*X\s*,\s*C)
+  severity: high
+  description: 복호화 시작 시 내부 상태 변수 X0는 암호문 C로 초기화되어야 함
+  kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 6
+  scope: project
+- id: LEA-034
+  category: algorithm
+  algorithm: LEA
+  name: 복호화 라운드 함수 내 모듈러 뺄셈(⊟) 적용
+  pattern_type: ast
+  severity: high
+  description: 복호화 과정의 역연산을 위해 32비트 모듈러 뺄셈(⊟)을 사용해야 함
+  fallback_pattern: '(?i)(lea_dec|lea_decrypt|LEA_Decrypt|lea_block_decrypt|inv_round|\bX\s*\[\s*[0-3]\s*\]\s*=.*-\s*\()'
+  kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 7
+- id: LEA-035
+  category: algorithm
+  algorithm: LEA
+  name: 복호화 라운드 역 워드 스왑(Xi+1[0] ← Xi[3])
+  pattern_type: ast
+  severity: high
+  description: 복호화 시 Xi+1[0]=Xi[3] 워드 위치 복구 규칙을 준수해야 함
+  fallback_pattern: '\b\w+\s*\[\s*0\s*\]\s*=\s*\w+\s*\[\s*3\s*\]'
+  kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 7
+- id: LEA-036
+  category: algorithm
+  algorithm: LEA
+  name: 복호화 라운드 역 회전(ROR9, ROL5, ROL3) 검증
+  pattern_type: missing
+  pattern: (?i)(\bROR9\b|>>\s*9\s*\)\s*\|\s*\(.*<<\s*23)|(\bROL5\b|<<\s*5\s*\)\s*\|\s*\(.*>>\s*27)|(\bROL3\b|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
+  severity: high
+  description: 복호화 라운드에서 암호화의 역 회전 연산(ROR9, ROL5, ROL3)이 정확히 적용되었는지 확인
+  kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 7
+  scope: project
+- id: LEA-037
+  category: algorithm
+  algorithm: LEA
+  name: 최종 암호문 대입(C ← XNr) 준수
+  pattern_type: missing
+  pattern: (?i)(\bC\s*=\s*X|memcpy\s*\(\s*C\s*,\s*X)
+  severity: high
+  description: Nr번 라운드 수행 후의 최종 상태값을 암호문 배열 C에 대입해야 함
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
+  scope: project
+- id: LEA-038
+  category: algorithm
+  algorithm: LEA
+  name: 복호화 최종 평문 대입(P ← X_Nr) 준수
+  pattern_type: missing
+  pattern: (?i)(\bP\s*=\s*X|memcpy\s*\(\s*P\s*,\s*X)
+  severity: high
+  description: 복호화 Nr번 라운드 수행 후의 최종 상태값을 평문 배열 P에 대입해야 함 (암호화의 C←X_Nr에 대응)
+  kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 6
+  scope: project
+- id: LEA-039
+  category: algorithm
+  algorithm: LEA
+  name: 양방향 암/복호화 정합성(라운드트립) 검증
+  pattern_type: ast
+  severity: high
+  description: Decrypt(Encrypt(P, K), K) = P 및 Encrypt(Decrypt(C, K), K) = C가 모든 키 길이(128/192/256)에서 성립해야 함
+  fallback_pattern: '(?i)(decrypt.*encrypt|Decrypt.*Encrypt|round_?trip|memcmp.*plain|enc.*then.*dec|verify.*decrypt)'
+  kcmvp_ref: LEA 표준 규격서 §5.3.2, LEA 표준 규격서 부록 Ⅰ
+- id: LEA-040
+  category: algorithm
+  algorithm: LEA
+  name: 라운드 루프 경계 조건(off-by-one) 방지
+  pattern_type: ast
+  severity: high
+  description: 암호화/복호화 라운드 루프가 정확히 Nr번(0 ~ Nr-1) 수행되는지 확인하여 경계 조건 오류(off-by-one)를 방지해야 함
+  fallback_pattern: '(?:for\s*\([^)]*<\s*(?:24|28|32)\b|<=\s*(?:\w+->)?rounds\b)'
+  kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
+- id: LEA-041
+  category: algorithm
+  algorithm: LEA
+  name: 부채널 공격 방지를 위한 S-box 배제 확인
+  pattern_type: regex
+  pattern: (?i)\bs_?box\s*[\[=(]
+  severity: low
+  description: LEA는 ARX 구조로 S-box를 사용하지 않으며, 이를 통해 캐시 타이밍 공격 위험을 원천 차단함
+  kcmvp_ref: LEA 논문 §3 (ARX 설계 원칙)
+- id: LEA-042
+  category: algorithm
+  algorithm: LEA
+  name: 타이밍 공격 방지를 위한 상수 시간 연산
+  pattern_type: ast
+  severity: high
+  description: 데이터 값에 따른 조건 분기를 배제하여 상수 시간(Constant-time) 내 연산을 보장해야 함
+  fallback_pattern: '(?i)(memcmp\s*\(|if\s*\(.*key\s*\[|constant_?time|CRYPTO_memcmp|timingsafe_memcmp|ct_eq\b)'
+  kcmvp_ref: KS X ISO/IEC 19790:2015 §7.8 [08.01~08.07]
+- id: LEA-043
+  category: algorithm
+  algorithm: LEA
+  name: 레지스터 스필링(Register-spilling) 방지 최적화
+  pattern_type: ast
+  severity: low
+  description: 중간 상태가 스택 메모리로 유출되지 않도록 레지스터 기반 연산 구현 여부 확인
+  fallback_pattern: '(?i)\bregister\s+uint32_t|\bregister\s+(unsigned\s+)?int\s+[XTSKx]|\bvolatile\s+uint32_t'
+  kcmvp_ref: LEA 논문 §5.1 (ARM·Intel 플랫폼 구현)
+- id: LEA-044
+  category: algorithm
+  algorithm: LEA
+  name: 중요 보안매개변수(비밀키) 메모리 제거
+  pattern_type: missing
+  scope: project
+  pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
+  severity: high
+  description: 비밀키 사용이 종료된 즉시 memset_s, SecureZeroMemory 등으로 메모리에서 0화해야 함. 프로젝트 전체에서 한 번이라도 안전한 제로화 함수가 사용되어야 함
+  kcmvp_ref: KS X ISO/IEC 19790:2015 §7.9 [09.01]
+- id: LEA-045
+  category: algorithm
+  algorithm: LEA
+  name: 32비트 워드 연산의 원자성 보존
+  pattern_type: missing
+  pattern: (?i)(uint32_t|u32)\s+.*(lea|encrypt|decrypt|round|key_schedule)
+  severity: medium
+  description: 바이트 단위 쪼개기 연산 시 발생하는 SCA 취약점 방지를 위해 LEA 암복호화·키 스케줄 함수 내에서 32비트 워드 단위를 유지해야 함
+  kcmvp_ref: LEA 검증시스템 §4
+  scope: project
+- id: LEA-046
+  category: algorithm
+  algorithm: LEA
+  name: MCT 이중 루프(100×1000) 및 키 길이별 갱신 구조
+  pattern_type: ast
+  severity: high
+  description: MCT는 100회 외부 반복(i=0..99) × 1,000회 내부 반복(j=0..999) 구조이며, 각 외부 반복 후 키 갱신을 수행함. 128비트는 Key⊕CT[999], 192비트는 Key⊕(CT64[998]||CT[999]), 256비트는 Key⊕(CT[998]||CT[999]) 규칙을 따라야 함
+  fallback_pattern: '(?i)(<\s*100\b|i\s*<=?\s*99\b|<\s*1000\b|j\s*<=?\s*999\b|MCT|monte_?carlo)'
+  kcmvp_ref: LEA 검증시스템 §6.4
+- id: LEA-047
+  category: algorithm
+  algorithm: LEA
+  name: 운영모드별 MCT 수행 규칙 준수
+  pattern_type: ast
+  severity: high
+  description: ECB에서는 CT[j]가 다음 PT가 되고, CBC에서는 IV 갱신이 포함되며, CTR에서는 카운터 갱신이 포함됨. 각 운영모드별 MCT 수행 규칙(내부 상태 갱신 방식)을 정확히 따라야 함
+  fallback_pattern: '(?i)(MCT|mct|monte_?carlo|LEA.*MCT|CBC.*MCT|CTR.*MCT|ECB.*MCT)'
+  kcmvp_ref: LEA 검증시스템 §6.4
+- id: LEA-048
+  category: algorithm
+  algorithm: LEA
+  name: KAT/MMT/MCT REQUEST 파일 형식 규격
+  pattern_type: missing
+  pattern: (?i)LEA(128|192|256)(ECB|CBC|CTR|OFB|CFB\d*)(KAT|MMT|MCT)\.(req|rsp|fax)
+  severity: high
+  description: REQUEST 파일(.req)은 키, IV(ECB 제외), 평문 또는 암호문을 포함하며, LEA[키길이][모드명][시험유형].req 형식의 파일명을 따라야 함
+  kcmvp_ref: LEA 검증시스템 §6.2
+  scope: project
+- id: LEA-049
+  category: algorithm
+  algorithm: LEA
+  name: Variable Key KAT 수행 구현
+  pattern_type: missing
+  scope: project
+  pattern: "Variable Key|VariableKey|variable_key"
+  severity: high
+  description: 고정 평문에 대해 키 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Key KAT를 구현해야 함
+  kcmvp_ref: LEA 검증시스템 §6.2
+- id: LEA-050
+  category: algorithm
+  algorithm: LEA
+  name: Variable Text KAT 수행 구현
+  pattern_type: missing
+  scope: project
+  pattern: "Variable Text|VariableText|variable_text"
+  severity: high
+  description: 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Text KAT를 구현해야 함
+  kcmvp_ref: LEA 검증시스템 §6.2
+- id: LEA-051
+  category: algorithm
+  algorithm: LEA
+  name: 표준 API 'lea_set_key' 명칭 및 인자 준수
+  pattern_type: missing
+  pattern: \blea_set_key\b
+  severity: high
+  description: 국보연 배포 매뉴얼에서 정의한 표준 키 설정 인터페이스(lea_set_key)를 사용해야 함
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.1
+  scope: project
+- id: LEA-052
+  category: algorithm
+  algorithm: LEA
+  name: LEA_KEY 구조체 정의 확인
+  pattern_type: missing
+  pattern: (?i)(struct|typedef).*LEA_KEY
+  severity: high
+  description: 라운드 키 및 라운드 수 정보를 저장하는 LEA_KEY 구조체가 정의되어야 함
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.1
+  scope: project
+- id: LEA-053
+  category: algorithm
+  algorithm: LEA
+  name: API 에러 발생 시 음수 반환 규약 준수
+  pattern_type: missing
+  pattern: return\s+-\d+
+  severity: medium
+  description: 에러 발생 시 규격대로 음수 값을 반환하여 호출부에 전달해야 함
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12
+  scope: project
+- id: LEA-054
+  category: algorithm
+  algorithm: LEA
+  name: 헤더 파일 분리(lea.h / lea_locl.h) 구조
+  pattern_type: missing
+  pattern: (?i)#include.*lea_locl\.h
+  severity: low
+  description: 외부 공개용(lea.h)과 내부용(lea_locl.h) 헤더가 표준대로 분리되었는지 확인
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2
+  scope: project
+- id: LEA-055
+  category: algorithm
+  algorithm: LEA
+  name: SIMD 가속용 구현 파일 구성 여부
+  pattern_type: missing
+  pattern: (?i)lea_t_(sse2|avx2|xop|neon)
+  severity: low
+  description: SSE2, AVX2, NEON 등 고속화를 위한 별도 아키텍처 파일 포함 여부 확인
+  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2
+  scope: project
+- id: LEA-056
+  category: algorithm
+  algorithm: LEA
+  name: MCT 연산 루프 구조(100×1000) 검증
+  pattern_type: ast
+  severity: high
+  description: 몬테카를로 테스트의 외부 루프(100회)와 내부 루프(1000회) 구조가 정확한지 확인
+  fallback_pattern: '(?i)(<\s*100\b|i\s*<=?\s*99\b|<\s*1000\b|j\s*<=?\s*999\b)'
+  kcmvp_ref: LEA 검증시스템 §6.4
+- id: LEA-057
+  category: algorithm
+  algorithm: LEA
+  name: MCT 키 갱신 수식(Key[i+1] = Key[i] ⊕ CT[j]) 준수
+  pattern_type: ast
+  severity: high
+  description: MCT 수행 중 이전 키와 마지막 암호문 블록을 XOR하여 다음 키를 갱신하는 로직 검증
+  fallback_pattern: '(?i)(key\s*\[.*\]\s*\^=|key_update|KeyUpdate|key\s*\^=\s*ct|\bkey\b.*\^.*cipher|xor_key_ct)'
+  kcmvp_ref: LEA 검증시스템 §6.4
+- id: LEA-058
+  category: algorithm
+  algorithm: LEA
+  name: KAT용 REQUEST/RESPONSE 파일 명칭 준수
+  pattern_type: missing
+  pattern: (?i)LEA(128|192|256)(ECB|CBC|CTR|OFB|CFB\d*)(KAT|MMT|MCT)\.(req|rsp|fax)
+  severity: high
+  description: LEA[키길이][모드명][시험유형].[확장자] 형식의 표준 파일 명칭 체계를 준수해야 함
+  kcmvp_ref: LEA 검증시스템 §6.2
+  scope: project
+- id: LEA-059
+  category: algorithm
+  algorithm: LEA
+  name: 다중 블록 메시지 검사(MMT) 가변 블록 수 처리
+  pattern_type: ast
+  severity: medium
+  description: MMT는 블록 수 1~10개(i×128비트)의 가변 길이 메시지를 순차 시험하는 로직이 필요함
+  fallback_pattern: '(?i)(MMT|mmt_test|LEA.*MMT|mmt_loop)'
+  kcmvp_ref: LEA 검증시스템 §6.3
+- id: LEA-060
+  category: algorithm
+  algorithm: LEA
+  name: 기지 답안 검사(KAT)의 참조구현값 일치성
+  pattern_type: missing
+  scope: project
+  pattern: "KAT|kat_result|test_vector|참조구현|known.answer"
+  severity: high
+  description: 고정된 입력값에 대해 표준 규격서 부록 I의 참조구현값과 출력이 일치하는지 확인
+  kcmvp_ref: LEA 표준 규격서 부록 Ⅰ
+- id: LEA-061
+  category: algorithm
+  algorithm: LEA
+  name: LEA 허용 키 길이(128, 192, 256비트) 지원 검증
+  pattern_type: semantic
+  pattern: "(?i)(key_?len|mk_?len|keyLen)\\s*[=<>!]+\\s*(128|192|256|16|24|32)\\b|\\b(128|192|256)\\s*(?:bit|비트)"
+  severity: high
+  description: LEA 알고리즘은 규격에 따라 128, 192, 256 비트의 키 길이에 대응하는 암복호화 및 키 스케줄링을 지원해야 함
+  kcmvp_ref: LEA 검증시스템 §6
+- id: LEA-062
+  category: algorithm
+  algorithm: LEA
+  name: 기지 답안 검사(KAT) REQUEST/RESPONSE 파일 처리
+  pattern_type: missing
+  scope: project
+  pattern: Variable Key|Variable Text|KAT\.(req|rsp|fax)
+  severity: high
+  description: LEA 세부 구성요소 확인을 위해 Variable Key KAT 및 Variable Text KAT의 입력값(.req)을 읽고 결과값(.rsp)을 생성하는 기능이 구현되어야 함
+  kcmvp_ref: LEA 검증시스템 §6.2

@@ -1,0 +1,9 @@
+2015.11.17. 
+ - Standalone C code: fixed for big-endian platforms
+ - python code: padding fixed 
+
+2016.05.17.
+ - python code: LEA/__init__.py fixed and setup.py added
+ 
+2021.03.09.
+ - java code: GCM init() fixed. variable tag length in GCM/CCM mode are allowed.

@@ -1,0 +1,37 @@
+# KCMVP 사전 적합성 검증 도구 — 백엔드 의존성
+# Python 3.10+
+
+# 웹
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# 설정
+pydantic-settings>=2.1.0
+
+# 비동기 작업 (선택)
+# celery[redis]>=5.3.0
+# redis>=5.0.0
+
+# 전처리 / AST
+PyYAML>=6.0
+pycparser>=2.21
+
+# C/C++ AST (선택) — libclang 설치 시 향상된 심볼 그래프 자동 활성화
+libclang>=18.1.0  # pip install libclang — 미설치 시 pycparser fallback
+
+# LLM
+openai>=1.12.0
+requests>=2.31.0
+# google-genai: Gemini API 클라이언트 (1.x 대 최신 버전 사용)
+google-genai>=1.40.0,<2.0.0
+# anthropic>=0.18.0  # Claude 사용 시
+
+# RAG / 벡터 DB
+chromadb>=1.0.0
+sentence-transformers>=3.0.0  # BAAI/bge-m3 다국어 임베딩
+
+# 유틸 / 문서 처리
+python-multipart>=0.0.9
+pymupdf>=1.24.0           # PyMuPDF (fitz) - PDF 텍스트/레이아웃
+pdfplumber>=0.10.0        # 표 추출에 특화된 PDF 유틸 (내부적으로 pdfminer.six 사용)
+markitdown[pdf]>=0.1.0    # Microsoft MarkItDown - PDF → Markdown 변환 (표/텍스트 구조 보존)

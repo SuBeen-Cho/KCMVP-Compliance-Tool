@@ -1,0 +1,231 @@
+"""Gemini/OpenAI/Local LLM 호출 + JSON 파싱 + 재시도 로직."""
+
+import json
+import re
+from typing import Any, Dict, List, Optional
+
+try:
+    import google.genai as genai
+    _HAS_GOOGLE_GENAI = True
+except ImportError:
+    genai = None  # type: ignore
+    _HAS_GOOGLE_GENAI = False
+
+from app.config import settings
+
+GEMINI_L2_MODEL = settings.GEMINI_L2_MODEL
+GOOGLE_API_KEY = settings.GOOGLE_API_KEY
+L2_PROVIDER = settings.L2_PROVIDER  # "gemini" | "openai" | "local"
+
+# OpenAI provider (Phase 3)
+OPENAI_API_KEY = settings.OPENAI_API_KEY
+OPENAI_L2_MODEL = settings.LLM_MODEL_L2      # default: "gpt-4o"
+OPENAI_PATCH_MODEL = settings.LLM_MODEL_PATCH # default: "gpt-4o"
+
+
+def _extract_json_from_text(raw: str) -> Optional[Dict[str, Any]]:
+    """Gemini 응답에서 JSON 객체 하나 추출."""
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip()
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if code_block:
+        raw = code_block.group(1).strip()
+    start = raw.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    end = -1
+    for i in range(start, len(raw)):
+        if raw[i] == "{":
+            depth += 1
+        elif raw[i] == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end == -1:
+        return None
+    try:
+        return json.loads(raw[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_json_array_from_text(raw: str) -> Optional[List[Any]]:
+    """Gemini 응답에서 JSON 배열 추출 (배치 처리용)."""
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip()
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if code_block:
+        raw = code_block.group(1).strip()
+    start = raw.find("[")
+    if start == -1:
+        return None
+    depth = 0
+    end = -1
+    for i in range(start, len(raw)):
+        if raw[i] == "[":
+            depth += 1
+        elif raw[i] == "]":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end == -1:
+        return None
+    try:
+        return json.loads(raw[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────
+# Gemini 호출 헬퍼
+# ─────────────────────────────────────────────────────────────────
+def _call_openai(prompt: str, model: Optional[str] = None) -> Optional[str]:
+    """OpenAI ChatCompletion API 호출. API 키 없으면 None 반환."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        resp = client.chat.completions.create(
+            model=model or OPENAI_L2_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        text = resp.choices[0].message.content if resp.choices else None
+        return text if isinstance(text, str) else None
+    except Exception as e:
+        print(f"[L2][OpenAI] 호출 실패: {e}")
+        return None
+
+
+def _call_llm(prompt: str, model: Optional[str] = None) -> Optional[str]:
+    """
+    L2_PROVIDER 설정에 따라 LLM 호출.
+    - L2_PROVIDER=gemini (기본): Gemini API
+    - L2_PROVIDER=openai: OpenAI ChatCompletion
+    - L2_PROVIDER=local: local_llm_service.call_local()
+    """
+    if L2_PROVIDER == "local":
+        try:
+            from app.services.local_llm_service import call_local
+            return call_local(prompt)
+        except Exception as e:
+            print(f"[LLM] local 호출 실패, gemini로 fallback: {e}")
+            return _call_gemini(prompt)
+    if L2_PROVIDER == "openai":
+        result = _call_openai(prompt, model=model)
+        if result is not None:
+            return result
+        print("[LLM] OpenAI 실패, Gemini로 fallback")
+        return _call_gemini(prompt)
+    return _call_gemini(prompt)
+
+
+class _Gemini503Error(Exception):
+    """Gemini 503 UNAVAILABLE — 프롬프트 과부하 또는 일시적 오류."""
+
+
+def _strip_gcfs_from_prompt(prompt: str) -> str:
+    """프롬프트에서 GCFS 블록 제거 (503 오류 시 폴백용)."""
+    return re.sub(
+        r"=== 코드베이스 전체 구조 요약.*?={3,}\n\n",
+        "",
+        prompt,
+        flags=re.DOTALL,
+    )
+
+
+def _call_gemini(prompt: str) -> Optional[str]:
+    """Google Gemini API 호출. 키 없으면 None 반환. 503 시 _Gemini503Error 발생."""
+    if not GOOGLE_API_KEY or not _HAS_GOOGLE_GENAI:
+        return None
+    try:
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_L2_MODEL,
+            contents=prompt,
+        )
+        text = getattr(response, "text", None)
+        if text and isinstance(text, str):
+            return text
+        cands = getattr(response, "candidates", None) or []
+        if cands:
+            content = getattr(cands[0], "content", None)
+            if content:
+                parts = getattr(content, "parts", None) or []
+                if parts:
+                    pt = getattr(parts[0], "text", None)
+                    if pt and isinstance(pt, str):
+                        return pt
+        print("[L2][Gemini] 응답에 텍스트가 없습니다.")
+        return None
+    except Exception as e:
+        err_str = str(e)
+        if "503" in err_str or "UNAVAILABLE" in err_str:
+            print(f"[L2][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
+            raise _Gemini503Error(err_str)
+        print(f"[L2][Gemini] 호출 실패: {e}")
+        return None
+
+
+_RETRY_SUFFIX_OBJ = "\n\n위 JSON 객체 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
+_RETRY_SUFFIX_ARR = "\n\n위 JSON 배열 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
+
+
+def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[str, Any]]:
+    """재시도 포함 LLM 호출 → 단일 JSON 객체 반환. 503 시 GCFS 제거 후 재시도."""
+    for attempt in range(max_retries + 1):
+        try:
+            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ)
+        except _Gemini503Error:
+            stripped = _strip_gcfs_from_prompt(prompt)
+            if stripped != prompt:
+                print("[L2] 503 → GCFS 제거 후 재시도")
+                try:
+                    raw = _call_llm(stripped)
+                except _Gemini503Error:
+                    return None
+            else:
+                return None
+            if not raw:
+                return None
+            obj = _extract_json_from_text(raw)
+            return obj  # 성공이든 실패든 한 번만
+        if not raw:
+            break
+        obj = _extract_json_from_text(raw)
+        if obj is not None:
+            return obj
+    return None
+
+
+def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional[List[Any]]:
+    """재시도 포함 LLM 호출 → JSON 배열 반환 (배치용). 503 시 GCFS 제거 후 재시도."""
+    for attempt in range(max_retries + 1):
+        try:
+            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR)
+        except _Gemini503Error:
+            stripped = _strip_gcfs_from_prompt(prompt)
+            if stripped != prompt:
+                print("[L2] 503 → GCFS 제거 후 배치 재시도")
+                try:
+                    raw = _call_llm(stripped)
+                except _Gemini503Error:
+                    return None
+            else:
+                return None
+            if not raw:
+                return None
+            arr = _extract_json_array_from_text(raw)
+            return arr
+        if not raw:
+            break
+        arr = _extract_json_array_from_text(raw)
+        if arr is not None:
+            return arr
+    return None

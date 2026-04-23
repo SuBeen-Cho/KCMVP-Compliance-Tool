@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 240px;
+  border-right: 1px solid #e5e7eb;
+  overflow: auto;
+}
+
+.editor-area {
+  flex: 1;
+  overflow: auto;
+}
+
+.result-panel {
+  width: 360px;
+  border-left: 1px solid #e5e7eb;
+  overflow: auto;
+}
+
+/* ── 인쇄(PDF 출력) 전용 스타일 ── */
+@media print {
+  /* 보고서 외 모든 UI 숨김 */
+  body > * { display: none !important; }
+  #root { display: block !important; }
+  .app-layout > *:not(.editor-area) { display: none !important; }
+  .app-body > *:not(.editor-area) { display: none !important; }
+  .editor-area {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  #report-printable {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 페이지 여백 */
+  @page { margin: 20mm 15mm; }
+
+  /* 섹션 페이지 나눔 방지 */
+  section { page-break-inside: avoid; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+
+  /* 색상 보정 (배경색·테두리 강제 출력) */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* sticky 헤더를 일반 블록으로 */
+  .sticky { position: static !important; }
+  .shadow-sm { box-shadow: none !important; }
+}

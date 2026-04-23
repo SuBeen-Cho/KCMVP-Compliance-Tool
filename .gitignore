@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/venv/
+backend/venv_new/
+
+# Node
+frontend/node_modules/
+
+# Environment
+.env
+backend/.env
+
+# Storage (분석 결과물)
+backend/storage/jobs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
