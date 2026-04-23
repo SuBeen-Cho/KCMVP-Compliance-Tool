@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-23T21:59:45.997367",
+  "timestamp": "2026-04-23T22:10:53.600584",
   "phase": "Phase 1 + Phase 2",
   "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
   "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
@@ -7,13 +7,11 @@
   "loc": 10256,
   "c_files": 20,
   "h_files": 21,
-  "l1_fp_count": 127,
+  "l1_fp_count": 100,
   "l2_removed": 0,
-  "final_fp_count": 127,
-  "fp_per_kloc": 12.38,
+  "final_fp_count": 100,
+  "fp_per_kloc": 9.75,
   "fp_by_rule": {
-    "CTR-005": 19,
-    "LEA-032": 10,
     "COM-002": 3,
     "GCM-004": 3,
     "GCM-005": 3,
@@ -53,6 +51,7 @@
     "LEA-029": 1,
     "LEA-030": 1,
     "LEA-031": 1,
+    "LEA-032": 1,
     "LEA-033": 1,
     "LEA-034": 1,
     "LEA-035": 1,
@@ -84,6 +83,7 @@
     "ECB-002": 1,
     "CTR-001": 1,
     "CTR-002": 1,
+    "CTR-005": 1,
     "CTR-LEA-005": 1,
     "CTR-LEA-006": 1,
     "CBC-001": 1,
@@ -98,29 +98,25 @@
   "fp_by_file": {
     "main.c": 39,
     "lea_core.c": 34,
-    "lea_base.c": 19,
-    "lea_gcm_generic.c": 8,
-    "lea_t_fallback.c": 6,
+    "lea_t_fallback.c": 5,
+    "lea_gcm_generic.c": 5,
+    "lea_base.c": 4,
     "lea_vs.c": 3,
     "lea_t_generic.c": 3,
-    "lea_gcm_pclmul.c": 3,
-    "lea_online.c": 3,
     "cpu_info_ia32.c": 2,
     "main_0tv.c": 2,
-    "lea_core_xop.c": 2,
-    "lea_t_avx2_sse2.c": 1,
-    "lea_t_neon.c": 1,
-    "lea_t_sse2.c": 1
+    "lea_gcm_pclmul.c": 2,
+    "lea_core_xop.c": 1
   },
   "fp_by_severity": {
     "high": 75,
-    "medium": 48,
+    "medium": 21,
     "low": 4
   },
   "fp_by_pattern": {
     "missing": 30,
     "?": 29,
-    "ast": 68
+    "ast": 41
   },
   "fp_details": [
     {
@@ -421,80 +417,8 @@
     },
     {
       "rule_id": "LEA-032",
-      "file": "lea_core.c",
-      "line": 547,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_core_xop.c",
-      "line": 51,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_gcm_generic.c",
-      "line": 67,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_gcm_generic.c",
-      "line": 187,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_gcm_generic.c",
-      "line": 306,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_gcm_pclmul.c",
-      "line": 138,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_t_avx2_sse2.c",
-      "line": 28,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
       "file": "lea_t_generic.c",
       "line": 8,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_t_neon.c",
-      "line": 17,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_t_sse2.c",
-      "line": 15,
       "severity": "medium",
       "pattern_type": "ast",
       "message": "마지막 라운드 함수 구조 동일성 확인"
@@ -909,152 +833,8 @@
     },
     {
       "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 16,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 17,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 118,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 119,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 152,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 153,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 187,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 188,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 221,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 222,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 254,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 255,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 281,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 282,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_base.c",
-      "line": 341,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_online.c",
-      "line": 41,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_online.c",
-      "line": 166,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_online.c",
-      "line": 344,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_t_fallback.c",
-      "line": 36,
+      "file": "lea_core.c",
+      "line": null,
       "severity": "medium",
       "pattern_type": "ast",
       "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
@@ -1141,9 +921,9 @@
     }
   ],
   "timing": {
-    "l1_s": 131.2,
+    "l1_s": 138.0,
     "l2_s": 0.0,
-    "total_s": 131.2
+    "total_s": 138.0
   },
   "statistics": {
     "n": 105,

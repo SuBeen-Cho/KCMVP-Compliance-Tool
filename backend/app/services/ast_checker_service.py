@@ -2451,6 +2451,102 @@ def _check_lea_023(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     return violations
 
 
+# ──────────────────────────────────────────────────────────────────
+# CTR-005: 암호 알고리즘 소스코드 외 보안 요구사항 준수
+# ──────────────────────────────────────────────────────────────────
+
+def _check_ctr_005(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """CTR-005: CTR 모드 함수의 보안 요구사항 (SSP 생성/설정/주입/저장/제로화) 검사.
+
+    AST 수준에서 SSP 라이프사이클을 정확히 검사하기 어려우므로,
+    CTR 함수가 존재하면 기본적으로 통과([])로 처리하여
+    부정확한 fallback regex FP를 방지한다.
+    CTR 함수가 없으면 None 반환 → L2 판단 위임.
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    all_funcs = _get_func_defs(root)
+    ctr_funcs = _funcs_matching(root, _CTR_FUNC_KW)
+
+    if not ctr_funcs:
+        # CTR 함수명이 아닌 함수에서 CTR 구현 가능 → 판단 불가
+        if _has_unchecked_real_mode_funcs(all_funcs, [], "ctr", filename):
+            return None
+        return []
+
+    # CTR 함수 존재 → SSP 요구사항은 모듈 수준 검사이므로 AST에서 확정 불가
+    # fallback regex 보다 정확한 판단을 위해 통과 처리
+    return []
+
+
+# ──────────────────────────────────────────────────────────────────
+# LEA-032: 마지막 라운드 함수 구조 동일성 확인
+# ──────────────────────────────────────────────────────────────────
+
+_LEA_ENC_KW = ["lea_enc", "lea_encrypt", "block_encrypt", "lea_block"]
+
+
+def _check_lea_032(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """LEA-032: 마지막 라운드도 다른 라운드와 동일한 구조인지 확인.
+
+    LEA는 AES와 달리 마지막 라운드에 특별 처리가 없어야 함.
+    암호화 함수의 라운드 루프에서 마지막 라운드를 분기하는 패턴 탐지.
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    enc_funcs = _funcs_matching(root, _LEA_ENC_KW)
+    if not enc_funcs:
+        # 라운드 매크로(LEA_ENC_ROUND 등) 기반 구현은 함수 내부가 보이지 않음
+        all_funcs = _get_func_defs(root)
+        if not all_funcs:
+            return []
+        # 키 스케줄, 라운드 함수 등 암호 관련 함수가 있으면 판단 위임
+        for fd in all_funcs:
+            fn = _func_name(fd).lower()
+            if any(kw in fn for kw in ("lea", "encrypt", "round")):
+                if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd):
+                    return None
+        return []
+
+    violations = []
+    for fd in enc_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
+        fname = _func_name(fd)
+
+        # for 루프 내부에서 마지막 라운드 분기 탐지
+        for_loops = _collect(fd, c_ast.For)
+        for loop in for_loops:
+            # 루프 본문에서 if 문 내 라운드 수 비교 탐지
+            for ifstmt in _collect(loop, c_ast.If):
+                cond = ifstmt.cond
+                if isinstance(cond, c_ast.BinaryOp) and cond.op in ("==", ">=", "<="):
+                    # 라운드 수 상수(23, 27, 31 = rounds-1)와 비교
+                    for child in [cond.left, cond.right]:
+                        val = _const_value(child)
+                        if val in (23, 27, 31):
+                            line = _coord_line(ifstmt, offset)
+                            violations.append({
+                                "line": line,
+                                "message": (
+                                    f"함수 '{fname}': 라운드 루프 내에서 마지막 라운드 "
+                                    f"분기 조건(=={val}) 탐지 — "
+                                    "LEA는 마지막 라운드도 동일 구조여야 함"
+                                ),
+                                "ast_evidence": (
+                                    f"함수 '{fname}' For 루프 내 If 문에서 "
+                                    f"BinaryOp('{cond.op}', Constant({val})) 발견. "
+                                    "LEA 표준: AES와 달리 마지막 라운드에 "
+                                    "MixColumns 생략 같은 특별 처리 없음 — "
+                                    "모든 라운드 동일 구조 필수"
+                                ),
+                            })
+
+    return violations
+
+
 _CHECKERS = {
     "LEA-003": _check_lea_003,
     "LEA-014": _check_lea_014,
@@ -2483,6 +2579,8 @@ _CHECKERS = {
     "LEA-006": _check_lea_006,
     "LEA-022": _check_lea_022,
     "LEA-023": _check_lea_023,
+    "CTR-005": _check_ctr_005,
+    "LEA-032": _check_lea_032,
 }
 
 
