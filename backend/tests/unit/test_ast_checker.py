@@ -1271,7 +1271,7 @@ void ecb_encrypt(uint8_t *ct, const uint8_t *pt, int len, const uint32_t *rk) {
 
     @pytest.mark.tier3
     def test_no_ecb_func_returns_empty(self, check_rule):
-        """ECB 함수 없음 → 빈 리스트"""
+        """ECB 함수 없고 파일/함수명에 ecb 힌트 없음 → 빈 리스트"""
         code = """
 typedef unsigned int uint32_t;
 void helper(uint32_t *buf) { buf[0] = 0; }

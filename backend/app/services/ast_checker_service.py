@@ -236,6 +236,37 @@ def _funcs_matching(root, keywords: List[str]) -> List[Any]:
             if any(kw in _func_name(fd).lower() for kw in keywords)]
 
 
+def _has_unchecked_real_mode_funcs(
+    all_funcs: list, checked_funcs: list, mode_kw: str, filename: str = ""
+) -> bool:
+    """키워드 매칭 함수(checked_funcs) 외에, 모드 키워드를 포함하면서
+    thin wrapper/benchmark가 아닌 실제 구현 함수가 존재하는지 확인.
+
+    이 조건이 참이면 fallback(regex/L2)으로 미검사 위반을 잡을 수 있으므로
+    None을 반환하여 fallback을 유도한다.
+
+    KISA LEA 같은 정상 코드에서 FP를 방지하기 위해:
+    - 단순 dispatcher(thin wrapper)는 제외
+    - 벤치마크/테스트 함수는 제외
+    - 모드 키워드가 함수명에 포함된 실제 구현 함수만 카운트
+    """
+    kw = mode_kw.lower()
+    checked_set = set(id(fd) for fd in checked_funcs)
+    for fd in all_funcs:
+        if id(fd) in checked_set:
+            continue
+        fname = _func_name(fd).lower()
+        # 파일명 또는 함수명에 모드 키워드가 있어야 함
+        if kw not in fname and kw not in filename.lower():
+            continue
+        # 함수명에 모드 키워드가 있는 경우만 (파일명만으로는 부족)
+        if kw not in fname:
+            continue
+        if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd):
+            return True
+    return False
+
+
 def _has_op(node, op: str) -> bool:
     """서브트리에 BinaryOp(op=op) 가 있는지."""
     for bop in _collect(node, c_ast.BinaryOp):
@@ -947,14 +978,21 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     if not _HAS_PYCPARSER:
         return []
 
+    all_funcs = _get_func_defs(root)
     enc_funcs = _funcs_matching(root, _CBC_ENC_KW)
     if not enc_funcs:
-        return []  # 이 파일에 CBC 암호화 함수 없음 → 해당 없음
+        if not all_funcs:
+            return []
+        if _has_unchecked_real_mode_funcs(all_funcs, [], "cbc", filename):
+            return None
+        return []
 
     violations = []
+    real_funcs_checked = 0
     for fd in enc_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
+        real_funcs_checked += 1
         fname = _func_name(fd)
         if not _has_op(fd, "^"):
             line = _coord_line(fd, offset)
@@ -970,6 +1008,9 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     "이전 암호문 블록과 XOR 연쇄(chaining)가 CBC의 핵심"
                 ),
             })
+    if not violations and real_funcs_checked == 0:
+        if _has_unchecked_real_mode_funcs(all_funcs, enc_funcs, "cbc", filename):
+            return None
     return violations
 
 
@@ -981,14 +1022,21 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     if not _HAS_PYCPARSER:
         return []
 
+    all_funcs = _get_func_defs(root)
     dec_funcs = _funcs_matching(root, _CBC_DEC_KW)
     if not dec_funcs:
+        if not all_funcs:
+            return []
+        if _has_unchecked_real_mode_funcs(all_funcs, [], "cbc", filename):
+            return None
         return []
 
     violations = []
+    real_funcs_checked = 0
     for fd in dec_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
+        real_funcs_checked += 1
         fname = _func_name(fd)
         if not _has_op(fd, "^"):
             line = _coord_line(fd, offset)
@@ -1004,6 +1052,9 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     "이전 암호문 블록과 XOR이 CBC 복호화의 필수 역연산"
                 ),
             })
+    if not violations and real_funcs_checked == 0:
+        if _has_unchecked_real_mode_funcs(all_funcs, dec_funcs, "cbc", filename):
+            return None
     return violations
 
 
@@ -1015,14 +1066,21 @@ def _check_ecb_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     if not _HAS_PYCPARSER:
         return []
 
+    all_funcs = _get_func_defs(root)
     ecb_funcs = _funcs_matching(root, _ECB_ENC_KW)
     if not ecb_funcs:
+        if not all_funcs:
+            return []
+        if _has_unchecked_real_mode_funcs(all_funcs, [], "ecb", filename):
+            return None
         return []
 
     violations = []
+    real_funcs_checked = 0
     for fd in ecb_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
+        real_funcs_checked += 1
         fname = _func_name(fd)
         has_mod16 = False
         for bop in _collect(fd, c_ast.BinaryOp):
@@ -1045,6 +1103,9 @@ def _check_ecb_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     "길이 검사 없으면 패딩 미적용 또는 버퍼 오버플로우 위험"
                 ),
             })
+    if not violations and real_funcs_checked == 0:
+        if _has_unchecked_real_mode_funcs(all_funcs, ecb_funcs, "ecb", filename):
+            return None
     return violations
 
 
@@ -1633,19 +1694,25 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     if not _HAS_PYCPARSER:
         return None
 
+    all_funcs = _get_func_defs(root)
     ctr_funcs = _funcs_matching(root, _CTR_FUNC_KW)
     if not ctr_funcs:
-        return []  # CTR 함수 없음 → 위반 없음 (파싱 성공했으므로 fallback 불필요)
+        if not all_funcs:
+            return []
+        if _has_unchecked_real_mode_funcs(all_funcs, [], "ctr", filename):
+            return None
+        return []
 
     violations = []
+    real_funcs_checked = 0
     for fd in ctr_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
+        real_funcs_checked += 1
         fname = _func_name(fd)
         for call in _collect(fd, c_ast.FuncCall):
             called = getattr(getattr(call, "name", None), "name", "") or ""
             called_l = called.lower()
-            # 정확히 DEC 함수를 호출하는지 확인 (substring 포함)
             if any(dec in called_l for dec in _LEA_DEC_NAMES):
                 coord = getattr(call, "coord", None)
                 raw_line = getattr(coord, "line", None) if coord else None
@@ -1665,6 +1732,9 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
                     ),
                 })
 
+    if not violations and real_funcs_checked == 0:
+        if _has_unchecked_real_mode_funcs(all_funcs, ctr_funcs, "ctr", filename):
+            return None
     return violations
 
 
@@ -2049,14 +2119,22 @@ def _check_mode_enc_only(
     if not _HAS_PYCPARSER:
         return None
 
+    all_funcs = _get_func_defs(root)
     mode_funcs = _funcs_matching(root, func_kw)
+    mn_lower = mode_name.lower()
     if not mode_funcs:
-        return []  # 해당 모드 함수 없음 → 위반 없음 (파싱 성공했으므로 fallback 불필요)
+        if not all_funcs:
+            return []
+        if _has_unchecked_real_mode_funcs(all_funcs, [], mn_lower, filename):
+            return None
+        return []
 
     violations = []
+    real_funcs_checked = 0
     for fd in mode_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
+        real_funcs_checked += 1
         fname = _func_name(fd)
 
         # 위반 1: DEC 함수 직접 호출 (CTR-001 동일 로직)
@@ -2097,6 +2175,9 @@ def _check_mode_enc_only(
                 ),
             })
 
+    if not violations and real_funcs_checked == 0:
+        if _has_unchecked_real_mode_funcs(all_funcs, mode_funcs, mn_lower, filename):
+            return None
     return violations
 
 
