@@ -659,7 +659,7 @@ def _apply_ast_rule(
 
     # ── [GPTScan 앵커] 알고리즘별 파일 관련성 필터 ──
     # algorithm 필드가 있는 규칙은 해당 알고리즘 키워드가 프로젝트 파일에 존재할 때만 적용.
-    # 예: ARIA-002 (algorithm: ARIA) 규칙이 LEA-only 프로젝트에 firing하는 FP 방지.
+    # 예: LEA-001 (algorithm: LEA) 규칙이 LEA 코드 없는 프로젝트에 firing하는 FP 방지.
     if algo:
         _algo_re = re.compile(rf'\b{re.escape(algo)}\b', re.IGNORECASE)
         project_has_algo = any(

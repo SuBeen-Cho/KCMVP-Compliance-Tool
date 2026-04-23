@@ -532,7 +532,7 @@ def _build_structured_evidence(
     # ── 15개 fallback 규칙: 파라미터 타입 + 배열 초기화 맥락 주입 ────────────
     _FALLBACK_RULES = {
         "LEA-005", "LEA-006", "LEA-022", "LEA-023", "LEA-024", "LEA-025",
-        "LEA-032", "LEA-039", "LEA-059", "ARIA-002", "CTR-005",
+        "LEA-032", "LEA-039", "LEA-059", "CTR-005",
         "OFB-002", "CFB-002", "CBC-005",
     }
     if rule_id in _FALLBACK_RULES and not any(rule_id in p for p in parts):

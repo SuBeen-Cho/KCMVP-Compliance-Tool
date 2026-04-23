@@ -26,7 +26,7 @@ _CATEGORY_META: Dict[str, Dict[str, str]] = {
 }
 
 _MODE_PREFIXES = {"CBC", "GCM", "CTR", "CCM", "CFB", "OFB", "CMAC", "ECB"}
-_ALGO_PREFIXES = {"LEA", "ARIA", "SEED", "HIGHT"}
+_ALGO_PREFIXES = {"LEA", "SEED", "HIGHT"}
 _DOC_PREFIXES  = {"DOC", "DESIGN", "CONFIG", "KEYBIZ"}
 
 

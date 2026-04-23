@@ -2065,61 +2065,6 @@ def _check_lea_043(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     return violations
 
 
-_ARIA_KEY_KW = ["aria_set", "aria_key", "ariakey", "aria_init",
-                "ariakeyexpansion", "aria_encrypt_key", "aria_decrypt_key"]
-
-
-def _check_aria_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
-    """ARIA-001: ARIA 키 스케줄 함수 구조 — XOR + 비트회전 + CK 상수 사용.
-
-    탐지 전략:
-    1. ARIA 키 스케줄 함수명 키워드로 대상 함수 수집
-    2. XOR(^), 비트회전(ROL/<<>>), 상수 배열(CK[]) 세 요소 확인
-    3. 2개 이상 누락 → 위반 (1개는 구현 방식 차이일 수 있음, 보수적)
-    4. 키 스케줄 함수 없음 → [] (이 파일은 해당 없음)
-    """
-    if not _HAS_PYCPARSER:
-        return []
-
-    aria_funcs = [
-        fd for fd in _get_func_defs(root)
-        if any(kw in _func_name(fd).lower() for kw in _ARIA_KEY_KW)
-    ]
-    if not aria_funcs:
-        return []
-
-    violations = []
-    for fd in aria_funcs:
-        fname = _func_name(fd)
-        array_bases = {(_array_base(a) or "").upper() for a in _collect(fd, c_ast.ArrayRef)}
-        calls = _call_names_in(fd)
-        has_rol = bool(calls & _ROL_NAMES) or (_has_op(fd, "<<") and _has_op(fd, ">>"))
-        has_xor = _has_op(fd, "^")
-        # CK: 표준 ARIA 상수 배열 이름 (CK, KC, C, RC 등)
-        has_ck  = bool({"CK", "KC", "C", "RC", "CONST"} & array_bases)
-
-        missing = []
-        if not has_xor: missing.append("XOR(^)")
-        if not has_rol: missing.append("비트회전(ROL/<<>>)")
-        if not has_ck:  missing.append("CK[] 라운드 상수")
-
-        if len(missing) >= 2:
-            line = _coord_line(fd, offset)
-            violations.append({
-                "line": line,
-                "message": (
-                    f"ARIA 키 스케줄 함수 '{fname}': 구조 불완전 — "
-                    f"누락: {', '.join(missing)}"
-                ),
-                "ast_evidence": (
-                    f"함수 '{fname}' ARIA 키 스케줄 AST 분석: "
-                    + ("BinaryOp('^') 0건(XOR 부재). " if "XOR(^)" in missing else "")
-                    + ("ROL/ROR FuncCall 또는 <<+>> 조합 0건(비트 회전 부재). " if "비트회전(ROL/<<>>)" in missing else "")
-                    + ("ArrayRef(CK/KC/C/RC/CONST) 0건(라운드 상수 배열 부재). " if "CK[] 라운드 상수" in missing else "")
-                    + f"누락 요소 {len(missing)}개 — ARIA 키 스케줄 3요소(XOR, 회전, CK 상수) 중 2개 이상 부재"
-                ),
-            })
-    return violations
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -2576,7 +2521,6 @@ _CHECKERS = {
     "LEA-015": _check_lea_015,
     "LEA-021": _check_lea_021,
     "LEA-043": _check_lea_043,
-    "ARIA-001": _check_aria_001,
     "LEA-010": _check_lea_010,
     "LEA-030": _check_lea_030,
     "LEA-031": _check_lea_031,
