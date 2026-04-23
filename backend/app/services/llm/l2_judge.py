@@ -203,7 +203,9 @@ def run_l2_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                elif _score_int <= _fp_threshold:
+                elif _score_int <= _fp_threshold or _score_int >= 70:
+                    # score ≤ threshold: 일관된 FP (낮은 위반 확신)
+                    # score ≥ 70: 모델이 is_real_issue=false + 높은 확신 → 확신있는 FP 판정
                     print(f"[L2] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                     if _rejected_tracker is not None:
                         _rejected_tracker.add((
@@ -213,7 +215,7 @@ def run_l2_contextualizer(
                         ))
                 else:
                     results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 고신뢰 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
 
         if not batch_items:
             continue
@@ -241,7 +243,10 @@ def run_l2_contextualizer(
                         _score_int = int(obj.get("confidence", 50))
                         _pat_type = v.get("pattern_type", "")
                         _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
-                        if obj.get("is_real_issue") or _score_int > _fp_threshold:
+                        # is_real_issue=false + score ≥ 70 → 확신있는 FP → 제거
+                        if obj.get("is_real_issue") or (
+                            _fp_threshold < _score_int < 70
+                        ):
                             results.append(_make_l2_result(v, obj))
                 continue
 
@@ -268,7 +273,8 @@ def run_l2_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
-                elif _score_int <= _fp_threshold:
+                elif _score_int <= _fp_threshold or _score_int >= 70:
+                    # score ≤ threshold: 일관된 FP / score ≥ 70: 확신있는 FP 판정
                     print(f"[L2] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                     if _rejected_tracker is not None:
                         _rejected_tracker.add((
@@ -278,7 +284,7 @@ def run_l2_contextualizer(
                         ))
                 else:
                     results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 고신뢰 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                    print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
 
     rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0
     print(f"[L2] 최종 L2 확정 위반: {len(results)}건, 오탐 제거: {rejected_count}건")

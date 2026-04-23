@@ -115,6 +115,7 @@ def _get_code_context(
         "lea-039": ["encrypt", "decrypt", "enc", "dec"],
         "lea-040": ["encrypt", "decrypt"],
         "lea-047": ["mct", "monte", "carlo", "lea_mct"],
+        "ecb-002": ["ecb_enc", "ecb_encrypt", "ecb_cipher", "ecb"],
         "cbc-001": ["cbc_encrypt", "cbc"],
         "cbc-002": ["cbc_decrypt", "cbc"],
         "gcm-001": ["gcm_encrypt", "gcm_init", "gcm"],
@@ -204,9 +205,9 @@ def _get_code_context(
     else:
         ctx = header
 
-    # semantic 위반은 코드가 전혀 없더라도 최소한 파일 앞 50줄을 반환
+    # ast/semantic 위반은 코드가 전혀 없더라도 최소한 파일 앞 50줄을 반환
     # (패턴 부재를 확인하기 위해 AI가 파일 전체 맥락을 볼 필요가 있음)
-    if not ctx and pattern_type == "semantic":
+    if not ctx and pattern_type in ("semantic", "ast"):
         ctx = "\n".join(lines[:50])
 
     return ctx
