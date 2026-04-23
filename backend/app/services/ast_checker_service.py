@@ -263,6 +263,56 @@ def _is_macro_based_round_func(func_def) -> bool:
     return bool(call_names & macro_hints)
 
 
+# 벤치마크 / 테스트 함수 이름 키워드 — 이 키워드가 포함된 함수는 실제 암호 구현이 아님
+_BENCH_TEST_KW = {"benchmark", "bench", "perf", "test_", "_test"}
+
+
+def _is_thin_wrapper(func_def) -> bool:
+    """함수 본문이 단순 위임(dispatcher/wrapper)인지 판별.
+
+    다음 조건을 *모두* 만족하면 thin wrapper로 판정:
+    - 함수 본문(compound statement)의 block_items이 5개 이하
+    - 바이너리 연산(^, +, -, <<, >>)이 없음
+    - for/while 루프가 없음
+
+    thin wrapper 예시:
+      void lea_cbc_enc(...) { return g_cbc_enc(ctx, ct, pt, pt_len); }
+      void lea_ofb_enc_fallback(...) { init_simd(); lea_ofb_enc(...); }
+    """
+    if not _HAS_PYCPARSER:
+        return False
+
+    body = getattr(func_def, "body", None)
+    if not isinstance(body, c_ast.Compound):
+        return False
+
+    items = getattr(body, "block_items", None) or []
+    if len(items) > 5:
+        return False
+
+    # 대입문(Assignment)이 있으면 wrapper가 아님 — 실제 로직이 있다는 의미
+    if _collect(func_def, c_ast.Assignment):
+        return False
+
+    # 암호 관련 바이너리 연산이 있으면 wrapper가 아님
+    _CRYPTO_OPS = {"^", "+", "-", "<<", ">>"}
+    for bop in _collect(func_def, c_ast.BinaryOp):
+        if bop.op in _CRYPTO_OPS:
+            return False
+
+    # 루프가 있으면 wrapper가 아님
+    if _collect(func_def, c_ast.For) or _collect(func_def, c_ast.While):
+        return False
+
+    return True
+
+
+def _is_benchmark_func(func_def) -> bool:
+    """함수 이름에 benchmark/bench/perf 키워드가 포함되면 True."""
+    fname = _func_name(func_def).lower()
+    return any(kw in fname for kw in _BENCH_TEST_KW)
+
+
 # ──────────────────────────────────────────────────────────────────
 # 패턴 매처
 # ──────────────────────────────────────────────────────────────────
@@ -356,6 +406,8 @@ def _check_lea_003(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     # ── 전략 6: 전체 함수에서 ->rounds = N (N ∉ {24,28,32}, 16 ≤ N ≤ 40) 탐지 ──
     _ROUNDS_ASSIGN_NAMES = _re.compile(r'\brounds\b', _re.IGNORECASE)
     for fd in _collect(root, c_ast.FuncDef):
+        if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
+            continue
         fname = _func_name(fd)
         for assign in _collect(fd, c_ast.Assignment):
             if assign.op != "=":
@@ -394,6 +446,8 @@ def _check_lea_003(root, offset: int, filename: str) -> List[Dict[str, Any]]:
         return violations  # 키 스케줄 함수 없어도 직접 할당 위반은 반환
 
     for fd in key_funcs:
+        if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
+            continue
         fname = _func_name(fd)
         found_valid = False
         wrong_bounds: List[int] = []
@@ -455,6 +509,8 @@ def _check_lea_010(root, offset: int, filename: str,
 
     # ── Phase 1: ARX 구조 확인 ────────────────────────────────────
     for fd in key_funcs:
+        if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
+            continue
         fname = _func_name(fd)
         calls = _call_names_in(fd)
         has_rol = (
@@ -527,7 +583,8 @@ def _check_lea_030(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     매크로 기반 라운드 함수이거나 인라인 회전(gcc -E 확장) 구조이면
     판단 불가 → None (fallback 으로).
     """
-    enc_funcs = _funcs_matching(root, _ENC_KW)
+    enc_funcs = [fd for fd in _funcs_matching(root, _ENC_KW)
+                 if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
     if not enc_funcs:
         return []  # 이 파일에 암호화 함수 없음
 
@@ -586,7 +643,8 @@ def _check_lea_031(root, offset: int, filename: str,
     if not _HAS_PYCPARSER:
         return []
 
-    enc_funcs = _funcs_matching(root, _ENC_KW)
+    enc_funcs = [fd for fd in _funcs_matching(root, _ENC_KW)
+                 if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
     if not enc_funcs:
         return []
 
@@ -695,7 +753,7 @@ def _check_lea_034(root, offset: int, filename: str,
 
     non_macro_dec = []
     for fd in dec_funcs:
-        if _is_macro_based_round_func(fd):
+        if _is_macro_based_round_func(fd) or _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
         non_macro_dec.append(fd)
         if _has_op(fd, "-"):
@@ -759,7 +817,8 @@ def _check_lea_035(root, offset: int, filename: str) -> Optional[List[Dict[str, 
 
     매크로 기반 또는 인라인 회전(gcc -E 확장) 구조이면 판단 불가 → None.
     """
-    dec_funcs = _funcs_matching(root, _DEC_KW)
+    dec_funcs = [fd for fd in _funcs_matching(root, _DEC_KW)
+                 if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
     if not dec_funcs:
         return []
 
@@ -798,7 +857,8 @@ def _check_lea_040(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     _LEA040_KW = _ENC_KW + _DEC_KW + ["round", "block", "cipher", "lea"]
     funcs = _funcs_matching(root, _LEA040_KW)
     funcs = [fd for fd in funcs
-             if not any(kw in _func_name(fd).lower() for kw in _KEY_SCHED_EXCL)]
+             if not any(kw in _func_name(fd).lower() for kw in _KEY_SCHED_EXCL)
+             and not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
 
     violations: List[Dict[str, Any]] = []
 
@@ -893,6 +953,8 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 
     violations = []
     for fd in enc_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
         fname = _func_name(fd)
         if not _has_op(fd, "^"):
             line = _coord_line(fd, offset)
@@ -925,6 +987,8 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 
     violations = []
     for fd in dec_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
         fname = _func_name(fd)
         if not _has_op(fd, "^"):
             line = _coord_line(fd, offset)
@@ -957,6 +1021,8 @@ def _check_ecb_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 
     violations = []
     for fd in ecb_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
         fname = _func_name(fd)
         has_mod16 = False
         for bop in _collect(fd, c_ast.BinaryOp):
@@ -1569,10 +1635,12 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
 
     ctr_funcs = _funcs_matching(root, _CTR_FUNC_KW)
     if not ctr_funcs:
-        return None  # CTR 함수 없음 → L2에 위임
+        return []  # CTR 함수 없음 → 위반 없음 (파싱 성공했으므로 fallback 불필요)
 
     violations = []
     for fd in ctr_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
         fname = _func_name(fd)
         for call in _collect(fd, c_ast.FuncCall):
             called = getattr(getattr(call, "name", None), "name", "") or ""
@@ -1983,10 +2051,12 @@ def _check_mode_enc_only(
 
     mode_funcs = _funcs_matching(root, func_kw)
     if not mode_funcs:
-        return None  # 해당 모드 함수 없음 → L2 위임
+        return []  # 해당 모드 함수 없음 → 위반 없음 (파싱 성공했으므로 fallback 불필요)
 
     violations = []
     for fd in mode_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
         fname = _func_name(fd)
 
         # 위반 1: DEC 함수 직접 호출 (CTR-001 동일 로직)

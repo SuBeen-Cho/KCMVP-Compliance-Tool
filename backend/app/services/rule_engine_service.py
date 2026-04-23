@@ -35,6 +35,43 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 })
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 파일 분류: impl / test / data / benchmark
+# 테스트/벤치마크/데이터 파일에는 missing 규칙을 적용하지 않음.
+# ─────────────────────────────────────────────────────────────────────────────
+_TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector")
+_BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
+_FUNC_DEF_RE = re.compile(
+    r'^\s*(?:void|int|unsigned|uint\w+|char|float|double|static)\s+\w+\s*\(',
+    re.MULTILINE,
+)
+
+
+def _classify_file(filename: str, content: str) -> str:
+    """파일을 impl/test/data/benchmark로 분류.
+
+    - 파일명 패턴으로 먼저 판별 (빠르고 신뢰도 높음)
+    - 패턴 미매치 시 코드 구조 분석: 함수 정의 0개 + const 배열만 → data
+    """
+    name_lower = filename.lower()
+
+    for p in _BENCH_FILENAME_PATTERNS:
+        if p in name_lower:
+            return "benchmark"
+    for p in _TEST_FILENAME_PATTERNS:
+        if p in name_lower:
+            return "test"
+
+    # 데이터 전용 파일: 함수 정의 0개 + const 배열만
+    has_func_def = bool(_FUNC_DEF_RE.search(content))
+    has_const_array = bool(re.search(r'\bconst\b.*\{', content))
+
+    if not has_func_def and has_const_array:
+        return "data"
+
+    return "impl"
+
+
 def _extract_decl_var(snippet: str) -> str:
     """스니펫 첫 줄에서 배열/변수 선언의 식별자(변수명)를 추출한다. 타입 키워드는 건너뜀."""
     first_line = (snippet or "").split("\n")[0]
@@ -609,8 +646,11 @@ def _apply_ast_rule(
             # include 경로: 파일 위치 + job src 루트 (헤더 파일 탐색)
             item_path = item.get("path")
             extra_includes: List[str] = list(base_includes)
-            if item_path and isinstance(item_path, Path):
-                extra_includes.insert(0, str(item_path.parent))
+            if item_path:
+                # str → Path 변환 지원 (blind test 등 외부 스크립트 호환)
+                _ip = Path(item_path) if isinstance(item_path, str) else item_path
+                if _ip.parent.is_dir():
+                    extra_includes.insert(0, str(_ip.parent))
             checker_result = _ast_check(rule_id, content_str, fname, rule_meta=rule,
                                         extra_includes=extra_includes or None,
                                         symbol_graph=symbol_graph)
@@ -678,6 +718,9 @@ def _apply_ast_rule(
         if compiled:
             scan_items = fallback_targets if fallback_targets is not None else file_cache
             for item in scan_items:
+                # 테스트/벤치마크/데이터 파일은 fallback regex 스캔 제외
+                if item.get("file_type", "impl") in ("test", "data", "benchmark"):
+                    continue
                 content = item.get("content") or ""
                 # 주석 제거 콘텐츠로 스캔 — 주석 속 키워드 오탐 방지 (GPTScan 앵커 원칙)
                 scan_content = item.get("stripped_content") or content
@@ -926,7 +969,13 @@ def _apply_project_missing_rule(
         c_candidates = [
             item for item in files
             if (item.get("display") or "").lower().endswith(".c")
+            and item.get("file_type", "impl") == "impl"  # impl 파일만 대표로 선택
         ]
+        if not c_candidates:
+            c_candidates = [
+                item for item in files
+                if (item.get("display") or "").lower().endswith(".c")
+            ]
         if keywords and c_candidates:
             kw_matched = [
                 item for item in c_candidates
@@ -996,6 +1045,8 @@ def run_rule_engine(
             display = str(rel).replace("\\", "/")
         except ValueError:
             display = str(path)
+        fname = display.split("/")[-1]
+        file_type = _classify_file(fname, content)
         file_cache.append(
             {
                 "path": path,
@@ -1003,6 +1054,7 @@ def run_rule_engine(
                 "content": content,
                 "stripped_content": _strip_c_comments(content),
                 "ast": item.get("ast") or {},
+                "file_type": file_type,  # impl / test / data / benchmark
             }
         )
 
@@ -1057,7 +1109,24 @@ def run_rule_engine(
         rule_mode = (rule.get("mode") or "").lower()
         mode_kw_re = _MODE_KEYWORD_RE.get(rule_mode) if rule_mode else None
 
+        # COM-003 하드코딩 키 규칙: 테스트/벤치마크 파일은 정당한 테스트 벡터 포함 → 스킵
+        _com003_skip = rule.get("id", "") == "COM-003"
+
         for item in file_cache:
+            ft = item.get("file_type", "impl")
+
+            # 파일 분류 기반 필터링: 테스트/데이터/벤치마크 파일에는 구현 품질 규칙 미적용
+            if ft in ("test", "data", "benchmark"):
+                # missing 규칙: 패턴 부재 = 위반인데, 테스트 파일에는 해당 없음
+                if pattern_type == "missing":
+                    continue
+                # COM-003: 테스트 벡터 파일의 하드코딩 키는 정상
+                if _com003_skip:
+                    continue
+                # semantic 규칙: 테스트/벤치마크 파일의 구현 품질 검사 스킵
+                if pattern_type == "semantic":
+                    continue
+
             if mode_kw_re is not None:
                 fname_lower = (item.get("display") or "").lower()
                 # 파일명에 모드명이 있으면 관련 파일
