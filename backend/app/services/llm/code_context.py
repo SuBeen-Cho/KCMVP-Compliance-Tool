@@ -85,8 +85,16 @@ def _get_code_context(
         return result if result is not None else ""
 
     # line=None 처리
-    if pattern_type not in ("ast", "semantic"):
+    if pattern_type not in ("ast", "semantic", "missing"):
         return ""
+
+    # missing 타입(project-scope): 대표 파일 전체 구조를 컨텍스트로 제공
+    if pattern_type == "missing":
+        from app.services.code_slicer import extract_global_skeleton
+        skeleton = extract_global_skeleton(lines)
+        if skeleton:
+            return skeleton
+        return "\n".join(lines[:150])
 
     from app.services.code_slicer import extract_global_skeleton, _find_function_boundary
     import re as _re

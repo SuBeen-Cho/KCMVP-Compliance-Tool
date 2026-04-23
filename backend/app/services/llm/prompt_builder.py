@@ -110,7 +110,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
         reasoning_section = ""
 
     pattern_type = v.get("pattern_type", "")
-    is_absence = pattern_type in ("semantic", "ast")
+    is_absence = pattern_type in ("semantic", "ast", "missing")
 
     if is_absence:
         judgment_criteria = """판정 지침 (엄격 적용):

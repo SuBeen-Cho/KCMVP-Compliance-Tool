@@ -46,6 +46,7 @@ rules:
     category: mode
     mode: GCM
     pattern_type: missing
+    scope: project
     pattern: "return\\s*-1|\\bauth_fail\\b|\\btag_mismatch\\b"
     severity: high
     description: "lea_gcm_final 복호화 시 인증값이 불일치하면 -1을 반환하고, 복호화된 평문 버퍼를 사용하지 않아야 함. 인증값 바이트 길이가 4 미만이면 인증값을 계산하지 않고 LEA_GCM_CTX를 초기화한 후 -1을 반환함"
@@ -56,6 +57,7 @@ rules:
     category: mode
     mode: GCM
     pattern_type: missing
+    scope: project
     pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
     severity: medium
     description: "사용이 끝난 Nonce, 비밀키, LEA_GCM_CTX 구조체는 memset_s, SecureZeroMemory, explicit_bzero 등으로 메모리에서 즉시 0화(Zeroization)해야 함"

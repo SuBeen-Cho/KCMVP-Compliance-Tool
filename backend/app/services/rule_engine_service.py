@@ -195,6 +195,7 @@ _COM003_FP_KEYWORDS = frozenset({
     "kat", "vector", "sample", "round_const", "rcon",
     "permut", "weight", "mds", "mask", "pad", "crc",
     "example", "dummy", "bench", "ref_",
+    "reduction", "gf_mul", "galois", "ghash_table",
 })
 
 
@@ -656,6 +657,19 @@ def _apply_ast_rule(
     violations: List[Dict[str, Any]] = []
     ast_checker_handled = False  # ast_checker_service 가 처리했는지 여부
 
+    # ── [GPTScan 앵커] 알고리즘별 파일 관련성 필터 ──
+    # algorithm 필드가 있는 규칙은 해당 알고리즘 키워드가 프로젝트 파일에 존재할 때만 적용.
+    # 예: ARIA-002 (algorithm: ARIA) 규칙이 LEA-only 프로젝트에 firing하는 FP 방지.
+    if algo:
+        _algo_re = re.compile(rf'\b{re.escape(algo)}\b', re.IGNORECASE)
+        project_has_algo = any(
+            algo in (item.get("display") or "").lower()
+            or _algo_re.search(item.get("content") or "")
+            for item in file_cache
+        )
+        if not project_has_algo:
+            return []
+
     def _get_display(item: Dict[str, Any]) -> str:
         try:
             rel = item["path"].resolve().relative_to(job_root.resolve())
@@ -940,6 +954,9 @@ def _apply_project_missing_rule(
         per_file_violations = []
         any_ast_available = False
         for item in files:
+            # 비구현 파일(test/data/benchmark/wrapper)은 제로화 검사 불필요
+            if item.get("file_type", "impl") not in ("impl",):
+                continue
             ast = item.get("ast") or {}
             file_calls = ast.get("file_calls")
             if not isinstance(file_calls, list):
@@ -999,18 +1016,19 @@ def _apply_project_missing_rule(
 
         # 프로젝트 전체에 안전 제로화 함수가 아예 없는 경우(AST 미파싱 환경 등)에도 최소 1건 보장
         if not per_file_violations and not any_ast_available:
-            # 기존 방식: 정규식으로 전체 스캔
+            # 기존 방식: 정규식으로 전체 스캔 (impl 파일만 대상)
+            impl_files = [f for f in files if f.get("file_type", "impl") == "impl"]
             try:
                 compiled = re.compile(pattern)
             except re.error:
                 compiled = None
-            if compiled:
+            if compiled and impl_files:
                 project_has_safe = any(
                     re.search(compiled, item.get("content") or "")
-                    for item in files
+                    for item in impl_files
                 )
                 if not project_has_safe:
-                    file_display = files[0].get("display", "") if files else ""
+                    file_display = impl_files[0].get("display", "") if impl_files else ""
                     return [{
                         "rule_id": rule_id,
                         "file": file_display,
@@ -1076,6 +1094,14 @@ def _apply_project_missing_rule(
         else:
             file_display = files[0].get("display") or ""
 
+    # 대표 파일의 코드 컨텍스트 준비 (L2 AI 판정용)
+    repr_content = ""
+    if file_display:
+        for item in files:
+            if item.get("display", "") == file_display:
+                repr_content = (item.get("content") or "")[:2000]
+                break
+
     return [
         {
             "rule_id": rule_id or "",
@@ -1084,9 +1110,11 @@ def _apply_project_missing_rule(
             "scope": "project",
             "message": rule.get("name") or "",
             "severity": rule.get("severity", "high"),
-            "confidence": "확정",
-            "snippet": "",
+            "confidence": "후보",  # L2 AI 재판정 대상
+            "snippet": repr_content[:300],
+            "needs_ai_review": True,
             "pattern_type": rule.get("pattern_type", "missing"),
+            "ai_context": rule.get("description", ""),
         }
     ]
 

@@ -90,9 +90,10 @@ def _select_l2_candidates(
             forced_out_ids.add(id(v))
     forced_in_ids = {id(v) for v in forced_in}
 
+    # Strategy F: needs_ai_review=True인 project-scope missing 위반도 L2 대상에 포함
     eligible = [
         v for v in l1_violations
-        if v.get("pattern_type") in needs_l2
+        if (v.get("pattern_type") in needs_l2 or v.get("needs_ai_review"))
         and id(v) not in forced_out_ids
     ]
     print(f"[L1.5] 강제포함={len(forced_in)}건, 강제제외={len(forced_out_ids)}건")
@@ -134,11 +135,11 @@ def _select_l2_candidates(
     )
     selected_keys = {id(v) for v in bucket_ast}
 
-    # 버킷 2: high severity regex/semantic
+    # 버킷 2: high severity regex/semantic/missing(project-scope)
     high_pool = [
         v for v in eligible
         if id(v) not in selected_keys
-        and v.get("pattern_type") in ("regex", "semantic")
+        and v.get("pattern_type") in ("regex", "semantic", "missing")
         and v.get("severity") == "high"
     ]
     bucket_high = _fill_bucket(high_pool, max_items=b2_cap, per_rule_max=8)

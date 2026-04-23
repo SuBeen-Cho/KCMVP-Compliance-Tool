@@ -21,6 +21,7 @@ rules:
     mode: CMAC
     name: "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
     pattern_type: missing
+    scope: project
     pattern: "constant_time|crypto_memcmp|CRYPTO_memcmp|timingsafe_memcmp"
     severity: high
     description: "CMAC 검증 시 수신 메시지에 대해 MAC을 재계산하고, 수신된 MAC(T)과 상수 시간(constant-time) 비교를 수행해야 함. memcmp는 타이밍 부채널 공격에 취약하므로 사용 금지. 불일치 시 Invalid(-1)를 반환하고 일치 바이트 수/위치를 외부에 노출하지 않아야 함"
@@ -31,6 +32,7 @@ rules:
     mode: CMAC
     name: "CMAC 보조키(K1, K2) 사용 후 제로화"
     pattern_type: missing
+    scope: project
     pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
     severity: medium
     description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s 등으로 메모리에서 즉시 0화(Zeroization)해야 함"

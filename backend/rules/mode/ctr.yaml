@@ -35,6 +35,7 @@ rules:
     mode: CTR
     name: "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
     pattern_type: missing
+    scope: project
     pattern: "getrandom|/dev/urandom|BCryptGenRandom|DRBG|drbg"
     severity: high
     description: "초기 카운터(Nonce)는 예측 불가능하도록 검증대상 난수 발생기(DRBG)를 통해 생성되어야 하며, rand()/srand() 등 비암호학적 함수 사용은 금지됨"
@@ -45,6 +46,7 @@ rules:
     mode: CTR
     name: "중요 보안매개변수(Counter/Key) 메모리 제거"
     pattern_type: missing
+    scope: project
     pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
     severity: medium
     description: "사용이 종료된 카운터 값과 비밀키는 메모리 유출 방지를 위해 즉시 0화(Zeroization)해야 함"
