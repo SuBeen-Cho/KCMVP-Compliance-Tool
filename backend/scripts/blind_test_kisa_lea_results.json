@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-23T22:10:53.600584",
+  "timestamp": "2026-04-23T22:29:35.884247",
   "phase": "Phase 1 + Phase 2",
   "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
   "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
@@ -7,22 +7,18 @@
   "loc": 10256,
   "c_files": 20,
   "h_files": 21,
-  "l1_fp_count": 100,
+  "l1_fp_count": 86,
   "l2_removed": 0,
-  "final_fp_count": 100,
-  "fp_per_kloc": 9.75,
+  "final_fp_count": 86,
+  "fp_per_kloc": 8.39,
   "fp_by_rule": {
     "COM-002": 3,
-    "GCM-004": 3,
-    "GCM-005": 3,
-    "CMAC-002": 3,
-    "CMAC-003": 3,
-    "CTR-003": 3,
-    "CTR-004": 3,
     "COM-001": 2,
     "COM-003": 2,
     "LEA-025": 2,
     "GCM-003": 2,
+    "GCM-004": 2,
+    "GCM-005": 2,
     "ARIA-001": 1,
     "ARIA-002": 1,
     "LEA-001": 1,
@@ -78,27 +74,26 @@
     "LEA-062": 1,
     "GCM-001": 1,
     "CMAC-001": 1,
+    "CMAC-002": 1,
+    "CMAC-003": 1,
     "CCM-001": 1,
-    "CCM-005": 1,
     "ECB-002": 1,
     "CTR-001": 1,
     "CTR-002": 1,
+    "CTR-003": 1,
+    "CTR-004": 1,
     "CTR-005": 1,
     "CTR-LEA-005": 1,
     "CTR-LEA-006": 1,
     "CBC-001": 1,
     "CBC-002": 1,
-    "CBC-003": 1,
-    "CBC-004": 1,
     "CBC-LEA-005": 1,
     "OFB-002": 1,
-    "CFB-001": 1,
     "CFB-002": 1
   },
   "fp_by_file": {
-    "main.c": 39,
-    "lea_core.c": 34,
-    "lea_t_fallback.c": 5,
+    "lea_core.c": 35,
+    "cpu_info_arm.c": 28,
     "lea_gcm_generic.c": 5,
     "lea_base.c": 4,
     "lea_vs.c": 3,
@@ -106,16 +101,17 @@
     "cpu_info_ia32.c": 2,
     "main_0tv.c": 2,
     "lea_gcm_pclmul.c": 2,
+    "lea_t_fallback.c": 1,
     "lea_core_xop.c": 1
   },
   "fp_by_severity": {
-    "high": 75,
-    "medium": 21,
+    "high": 68,
+    "medium": 14,
     "low": 4
   },
   "fp_by_pattern": {
     "missing": 30,
-    "?": 29,
+    "?": 15,
     "ast": 41
   },
   "fp_details": [
@@ -193,7 +189,7 @@
     },
     {
       "rule_id": "LEA-001",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -225,7 +221,7 @@
     },
     {
       "rule_id": "LEA-008",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -233,7 +229,7 @@
     },
     {
       "rule_id": "LEA-009",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -249,7 +245,7 @@
     },
     {
       "rule_id": "LEA-012",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "low",
       "pattern_type": "missing",
@@ -257,7 +253,7 @@
     },
     {
       "rule_id": "LEA-013",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -281,7 +277,7 @@
     },
     {
       "rule_id": "LEA-016",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -289,7 +285,7 @@
     },
     {
       "rule_id": "LEA-017",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -297,7 +293,7 @@
     },
     {
       "rule_id": "LEA-018",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -305,7 +301,7 @@
     },
     {
       "rule_id": "LEA-019",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -313,7 +309,7 @@
     },
     {
       "rule_id": "LEA-020",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -369,7 +365,7 @@
     },
     {
       "rule_id": "LEA-026",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -377,7 +373,7 @@
     },
     {
       "rule_id": "LEA-027",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -385,7 +381,7 @@
     },
     {
       "rule_id": "LEA-028",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -393,7 +389,7 @@
     },
     {
       "rule_id": "LEA-029",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -425,7 +421,7 @@
     },
     {
       "rule_id": "LEA-033",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -449,7 +445,7 @@
     },
     {
       "rule_id": "LEA-036",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -457,7 +453,7 @@
     },
     {
       "rule_id": "LEA-037",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -465,7 +461,7 @@
     },
     {
       "rule_id": "LEA-038",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -505,7 +501,7 @@
     },
     {
       "rule_id": "LEA-044",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -513,7 +509,7 @@
     },
     {
       "rule_id": "LEA-045",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -537,7 +533,7 @@
     },
     {
       "rule_id": "LEA-048",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -545,7 +541,7 @@
     },
     {
       "rule_id": "LEA-049",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -553,7 +549,7 @@
     },
     {
       "rule_id": "LEA-050",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -561,7 +557,7 @@
     },
     {
       "rule_id": "LEA-052",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -585,7 +581,7 @@
     },
     {
       "rule_id": "LEA-058",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -593,15 +589,15 @@
     },
     {
       "rule_id": "LEA-059",
-      "file": "main.c",
-      "line": 16,
+      "file": "lea_core.c",
+      "line": null,
       "severity": "medium",
       "pattern_type": "ast",
       "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
     },
     {
       "rule_id": "LEA-060",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -609,7 +605,7 @@
     },
     {
       "rule_id": "LEA-062",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -641,14 +637,6 @@
     },
     {
       "rule_id": "GCM-004",
-      "file": "main.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "GCM 복호화 인증 실패 시 -1 반환"
-    },
-    {
-      "rule_id": "GCM-004",
       "file": "lea_gcm_generic.c",
       "line": null,
       "severity": "high",
@@ -662,14 +650,6 @@
       "severity": "high",
       "pattern_type": "?",
       "message": "GCM 복호화 인증 실패 시 -1 반환"
-    },
-    {
-      "rule_id": "GCM-005",
-      "file": "main.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "GCM SSP(Nonce/Key) 메모리 제로화"
     },
     {
       "rule_id": "GCM-005",
@@ -697,14 +677,6 @@
     },
     {
       "rule_id": "CMAC-002",
-      "file": "main.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
-    },
-    {
-      "rule_id": "CMAC-002",
       "file": "lea_base.c",
       "line": null,
       "severity": "high",
@@ -712,32 +684,8 @@
       "message": "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
     },
     {
-      "rule_id": "CMAC-002",
-      "file": "lea_t_fallback.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
-    },
-    {
-      "rule_id": "CMAC-003",
-      "file": "main.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "CMAC 보조키(K1, K2) 사용 후 제로화"
-    },
-    {
       "rule_id": "CMAC-003",
       "file": "lea_base.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "CMAC 보조키(K1, K2) 사용 후 제로화"
-    },
-    {
-      "rule_id": "CMAC-003",
-      "file": "lea_t_fallback.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "?",
@@ -750,14 +698,6 @@
       "severity": "high",
       "pattern_type": "ast",
       "message": "CCM Nonce 유일성 보장"
-    },
-    {
-      "rule_id": "CCM-005",
-      "file": "main.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "CCM SSP(Nonce/Key) 메모리 제로화"
     },
     {
       "rule_id": "ECB-002",
@@ -785,14 +725,6 @@
     },
     {
       "rule_id": "CTR-003",
-      "file": "main.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
-    },
-    {
-      "rule_id": "CTR-003",
       "file": "lea_base.c",
       "line": null,
       "severity": "high",
@@ -800,32 +732,8 @@
       "message": "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
     },
     {
-      "rule_id": "CTR-003",
-      "file": "lea_t_fallback.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
-    },
-    {
-      "rule_id": "CTR-004",
-      "file": "main.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(Counter/Key) 메모리 제거"
-    },
-    {
       "rule_id": "CTR-004",
       "file": "lea_base.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(Counter/Key) 메모리 제거"
-    },
-    {
-      "rule_id": "CTR-004",
-      "file": "lea_t_fallback.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "?",
@@ -841,7 +749,7 @@
     },
     {
       "rule_id": "CTR-LEA-005",
-      "file": "main.c",
+      "file": "cpu_info_arm.c",
       "line": null,
       "severity": "low",
       "pattern_type": "missing",
@@ -872,22 +780,6 @@
       "message": "CBC 복호화 연쇄(Chaining) 수식 준수"
     },
     {
-      "rule_id": "CBC-003",
-      "file": "main.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
-    },
-    {
-      "rule_id": "CBC-004",
-      "file": "main.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "?",
-      "message": "중요 보안매개변수(IV/Key) 메모리 제거"
-    },
-    {
       "rule_id": "CBC-LEA-005",
       "file": "lea_core.c",
       "line": null,
@@ -904,14 +796,6 @@
       "message": "OFB 키스트림 생성 수식 준수"
     },
     {
-      "rule_id": "CFB-001",
-      "file": "main.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "?",
-      "message": "CFB IV 유일성 및 예측 불가능성"
-    },
-    {
       "rule_id": "CFB-002",
       "file": "lea_core.c",
       "line": null,
@@ -921,9 +805,9 @@
     }
   ],
   "timing": {
-    "l1_s": 138.0,
+    "l1_s": 135.7,
     "l2_s": 0.0,
-    "total_s": 138.0
+    "total_s": 135.7
   },
   "statistics": {
     "n": 105,

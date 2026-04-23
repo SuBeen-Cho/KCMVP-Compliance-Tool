@@ -36,8 +36,8 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 파일 분류: impl / test / data / benchmark
-# 테스트/벤치마크/데이터 파일에는 missing 규칙을 적용하지 않음.
+# 파일 분류: impl / test / data / benchmark / wrapper
+# 테스트/벤치마크/데이터/wrapper 파일에는 missing 규칙을 적용하지 않음.
 # ─────────────────────────────────────────────────────────────────────────────
 _TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector")
 _BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
@@ -46,12 +46,78 @@ _FUNC_DEF_RE = re.compile(
     re.MULTILINE,
 )
 
+# Thin wrapper 함수 감지: 함수 본문이 1~2문(세미콜론 기준)만 포함하고
+# 다른 함수를 호출만 하는 패턴 (dispatcher/fallback 래퍼)
+_WRAPPER_FUNC_RE = re.compile(
+    r'(?:void|int|unsigned|uint\w+|char|float|double|static)\s+\w+\s*\([^)]*\)\s*\{',
+    re.MULTILINE,
+)
+_FUNC_BODY_RE = re.compile(
+    r'\{([^{}]*)\}',
+    re.DOTALL,
+)
+
+
+# 순수 위임 함수(thin wrapper) 판별용 패턴
+# - 연산자 존재 = 실제 로직 있음 (wrapper 아님)
+# - 지역 변수 선언 = 실제 로직 있음
+_ARITHMETIC_OPS_RE = re.compile(r'<<|>>|[|^~]|\+\s*\w|\-\s*\w|[*/%](?!=)')
+_ASSIGNMENT_OPS_RE = re.compile(r'\w\s*->\s*\w.*=|[^=!<>]=(?!=)')
+_LOCAL_VAR_DECL_RE = re.compile(
+    r'\b(?:uint\w+|int|unsigned|char|float|double|size_t|void)\s+\w+\s*[\[;=]',
+)
+
+
+def _is_wrapper_file(content: str) -> bool:
+    """모든 함수가 thin wrapper(순수 위임)인 파일인지 판별.
+
+    Dispatcher/fallback 파일: 각 함수가 init_simd() + 실제함수호출() 같은
+    1~2줄 위임 패턴만 가진 경우.
+
+    진짜 wrapper 판별 기준:
+    - ≤2 statements
+    - 지역 변수 선언 없음
+    - 연산자/대입 없음 (순수 함수 호출만)
+    """
+    func_starts = list(_WRAPPER_FUNC_RE.finditer(content))
+    if not func_starts:
+        return False
+
+    func_count = 0
+    wrapper_count = 0
+    for m in func_starts:
+        brace_start = m.end() - 1
+        depth = 0
+        body_end = brace_start
+        for i in range(brace_start, len(content)):
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    body_end = i
+                    break
+        body = content[brace_start + 1:body_end].strip()
+        if not body:
+            continue
+        func_count += 1
+        stmt_count = body.count(';')
+        # 순수 위임: ≤2 stmts, 변수 선언 없음, 연산자/대입 없음
+        if (stmt_count <= 2
+            and not _LOCAL_VAR_DECL_RE.search(body)
+            and not _ARITHMETIC_OPS_RE.search(body)
+            and not _ASSIGNMENT_OPS_RE.search(body)):
+            wrapper_count += 1
+
+    # 함수가 5개 이상 있고 90% 이상이 순수 wrapper → wrapper 파일
+    return func_count >= 5 and wrapper_count >= func_count * 0.9
+
 
 def _classify_file(filename: str, content: str) -> str:
-    """파일을 impl/test/data/benchmark로 분류.
+    """파일을 impl/test/data/benchmark/wrapper로 분류.
 
     - 파일명 패턴으로 먼저 판별 (빠르고 신뢰도 높음)
-    - 패턴 미매치 시 코드 구조 분석: 함수 정의 0개 + const 배열만 → data
+    - 패턴 미매치 시 코드 구조 분석
     """
     name_lower = filename.lower()
 
@@ -62,12 +128,21 @@ def _classify_file(filename: str, content: str) -> str:
         if p in name_lower:
             return "test"
 
+    # main.c 파일: 보통 테스트/데모 드라이버 (단일 main 함수만 포함)
+    base = name_lower.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    if base == "main.c":
+        return "test"
+
     # 데이터 전용 파일: 함수 정의 0개 + const 배열만
     has_func_def = bool(_FUNC_DEF_RE.search(content))
     has_const_array = bool(re.search(r'\bconst\b.*\{', content))
 
     if not has_func_def and has_const_array:
         return "data"
+
+    # Thin wrapper/dispatcher 파일: 모든 함수가 1~2문 위임 패턴
+    if has_func_def and _is_wrapper_file(content):
+        return "wrapper"
 
     return "impl"
 
@@ -718,8 +793,8 @@ def _apply_ast_rule(
         if compiled:
             scan_items = fallback_targets if fallback_targets is not None else file_cache
             for item in scan_items:
-                # 테스트/벤치마크/데이터 파일은 fallback regex 스캔 제외
-                if item.get("file_type", "impl") in ("test", "data", "benchmark"):
+                # 테스트/벤치마크/데이터/wrapper 파일은 fallback regex 스캔 제외
+                if item.get("file_type", "impl") in ("test", "data", "benchmark", "wrapper"):
                     continue
                 content = item.get("content") or ""
                 # 주석 제거 콘텐츠로 스캔 — 주석 속 키워드 오탐 방지 (GPTScan 앵커 원칙)
@@ -1054,7 +1129,7 @@ def run_rule_engine(
                 "content": content,
                 "stripped_content": _strip_c_comments(content),
                 "ast": item.get("ast") or {},
-                "file_type": file_type,  # impl / test / data / benchmark
+                "file_type": file_type,  # impl / test / data / benchmark / wrapper
             }
         )
 
@@ -1115,9 +1190,9 @@ def run_rule_engine(
         for item in file_cache:
             ft = item.get("file_type", "impl")
 
-            # 파일 분류 기반 필터링: 테스트/데이터/벤치마크 파일에는 구현 품질 규칙 미적용
-            if ft in ("test", "data", "benchmark"):
-                # missing 규칙: 패턴 부재 = 위반인데, 테스트 파일에는 해당 없음
+            # 파일 분류 기반 필터링: 테스트/데이터/벤치마크/wrapper 파일에는 구현 품질 규칙 미적용
+            if ft in ("test", "data", "benchmark", "wrapper"):
+                # missing 규칙: 패턴 부재 = 위반인데, 비구현 파일에는 해당 없음
                 if pattern_type == "missing":
                     continue
                 # COM-003: 테스트 벡터 파일의 하드코딩 키는 정상
