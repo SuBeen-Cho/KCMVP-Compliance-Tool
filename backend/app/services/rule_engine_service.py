@@ -716,9 +716,13 @@ def _apply_ast_rule(
 
         # AST checker는 파일명이 아닌 함수명/구조로 판단하므로 모든 .c 파일 검사
         # (예: violations_cbc_struct.c 안에 ecb_enc 함수가 있어도 탐지 가능)
+        # test/data/benchmark/wrapper 파일은 AST 체커에서도 제외 — 파싱 실패 시
+        # parse_failed_items에 들어가 관련 없는 파일에 fallback FP 유발 방지.
+        _SKIP_FILE_TYPES = ("test", "data", "benchmark", "wrapper")
         relevant_for_checker = [
             item for item in file_cache
             if (item.get("display") or "").lower().endswith(".c")
+            and item.get("file_type", "impl") not in _SKIP_FILE_TYPES
         ] or list(file_cache)
         for item in relevant_for_checker:
             content_str = item.get("content") or ""
