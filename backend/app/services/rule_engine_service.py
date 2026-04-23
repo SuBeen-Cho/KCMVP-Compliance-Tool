@@ -1061,17 +1061,15 @@ def _apply_project_missing_rule(
 
     # 어디에서도 못 찾았으면, 프로젝트 레벨 위반 1건 생성
     # 대표 파일 선택: algorithm/mode 키워드를 포함하는 .c 파일 우선 (헤더 파일 제외)
-    # 이유: 누락 패턴은 헤더가 아닌 구현 파일에 속해야 의미가 있음
     file_display = ""
     if files:
         algo_kw = (rule.get("algorithm") or "").lower()
         mode_kw = (rule.get("mode") or "").lower()
         keywords = [kw for kw in (algo_kw, mode_kw) if kw]
-        # 후보1: algorithm/mode 이름이 포함된 .c 파일 (헤더 제외)
         c_candidates = [
             item for item in files
             if (item.get("display") or "").lower().endswith(".c")
-            and item.get("file_type", "impl") == "impl"  # impl 파일만 대표로 선택
+            and item.get("file_type", "impl") == "impl"
         ]
         if not c_candidates:
             c_candidates = [
@@ -1084,10 +1082,8 @@ def _apply_project_missing_rule(
                 if any(kw in (item.get("display") or "").lower() for kw in keywords)
             ]
             if kw_matched:
-                # 알고리즘/모드 키워드가 있는 .c 파일 중 첫 번째
                 file_display = kw_matched[0].get("display") or ""
             else:
-                # .c 파일 중 첫 번째 (헤더 파일 제외)
                 file_display = c_candidates[0].get("display") or ""
         elif c_candidates:
             file_display = c_candidates[0].get("display") or ""

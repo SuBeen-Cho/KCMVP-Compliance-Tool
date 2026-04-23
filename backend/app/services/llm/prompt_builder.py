@@ -113,12 +113,19 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
     is_absence = pattern_type in ("semantic", "ast", "missing")
 
     if is_absence:
-        judgment_criteria = """판정 지침 (엄격 적용):
+        # missing 타입은 프로젝트 전체에서 패턴 부재 → 다른 파일/다른 구현 방식 확인 필요
+        _missing_extra = ""
+        if pattern_type == "missing":
+            _missing_extra = """
+  ④ 여러 파일이 제공된 경우, 어느 파일이든 요구사항이 동등한 방식으로 구현되어 있으면 false
+  ⑤ 매직넘버(16, 32 등)나 sizeof()로 블록 크기/키 길이를 암묵적으로 사용할 때 → 명시적 상수 선언이 없어도 동등 구현으로 인정
+  ⑥ 하드코딩된 회전량(<<1, <<3, <<6, >>3, >>5, >>9 등)이 규격 회전량과 일치하면 동등 구현으로 인정"""
+        judgment_criteria = f"""판정 지침 (엄격 적용):
 【이 위반은 "필수 보안 패턴의 부재"가 위반 — L1이 특정 패턴이 없음을 감지했음】
 【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
   ① 변수명·배열명·주석이 S-box, delta, lookup_table, test_vector, KAT 등 공개 상수를 암시할 때
   ② L1 탐지 메시지의 필수 패턴이 다른 방식(동등한 구현)으로 이미 충족되어 있을 때
-  ③ 판정 기준에 명시된 허용 예외에 해당할 때
+  ③ 판정 기준에 명시된 허용 예외에 해당할 때{_missing_extra}
 【위반(is_real_issue=true) 판정 조건】
   ● L1 메시지에서 언급한 필수 패턴이 코드 내에 실제로 없음
   ● 허용 예외에 해당하지 않음
