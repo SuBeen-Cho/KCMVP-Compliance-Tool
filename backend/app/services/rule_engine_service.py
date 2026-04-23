@@ -1204,8 +1204,8 @@ def run_rule_engine(
                 # missing 규칙: 패턴 부재 = 위반인데, 비구현 파일에는 해당 없음
                 if pattern_type == "missing":
                     continue
-                # COM-003: 테스트 벡터 파일의 하드코딩 키는 정상
-                if _com003_skip:
+                # regex 규칙: 테스트/벤치마크 파일의 패턴 매칭은 구현 품질과 무관
+                if pattern_type == "regex":
                     continue
                 # semantic 규칙: 테스트/벤치마크 파일의 구현 품질 검사 스킵
                 if pattern_type == "semantic":
