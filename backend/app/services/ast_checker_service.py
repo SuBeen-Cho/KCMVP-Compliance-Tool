@@ -619,19 +619,13 @@ def _check_lea_030(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     if not enc_funcs:
         return []  # 이 파일에 암호화 함수 없음
 
+    has_limitation = False  # 매크로/인라인 회전으로 분석 제한 여부
     for fd in enc_funcs:
-        if _is_macro_based_round_func(fd):
-            return None  # 매크로 기반 → 내부 분석 불가
-
-        # gcc -E 후 인라인 회전(<<, >>) 사용 → 스칼라 구현으로 판단 불가
-        if _has_op(fd, "<<") and _has_op(fd, ">>"):
-            return None  # 스칼라 변수 인라인-회전 구현 → 분석 한계
-
-        # 배열 인덱스 패턴: array[3] = array[0]
+        # 배열 인덱스 패턴: array[3] = array[0] — 제한 조건보다 먼저 확인
         if _find_array_swaps(fd, lhs_idx=3, rhs_idx=0):
             return []
 
-        # 로컬 변수 패턴 (x0/x1/x2/x3)
+        # 로컬 변수 패턴 (x0/x1/x2/x3) — 제한 조건보다 먼저 확인
         try:
             pdecls = fd.decl.type.args.params if fd.decl.type.args else []
             params = [p.name for p in pdecls if p.name]
@@ -642,7 +636,17 @@ def _check_lea_030(root, offset: int, filename: str) -> Optional[List[Dict[str, 
         if local_names and _find_var_swaps(fd, local_names):
             return []
 
-    # 배열·변수 모두 미탐지 → AI 에 위임
+        if _is_macro_based_round_func(fd):
+            has_limitation = True
+            continue
+        if _has_op(fd, "<<") and _has_op(fd, ">>"):
+            has_limitation = True
+            continue
+
+    # 스왑 패턴 미탐지 + 분석 제한 → AI 에 위임
+    if has_limitation:
+        return None
+    # 스왑 패턴 미탐지 + 분석 가능했으나 없음 → AI 위임
     return None
 
 
@@ -853,25 +857,21 @@ def _check_lea_035(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     if not dec_funcs:
         return []
 
+    has_limitation = False
     for fd in dec_funcs:
-        if _is_macro_based_round_func(fd):
-            return None  # 매크로 기반 → 분석 불가
-
-        # gcc -E 후 인라인 회전(<<, >>) 사용 → 스칼라 구현으로 판단 불가
-        if _has_op(fd, "<<") and _has_op(fd, ">>"):
-            return None
-
+        # 스왑 패턴 확인을 제한 조건보다 먼저 수행
         if _find_array_swaps(fd, lhs_idx=0, rhs_idx=3):
             return []
 
-    # 비매크로 함수가 있는데 패턴 미탐지 → AI 위임
-    non_macro_dec = [fd for fd in dec_funcs
-                     if not _is_macro_based_round_func(fd)
-                     and not (_has_op(fd, "<<") and _has_op(fd, ">>"))]
-    if not non_macro_dec:
-        return None
+        if _is_macro_based_round_func(fd):
+            has_limitation = True
+            continue
+        if _has_op(fd, "<<") and _has_op(fd, ">>"):
+            has_limitation = True
+            continue
 
-    return None  # 판단 불가 → AI fallback
+    # 스왑 패턴 미탐지 → AI 위임
+    return None
 
 
 def _check_lea_040(root, offset: int, filename: str) -> List[Dict[str, Any]]:
@@ -2291,9 +2291,7 @@ def _check_lea_006(root, offset: int, filename: str) -> Optional[List[Dict[str, 
             ),
         })
 
-    if not violations:
-        return None  # 명확한 위반 패턴 없음 → L2 위임
-
+    # 패턴 탐색 완료 — 없으면 위반 없음
     return violations
 
 
