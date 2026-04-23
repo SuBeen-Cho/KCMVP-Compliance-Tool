@@ -4,7 +4,7 @@ rules:
   algorithm: LEA
   name: LEA 블록 크기 준수 검증
   pattern_type: missing
-  pattern: (?i)(block_?(size|len|length))\s*[=:]\s*(128|16\b)
+  pattern: '(?i)(block_?(size|len|length))\s*[=:]\s*(128|16\b)|\b(16|0x10)\s*\*\s*\w|(uint32_t|unsigned\s+int)\s+\w+\s*\[\s*4\s*\]|case\s+16\s*:'
   severity: high
   description: LEA의 블록 크기는 반드시 128비트(16바이트)로 고정되어야 함
   kcmvp_ref: LEA 검증시스템 §4
@@ -120,7 +120,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄 내부 상태 T 초기화(T ← K)
   pattern_type: missing
-  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K
+  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K|\*\s*\(\s*(unsigned\s+int|uint32_t)\s*\*\s*\)\s*\w*mk|rk\s*\[\s*\d+\s*\]\s*=\s*ROL\s*\(
   severity: high
   description: 키 스케줄링 시작 시 내부 상태 T는 마스터키 K로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -148,7 +148,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL1 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL1\b|<<\s*1\s*\)\s*\|\s*\(.*>>\s*31)
+  pattern: (?i)(\bROL1\b|ROL\s*\([^,]+,\s*1\s*\)|<<\s*1\s*\)\s*\|\s*\(.*>>\s*31|_lrotl\s*\([^,]+,\s*1\s*\))
   severity: high
   description: 키 스케줄 T[0] 업데이트 수식 내 1비트 좌측 순환이동(ROL1) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -158,7 +158,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL3 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL3\b|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
+  pattern: (?i)(\bROL3\b|ROL\s*\([^,]+,\s*3\s*\)|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29|_lrotl\s*\([^,]+,\s*3\s*\))
   severity: high
   description: 키 스케줄 T[1] 업데이트 수식 내 3비트 좌측 순환이동(ROL3) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -168,7 +168,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL6 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL6\b|<<\s*6\s*\)\s*\|\s*\(.*>>\s*26)
+  pattern: (?i)(\bROL6\b|ROL\s*\([^,]+,\s*6\s*\)|<<\s*6\s*\)\s*\|\s*\(.*>>\s*26|_lrotl\s*\([^,]+,\s*6\s*\))
   severity: high
   description: 키 스케줄 T[2] 업데이트 수식 내 6비트 좌측 순환이동(ROL6) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -178,7 +178,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL11 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL11\b|<<\s*11\s*\)\s*\|\s*\(.*>>\s*21)
+  pattern: (?i)(\bROL11\b|ROL\s*\([^,]+,\s*11\s*\)|<<\s*11\s*\)\s*\|\s*\(.*>>\s*21|_lrotl\s*\([^,]+,\s*11\s*\))
   severity: high
   description: 키 스케줄 T[3] 업데이트 수식 내 11비트 좌측 순환이동(ROL11) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -188,7 +188,7 @@ rules:
   algorithm: LEA
   name: LEA-192/256 전용 ROL13/17 회전 검증
   pattern_type: missing
-  pattern: (?i)(\bROL13\b|\bROL17\b|<<\s*13\s*\)\s*\|\s*\(.*>>\s*19|<<\s*17\s*\)\s*\|\s*\(.*>>\s*15)
+  pattern: (?i)(\bROL13\b|\bROL17\b|ROL\s*\([^,]+,\s*1[37]\s*\)|<<\s*13\s*\)\s*\|\s*\(.*>>\s*19|<<\s*17\s*\)\s*\|\s*\(.*>>\s*15|_lrotl\s*\([^,]+,\s*1[37]\s*\))
   severity: high
   description: LEA-192/256 키 스케줄에서 추가되는 ROL13(T[4]) 및 ROL17(T[5]) 연산 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 4, 5
@@ -243,7 +243,7 @@ rules:
   algorithm: LEA
   name: 암호화 초기화 단계(X0 ← P) 준수
   pattern_type: missing
-  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P)
+  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P|X[0-3]\s*=\s*(loadU32|load32|ntohl|bswap)|state\s*\[\s*[0-3]\s*\]\s*=.*\bpt\b)
   severity: high
   description: 암호화 시작 시 내부 상태 변수 X0는 평문 P로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
