@@ -25,7 +25,7 @@
 ## 2. 전체 파일 구조 (요약)
 
 ```text
-Kcmvp_main_최종/
+Kcmvp_main_보완/
 ├── .env.example                 # 환경 변수 템플릿
 ├── docker-compose.yml           # 통합 실행 설정
 ├── CLAUDE.md                    # Claude Code 가이드
@@ -43,20 +43,31 @@ Kcmvp_main_최종/
 │   │   ├── tasks/               # 비동기 태스크 (Celery stub — 현재 미사용)
 │   │   │   └── analyze_task.py
 │   │   └── services/            # 서비스 계층
-│   │       ├── upload_service.py        # 업로드 (ZIP/GitHub + PDF)
-│   │       ├── preprocess_service.py    # 코드 전처리 (AST/라인)
-│   │       ├── preprocess_docs_service.py # 문서 전처리 (PyMuPDF+pdfplumber)
-│   │       ├── ast_checker_service.py   # AST 전용 체커 (pycparser 완전 분석)
-│   │       ├── symbol_graph_service.py  # 크로스파일 함수 콜그래프
-│   │       ├── rule_engine_service.py   # L1 룰 엔진
-│   │       ├── llm_service.py           # L2 AI 재판정 (Gemini), 패치/AI종합평가
-│   │       ├── local_llm_service.py     # 로컬 LLM fallback (llama.cpp / HuggingFace)
-│   │       ├── doc_rule_service.py      # 문서(DOC) 룰 엔진
-│   │       ├── traceability_service.py  # 추적성(TRC) 룰 엔진
-│   │       ├── rag_service.py           # RAG 근거 추출 (ChromaDB 선택 지원)
-│   │       ├── mapping_service.py       # rule_id → KCMVP 가이드라인 조항 매핑
-│   │       ├── report_service.py        # 위반 병합·요약·보고서 생성
-│   │       └── code_slicer.py           # 위반 라인 주변 코드 스니펫 추출
+│   │       ├── upload_service.py              # 업로드 (ZIP/GitHub + PDF)
+│   │       ├── preprocess_service.py          # 코드 전처리 (AST/라인)
+│   │       ├── preprocess_docs_service.py     # 문서 전처리 (PyMuPDF+pdfplumber, 스캔본 OCR)
+│   │       ├── ast_checker_service.py         # AST 전용 체커 (pycparser 완전 분석)
+│   │       ├── symbol_graph_service.py        # 크로스파일 함수 콜그래프 (pycparser)
+│   │       ├── enhanced_symbol_graph_service.py # libclang 기반 향상된 심볼 그래프
+│   │       ├── rule_engine_service.py         # L1 룰 엔진
+│   │       ├── llm_service.py                 # L2 AI 재판정 facade (→ llm/ 패키지)
+│   │       ├── llm/                           # LLM 서비스 SRP 분리 패키지
+│   │       │   ├── prompt_templates.py        # 룰별 L2/DOC 프롬프트 템플릿
+│   │       │   ├── gemini_client.py           # Gemini/OpenAI API 호출 + 재시도
+│   │       │   ├── candidate_selector.py      # L2 대상 선정 (버킷 방식)
+│   │       │   ├── code_context.py            # 코드 절삭 (symbol_graph 연동)
+│   │       │   ├── prompt_builder.py          # 프롬프트 빌더 + 구조화 증거
+│   │       │   ├── l2_judge.py               # 메인 L2 실행
+│   │       │   ├── doc_judge.py              # DOC L2 판정
+│   │       │   ├── patch_generator.py         # 코드/문서 패치 생성
+│   │       │   └── summary_generator.py       # AI 종합 평가 요약
+│   │       ├── local_llm_service.py           # 로컬 LLM fallback (llama.cpp / HuggingFace)
+│   │       ├── doc_rule_service.py            # 문서(DOC) 룰 엔진
+│   │       ├── traceability_service.py        # 추적성(TRC) 룰 엔진
+│   │       ├── rag_service.py                 # RAG 근거 추출 (ChromaDB 선택 지원)
+│   │       ├── mapping_service.py             # rule_id → KCMVP 가이드라인 조항 매핑
+│   │       ├── report_service.py              # 위반 병합·요약·보고서 생성
+│   │       └── code_slicer.py                 # 위반 라인 주변 코드 스니펫 추출
 │   ├── rules/                   # 룰셋 디렉터리
 │   │   ├── common/security.yaml # COM-001~006 (공통 보안 룰)
 │   │   ├── algorithm/lea.yaml   # LEA 알고리즘 룰 (LEA-001~062)
@@ -75,15 +86,9 @@ Kcmvp_main_최종/
 │   │   ├── docs/keybiz.yaml     # 운영자/사용자 지침서 DOC 룰
 │   │   └── traceability/traceability.yaml # 추적성 TRC 룰
 │   ├── guidelines/              # 가이드라인 마크다운 (RAG 소스 텍스트)
-│   │   ├── COM-001_zeroization.md
-│   │   ├── COM-003_hardcoded_key.md
-│   │   ├── LEA-042_timing_attack.md
-│   │   ├── DOC-design-rules.md
-│   │   └── ...
 │   ├── mapping/                 # rule_id → 가이드라인 조항 매핑
 │   │   └── rule_to_guideline.json  # 170+ 항목 매핑 테이블
 │   ├── data/                    # ChromaDB 벡터 스토어 (RAG_USE_CHROMA=true 시)
-│   │   └── chroma/
 │   ├── docs/                    # 백엔드용 설계 가이드 텍스트
 │   ├── scripts/                 # 샘플 ZIP 생성, API 테스트 스크립트
 │   ├── testdata/                # 테스트용 ZIP 및 PDF 파일들
@@ -94,7 +99,7 @@ Kcmvp_main_최종/
     │   ├── App.jsx              # 루트 레이아웃
     │   ├── pages/
     │   │   ├── LandingPage.jsx  # 업로드 화면 + ChecklistForm
-    │   │   └── AnalyzePage.jsx  # 분석 결과 페이지 (stub)
+    │   │   └── AnalyzePage.jsx  # 분석 결과 페이지
     │   ├── components/          # IDE 스타일 컴포넌트
     │   │   ├── TopNav.jsx
     │   │   ├── JobInfoBar.jsx
@@ -127,7 +132,7 @@ Kcmvp_main_최종/
 1. **가상환경 생성 및 활성화**
 
 ```bash
-cd Kcmvp_main_최종/backend
+cd Kcmvp_main_보완/backend
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 ```
@@ -164,7 +169,7 @@ RAG_EMBEDDING_MODEL=BAAI/bge-m3
 ```
 
 > **참고**: `gemini-2.5-flash-lite`는 Google AI Studio에서 무료로 사용 가능합니다.
-> Google AI Studio(https://aistudio.google.com)에서 API 키를 발급받아 사용하세요.
+> [Google AI Studio](https://aistudio.google.com)에서 API 키를 발급받아 사용하세요.
 
 로컬 LLM을 사용하려면:
 
@@ -177,7 +182,7 @@ LOCAL_LLM_MODEL=kcmvp-judge
 ### 3.3 프론트엔드 환경 설정
 
 ```bash
-cd Kcmvp_main_최종/frontend
+cd Kcmvp_main_보완/frontend
 npm install
 ```
 
@@ -188,7 +193,7 @@ npm install
 ### 4.1 백엔드 (FastAPI)
 
 ```bash
-cd Kcmvp_main_최종/backend
+cd Kcmvp_main_보완/backend
 source venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -199,7 +204,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### 4.2 프론트엔드 (Vite + React)
 
 ```bash
-cd Kcmvp_main_최종/frontend
+cd Kcmvp_main_보완/frontend
 npm run dev
 ```
 
@@ -221,29 +226,30 @@ docker-compose up -d
 - **코드**
   - ZIP/GitHub → `upload_service` 로 job 디렉터리 생성.
   - `preprocess_service` 가 `.c/.h` 파일 AST 파싱 → `code_preprocess.json`.
-  - `symbol_graph_service` 가 크로스파일 함수 콜그래프 → `symbol_graph.json`.
+  - `symbol_graph_service` (pycparser) / `enhanced_symbol_graph_service` (libclang) 가 크로스파일 함수 콜그래프 → `symbol_graph.json`. libclang 설치 시 자동 활성화.
 - **문서**
   - 설계서/형상관리/시험서/지침서 PDF → `preprocess_docs_service`.
   - PyMuPDF + pdfplumber 로 **섹션·표 구조** (`doc_preprocess_result.json`) 로 변환.
+  - 스캔본 PDF는 Gemini Vision OCR로 텍스트 자동 복원 (`is_scanned` 플래그).
 
 ### 5.2 Layer 2 — 개별 규격 검사 (L1 룰 기반)
 
 - **코드 L1** — `rule_engine_service`
   - COM-001~006, LEA-001~062, ARIA, CBC/CTR/CFB/CCM/CMAC/ECB/GCM/OFB 룰 적용.
   - `pattern_type`: `missing` / `regex` / `semantic` / `ast`
-  - **AST 완전 구현 (20개)**: `ast_checker_service` 에서 pycparser 완전 분석.
-  - **AST fallback (20개)**: regex fallback으로 후보 위반 생성 → L2 전송.
+  - **AST 완전 구현 (25개)**: `ast_checker_service` 에서 pycparser 완전 분석.
+  - **AST fallback (15개)**: regex fallback으로 후보 위반 생성 → L2 전송.
 - **문서 L1** — `doc_rule_service`
   - `design.yaml`, `config_mgmt.yaml`, `test.yaml`, `keybiz.yaml` 적용.
   - `missing` / `regex` / `semantic` 타입으로 필수 섹션·표·문구 검사.
 
 ### 5.3 Layer 3 — AI 의미 재판정 (L2)
 
-- **코드 L2** — `llm_service.run_l2_contextualizer()`
+- **코드 L2** — `llm/l2_judge.run_l2_contextualizer()`
   - Gemini (`gemini-2.5-flash-lite`) 또는 로컬 LLM으로 L1 후보 위반 의미 판정.
   - 후보 선별: ast(최대 25건) + high severity regex/semantic(최대 25건) + 기타(최대 10건), 전체 60건 상한.
   - `missing` 타입 코드 룰은 L2 미전송 (즉시 위반 확정).
-- **문서 L2** — `llm_service.run_doc_l2_contextualizer()`
+- **문서 L2** — `llm/doc_judge.run_doc_l2_contextualizer()`
   - 대상: `pattern_type`이 `semantic`/`missing` 이고 `needs_ai_review=True` 인 위반.
   - rule당 최대 5건, 전체 30건 상한.
 - **RAG 근거 매핑** — `mapping_service` + `rag_service`
@@ -260,9 +266,10 @@ docker-compose up -d
 
 - **보고서** — `report_service`
   - 모든 위반 병합·중복 제거 → `violations.json` + 심각도별 요약.
-- **패치** — `llm_service.generate_patch_for_violation()`
+- **패치** — `llm/patch_generator.generate_patch_for_violation()`
   - 수정 전(`### ⚠️ 문제 코드`) / 수정 후(`### ✅ 수정 코드`, diff) / 수정 이유(`### 📝 수정 이유`) 3단 구조.
-- **AI 종합 평가** — `llm_service.generate_ai_summary()`
+  - 코드·문서 위반 패치를 `ThreadPoolExecutor(max_workers=5)`로 병렬 생성.
+- **AI 종합 평가** — `llm/summary_generator.generate_ai_summary()`
   - 전체 위반 목록 검토 후 종합 판정·핵심 위험·우선 수정 권고 자동 생성.
   - ReportViewer 에 파란 박스로 표시.
 
@@ -272,7 +279,7 @@ docker-compose up -d
 
 ```
 POST   /api/analyze                          # job 생성 (ZIP/GitHub + PDF + 필터)
-GET    /api/analyze/{job_id}                 # 상태·진행률 폴링
+GET    /api/analyze/{job_id}                 # 상태·진행률 폴링 (8단계 세분화)
 GET    /api/analyze/{job_id}/report          # 위반 목록 + 요약 + AI 종합 평가
 GET    /api/analyze/{job_id}/file            # 소스 파일 내용
 GET    /api/analyze/{job_id}/files           # 파일 목록
@@ -309,21 +316,21 @@ POST `/api/analyze` 업로드 필드:
     ↓
   preprocess_service        → code_preprocess.json (AST/라인)
   symbol_graph_service      → symbol_graph.json (크로스파일 콜그래프)
-  preprocess_docs_service   → doc_preprocess_result.json (섹션·표)
+  preprocess_docs_service   → doc_preprocess_result.json (섹션·표, OCR 포함)
     ↓
   rule_engine_service       → L1 코드 위반 (COM/LEA/ARIA/모드)
-  ast_checker_service       → AST 완전 분석 (20개 룰)
+  ast_checker_service       → AST 완전 분석 (25개 룰)
     ↓
-  llm_service.run_l2_contextualizer      → L2 코드 AI 재판정 (Gemini)
+  llm/l2_judge              → L2 코드 AI 재판정 (Gemini)
     ↓
   doc_rule_service          → L1 문서 위반 (design/config_mgmt/test/keybiz)
-  llm_service.run_doc_l2_contextualizer  → L2 문서 AI 재판정
+  llm/doc_judge             → L2 문서 AI 재판정
     ↓
   traceability_service      → TRC 설계–코드–시험 일치성
     ↓
-  rag_service / mapping_service          → 가이드라인 근거 매핑
+  rag_service / mapping_service  → 가이드라인 근거 매핑
     ↓
-  llm_service.generate_ai_summary        → AI 종합 평가
+  llm/summary_generator     → AI 종합 평가
   report_service            → violations.json + 요약
     ↓
 [프론트]
@@ -346,10 +353,11 @@ POST `/api/analyze` 업로드 필드:
 
 | 상태 | 수 | 동작 방식 |
 |---|---|---|
-| 완전 구현 (`ast_checker_service`) | 20개 | pycparser AST 분석 → 정확한 판정 |
-| fallback만 | 20개 | regex fallback → 후보 생성 → L2 AI 판정 |
+| 완전 구현 (`ast_checker_service`) | 25개 | pycparser AST 분석 → 정확한 판정 |
+| fallback만 | 15개 | regex fallback → 후보 생성 → L2 AI 판정 |
+| 완전 미구현 | 0개 | — |
 
-**완전 구현 (20개):** LEA-003, LEA-010, LEA-030, LEA-031, LEA-034, LEA-035, LEA-040, LEA-042, LEA-046, LEA-047, LEA-056, LEA-057, CBC-001, CBC-002, ECB-002, GCM-001, CCM-001, CMAC-001, CTR-001, CTR-002
+**완전 구현 (25개):** LEA-003, LEA-010, LEA-014, LEA-015, LEA-021, LEA-030, LEA-031, LEA-034, LEA-035, LEA-040, LEA-042, LEA-043, LEA-046, LEA-047, LEA-056, LEA-057, ARIA-001, CBC-001, CBC-002, ECB-002, GCM-001, CCM-001, CMAC-001, CTR-001, CTR-002
 
 ---
 
@@ -364,9 +372,12 @@ POST `/api/analyze` 업로드 필드:
 | `lea_rule_test.zip` | LEA 룰 테스트용 |
 | `lea_mode_rules_fail_v2.zip` | 모드 룰 위반 케이스 테스트 |
 | `accuracy_test.zip` / `accuracy_test_v8.zip` / `accuracy_test_v12.zip` | 정확도 검증용 버전별 테스트 |
+| `doc_accuracy_test_v2.zip` | DOC 룰 정확도 검증용 |
+| `testdata_libclang.zip` | libclang 심볼 그래프 테스트용 |
 | `fake_design_doc.pdf` | 의도적 위반 포함 가짜 설계서 (DOC-003, DOC-012, DOC-022, DOC-040, DOC-048) |
 | `keybiz설계서예시.pdf` | 운영자 지침서 예시 |
 | `SECUI설계서.pdf` / `sifr_kit설계서 예시.pdf` / `한컴위드설계서예시.pdf` | 실제 설계서 예시 |
+| `kcmvp_lea_design_doc.pdf` | LEA 설계서 예시 |
 | `암호모듈+구현+안내서_설계서.pdf` | 구현 안내서 설계서 예시 |
 
 테스트 스크립트:
@@ -376,28 +387,34 @@ cd backend && source venv/bin/activate
 python scripts/create_sample_zip.py    # 기본 샘플 ZIP 생성
 python scripts/create_sample_zip_2.py  # 고급 샘플 ZIP 생성
 python scripts/test_upload.py          # API 엔드포인트 테스트
+
+# 분석 결과물 초기화 (안전)
+rm -rf backend/storage/jobs/*
 ```
 
 ---
 
-## 10. 현재 상태 (2026-03 기준)
+## 10. 현재 상태 (2026-04 기준)
 
 ### 완료
 
 - **L1 룰 엔진**: COM-001~006, LEA-001~062, ARIA, CBC/CTR/CFB/CCM/CMAC/ECB/GCM/OFB 전체 적용.
 - **L2 AI 재판정**: Gemini(`gemini-2.5-flash-lite`) 또는 로컬 LLM. 코드 60건·문서 30건 상한.
-- **AST 완전 분석**: `ast_checker_service` 에서 20개 룰 pycparser 완전 구현.
+- **AST 완전 분석**: `ast_checker_service` 에서 25개 룰 pycparser 완전 구현.
+- **향상된 심볼 그래프**: `enhanced_symbol_graph_service` — libclang 기반 USR 크로스파일 링킹, 정확한 end_line, 파라미터 타입. 미설치 시 pycparser 자동 fallback.
 - **문서 연동**: 설계서/형상관리/시험서/지침서 PDF 개별 업로드 → 섹션·표 구조화 → DOC 룰 적용 → L2 재판정.
+- **스캔본 PDF OCR**: Gemini Vision으로 텍스트 레이어 없는 스캔본 자동 감지 및 복원.
 - **RAG 근거 매핑**: `rule_to_guideline.json` 170+ 항목 매핑, ChromaDB 벡터 검색 선택 지원.
 - **추적성**: TRC-001(인터페이스 일치), TRC-002(오류코드 일치) 기본 구현.
 - **AI 종합 평가**: `generate_ai_summary()` — 전체 위반 검토 후 종합 판정·핵심 위험·권고 자동 생성.
-- **패치 노트**: 3단 구조(문제 코드 / 수정 코드 diff / 수정 이유) 표준화.
+- **패치 병렬 생성**: `ThreadPoolExecutor(max_workers=5)` — 순차 대비 ~4배 단축.
+- **8단계 진행률 추적**: preprocess → symbol_graph → rule_engine → l2_llm → patches → doc_preprocess → trc → report 단계별 세분화.
+- **llm_service SRP 분리**: 2,577줄 God Object → `llm/` 패키지 9개 서브 모듈 + thin facade.
 - **프론트**: IDE 스타일 UI, CodeViewer/DocViewer 위반 하이라이트, ChecklistForm(시험 신청서 형식).
-- **체크리스트 UI**: 보안수준·운영모드 선택 (`checklistStore.js` + `ChecklistForm.jsx`).
 
 ### 진행 예정
 
-- fallback-only AST 룰 20개 완전 구현 (현재 regex + L2 판정으로 동작).
+- fallback-only AST 룰 15개 완전 구현 (현재 regex + L2 판정으로 동작).
 - L2 프롬프트 품질 튜닝, ChromaDB RAG 인덱스 구축.
 - `traceability_service` TRC 룰 확장.
 - 비동기 파이프라인 (`analyze_task.py` Celery 연동).
@@ -406,7 +423,6 @@ python scripts/test_upload.py          # API 엔드포인트 테스트
 
 - **COM-001 FN**: 제로화 함수 호출은 탐지하나, 실제 키 변수에 호출되는지 추적 안 함.
 - **TRC regex 취약**: 매크로 함수·함수 포인터·멀티라인 선언 누락 가능.
-- **진행률 조악**: 파일 존재 여부로만 진행률 추정 (전처리 완료 시 80% 표시).
 - **L2 캡 초과**: 대형 프로젝트에서 우선순위 낮은 위반은 AI 재판정 미처리 가능.
 
 ---
