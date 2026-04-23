@@ -630,14 +630,19 @@ def _check_lea_030(root, offset: int, filename: str) -> Optional[List[Dict[str, 
         if _find_array_swaps(fd, lhs_idx=3, rhs_idx=0):
             return []
 
-        # 로컬 변수 패턴 (x0/x1/x2/x3) — 제한 조건보다 먼저 확인
+        # 로컬 변수 패턴 (x0/x1/x2/x3) — 파라미터 + 함수 내 로컬 선언 모두 검사
         try:
             pdecls = fd.decl.type.args.params if fd.decl.type.args else []
             params = [p.name for p in pdecls if p.name]
         except Exception:
             params = []
-        local_names = [p for p in params if p and any(
-            x in p.lower() for x in ("x0", "x1", "x2", "x3", "state", "block"))]
+        # 함수 본체 내 로컬 변수 선언도 수집
+        all_names = list(params)
+        for decl in _collect(fd, c_ast.Decl):
+            if decl.name:
+                all_names.append(decl.name)
+        local_names = [n for n in all_names if n and any(
+            x in n.lower() for x in ("x0", "x1", "x2", "x3", "state", "block"))]
         if local_names and _find_var_swaps(fd, local_names):
             return []
 
@@ -866,6 +871,21 @@ def _check_lea_035(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     for fd in dec_funcs:
         # 스왑 패턴 확인을 제한 조건보다 먼저 수행
         if _find_array_swaps(fd, lhs_idx=0, rhs_idx=3):
+            return []
+
+        # 로컬 변수 패턴 (x0/x1/x2/x3) — 파라미터 + 함수 내 로컬 선언
+        try:
+            pdecls = fd.decl.type.args.params if fd.decl.type.args else []
+            params = [p.name for p in pdecls if p.name]
+        except Exception:
+            params = []
+        all_names = list(params)
+        for decl in _collect(fd, c_ast.Decl):
+            if decl.name:
+                all_names.append(decl.name)
+        local_names = [n for n in all_names if n and any(
+            x in n.lower() for x in ("x0", "x1", "x2", "x3", "state", "block"))]
+        if local_names and _find_var_swaps(fd, local_names):
             return []
 
         if _is_macro_based_round_func(fd):
