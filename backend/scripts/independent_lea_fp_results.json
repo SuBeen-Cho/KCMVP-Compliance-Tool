@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-04-23T16:10:27.678971",
+  "phase": "Phase 5",
+  "description": "독립 LEA C 구현 기반 블라인드 FP 테스트",
+  "use_l2": false,
+  "source": "RFC draft-hong-lea 기반 독립 구현",
+  "loc": 295,
+  "kloc": 0.3,
+  "fp_total": 68,
+  "fp_per_kloc": 230.5,
+  "l2_removed": 0,
+  "elapsed_s": 6.1,
+  "by_pattern_type": {
+    "missing": 34,
+    "unknown": 6,
+    "ast": 27,
+    "semantic": 1
+  },
+  "by_severity": {
+    "high": 48,
+    "low": 7,
+    "medium": 13
+  },
+  "by_rule": {
+    "LEA-032": 4,
+    "COM-003": 2,
+    "LEA-024": 2,
+    "LEA-040": 2,
+    "OFB-002": 2,
+    "COM-001": 1,
+    "ARIA-002": 1,
+    "LEA-001": 1,
+    "LEA-002": 1,
+    "LEA-006": 1,
+    "LEA-007": 1,
+    "LEA-008": 1,
+    "LEA-009": 1,
+    "LEA-010": 1,
+    "LEA-012": 1,
+    "LEA-013": 1,
+    "LEA-016": 1,
+    "LEA-017": 1,
+    "LEA-018": 1,
+    "LEA-019": 1,
+    "LEA-020": 1,
+    "LEA-025": 1,
+    "LEA-026": 1,
+    "LEA-027": 1,
+    "LEA-028": 1,
+    "LEA-029": 1,
+    "LEA-030": 1,
+    "LEA-033": 1,
+    "LEA-034": 1,
+    "LEA-035": 1
+  },
+  "files": [
+    "lea.h",
+    "lea_core.c",
+    "lea_modes.c",
+    "lea_test.c",
+    "Makefile"
+  ]
+}

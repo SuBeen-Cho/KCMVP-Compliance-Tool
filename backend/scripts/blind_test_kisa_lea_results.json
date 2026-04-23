@@ -1,23 +1,23 @@
 {
-  "timestamp": "2026-04-23T15:18:36.943964",
+  "timestamp": "2026-04-23T15:29:33.272568",
   "phase": "Phase 1 + Phase 2",
   "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
   "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
-  "use_l2": false,
+  "use_l2": true,
   "loc": 10256,
   "c_files": 20,
   "h_files": 21,
   "l1_fp_count": 208,
-  "l2_removed": 0,
-  "final_fp_count": 208,
-  "fp_per_kloc": 20.28,
+  "l2_removed": 17,
+  "final_fp_count": 191,
+  "fp_per_kloc": 18.62,
   "fp_by_rule": {
-    "CTR-005": 22,
-    "LEA-059": 19,
-    "OFB-002": 16,
-    "CFB-002": 15,
+    "CTR-005": 20,
+    "OFB-002": 14,
+    "CFB-002": 13,
+    "LEA-059": 12,
     "CTR-001": 12,
-    "LEA-032": 10,
+    "LEA-032": 7,
     "COM-003": 5,
     "LEA-010": 4,
     "GCM-005": 4,
@@ -29,7 +29,6 @@
     "GCM-004": 3,
     "ECB-002": 3,
     "COM-001": 2,
-    "LEA-025": 2,
     "LEA-034": 2,
     "GCM-003": 2,
     "CCM-005": 2,
@@ -59,6 +58,7 @@
     "LEA-022": 1,
     "LEA-023": 1,
     "LEA-024": 1,
+    "LEA-025": 1,
     "LEA-026": 1,
     "LEA-027": 1,
     "LEA-028": 1,
@@ -96,10 +96,10 @@
     "CBC-LEA-005": 1
   },
   "fp_by_file": {
-    "lea_vs.c": 43,
+    "lea_vs.c": 34,
     "benchmark.c": 28,
-    "lea_core.c": 26,
     "lea_base.c": 26,
+    "lea_core.c": 24,
     "main.c": 13,
     "lea_t_fallback.c": 12,
     "lea_online.c": 11,
@@ -107,24 +107,24 @@
     "main_0tv.c": 6,
     "lea_benchmark.c": 6,
     "lea_t_generic.c": 4,
-    "lea_t_avx2_sse2.c": 4,
-    "lea_t_neon.c": 4,
     "lea_t_sse2.c": 4,
-    "lea_gcm_pclmul.c": 3,
-    "lea_t_avx2_xop.c": 3,
+    "lea_t_neon.c": 3,
     "lea_t_xop.c": 3,
     "cpu_info_ia32.c": 2,
-    "lea_core_xop.c": 2
+    "lea_core_xop.c": 2,
+    "lea_gcm_pclmul.c": 2,
+    "lea_t_avx2_sse2.c": 2,
+    "lea_t_avx2_xop.c": 1
   },
   "fp_by_severity": {
-    "high": 130,
-    "medium": 74,
+    "high": 125,
+    "medium": 62,
     "low": 4
   },
   "fp_by_pattern": {
     "missing": 30,
     "?": 41,
-    "ast": 137
+    "ast": 120
   },
   "fp_details": [
     {
@@ -409,14 +409,6 @@
     },
     {
       "rule_id": "LEA-025",
-      "file": "lea_core.c",
-      "line": 7,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "암/복호화 키 스케줄 상수 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-025",
       "file": "lea_core_xop.c",
       "line": 63,
       "severity": "high",
@@ -473,14 +465,6 @@
     },
     {
       "rule_id": "LEA-032",
-      "file": "lea_core.c",
-      "line": 547,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
       "file": "lea_core_xop.c",
       "line": 51,
       "severity": "medium",
@@ -507,22 +491,6 @@
       "rule_id": "LEA-032",
       "file": "lea_gcm_generic.c",
       "line": 306,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_gcm_pclmul.c",
-      "line": 138,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_t_avx2_sse2.c",
-      "line": 28,
       "severity": "medium",
       "pattern_type": "ast",
       "message": "마지막 라운드 함수 구조 동일성 확인"
@@ -730,14 +698,6 @@
     {
       "rule_id": "LEA-059",
       "file": "lea_vs.c",
-      "line": 15,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
       "line": 45,
       "severity": "medium",
       "pattern_type": "ast",
@@ -787,54 +747,6 @@
       "rule_id": "LEA-059",
       "file": "lea_vs.c",
       "line": 327,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 379,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 431,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 924,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 976,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 1028,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
-    },
-    {
-      "rule_id": "LEA-059",
-      "file": "lea_vs.c",
-      "line": 1080,
       "severity": "medium",
       "pattern_type": "ast",
       "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
@@ -1282,22 +1194,6 @@
     {
       "rule_id": "CTR-005",
       "file": "lea_vs.c",
-      "line": 1508,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_vs.c",
-      "line": 1527,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "암호 알고리즘 소스코드 외 보안 요구사항 준수"
-    },
-    {
-      "rule_id": "CTR-005",
-      "file": "lea_vs.c",
       "line": 1546,
       "severity": "medium",
       "pattern_type": "ast",
@@ -1617,22 +1513,6 @@
     },
     {
       "rule_id": "OFB-002",
-      "file": "lea_t_avx2_sse2.c",
-      "line": 40,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "OFB 키스트림 생성 수식 준수"
-    },
-    {
-      "rule_id": "OFB-002",
-      "file": "lea_t_avx2_xop.c",
-      "line": 39,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "OFB 키스트림 생성 수식 준수"
-    },
-    {
-      "rule_id": "OFB-002",
       "file": "lea_t_neon.c",
       "line": 28,
       "severity": "high",
@@ -1761,22 +1641,6 @@
     },
     {
       "rule_id": "CFB-002",
-      "file": "lea_t_avx2_xop.c",
-      "line": 38,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "CFB-128 암호화 수식 준수"
-    },
-    {
-      "rule_id": "CFB-002",
-      "file": "lea_t_neon.c",
-      "line": 27,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "CFB-128 암호화 수식 준수"
-    },
-    {
-      "rule_id": "CFB-002",
       "file": "lea_t_sse2.c",
       "line": 25,
       "severity": "high",
@@ -1793,9 +1657,9 @@
     }
   ],
   "timing": {
-    "l1_s": 129.1,
-    "l2_s": 0.0,
-    "total_s": 129.1
+    "l1_s": 129.5,
+    "l2_s": 139.4,
+    "total_s": 268.9
   },
   "statistics": {
     "n": 105,

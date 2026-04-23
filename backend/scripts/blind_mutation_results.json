@@ -1,0 +1,165 @@
+{
+  "timestamp": "2026-04-23T16:39:31.526637",
+  "phase": "Phase 3",
+  "description": "KISA LEA v1.3 mutation 기반 블라인드 Recall 테스트",
+  "use_l2": false,
+  "total_mutations": 15,
+  "applied": 15,
+  "skipped": 0,
+  "TP": 15,
+  "FN": 0,
+  "mutation_recall": 1.0,
+  "elapsed_s": 1926.0,
+  "results": [
+    {
+      "id": "M01",
+      "target_rule": "LEA-003",
+      "description": "라운드 수 연산 변조 (+16 → +15)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 208,
+      "elapsed_s": 130.4
+    },
+    {
+      "id": "M02",
+      "target_rule": "LEA-003",
+      "description": "라운드 수 조건 변조 (> 24 → > 25)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 208,
+      "elapsed_s": 132.3
+    },
+    {
+      "id": "M03",
+      "target_rule": "LEA-003",
+      "description": "라운드 수 조건 변조 (> 28 → > 29)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 208,
+      "elapsed_s": 127.0
+    },
+    {
+      "id": "M04",
+      "target_rule": "COM-001",
+      "description": "키 데이터 제로화 memset 제거",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 2,
+      "total_violations": 208,
+      "elapsed_s": 127.6
+    },
+    {
+      "id": "M05",
+      "target_rule": "COM-003",
+      "description": "하드코딩 키 삽입",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 6,
+      "total_violations": 209,
+      "elapsed_s": 127.7
+    },
+    {
+      "id": "M06",
+      "target_rule": "COM-002",
+      "description": "비표준 난수 함수 사용",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 3,
+      "total_violations": 209,
+      "elapsed_s": 127.8
+    },
+    {
+      "id": "M07",
+      "target_rule": "LEA-010",
+      "description": "델타 상수 LSB 변조",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 4,
+      "total_violations": 208,
+      "elapsed_s": 127.3
+    },
+    {
+      "id": "M08",
+      "target_rule": "LEA-021",
+      "description": "라운드키 인덱스 변조 (key->rk[6] → key->rk[7])",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 208,
+      "elapsed_s": 127.5
+    },
+    {
+      "id": "M09",
+      "target_rule": "COM-004",
+      "description": "srand(time(NULL)) 비표준 시드",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 209,
+      "elapsed_s": 127.9
+    },
+    {
+      "id": "M10",
+      "target_rule": "ECB-002",
+      "description": "ECB 모드 직접 사용 패턴",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 4,
+      "total_violations": 209,
+      "elapsed_s": 127.9
+    },
+    {
+      "id": "M11",
+      "target_rule": "CBC-001",
+      "description": "CBC 모드에서 IV XOR 누락",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 3,
+      "total_violations": 210,
+      "elapsed_s": 128.1
+    },
+    {
+      "id": "M12",
+      "target_rule": "CTR-002",
+      "description": "CTR 카운터 오버플로우 미검사",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 207,
+      "elapsed_s": 128.0
+    },
+    {
+      "id": "M13",
+      "target_rule": "LEA-034",
+      "description": "ROR 회전량 변조 (3 → 4)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 2,
+      "total_violations": 208,
+      "elapsed_s": 129.4
+    },
+    {
+      "id": "M14",
+      "target_rule": "LEA-040",
+      "description": "키 스케줄 ROL 회전량 변조 (1 → 2)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 208,
+      "elapsed_s": 128.2
+    },
+    {
+      "id": "M15",
+      "target_rule": "GCM-001",
+      "description": "GCM 인증 태그 검증 누락 패턴",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 209,
+      "elapsed_s": 128.4
+    }
+  ]
+}
