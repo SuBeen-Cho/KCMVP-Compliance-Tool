@@ -532,7 +532,12 @@ def _check_lea_010(root, offset: int, filename: str,
     gcc -E 후 ROL(W, i) → (((W)<<(i))|((W)>>(32-(i)))) 으로 확장되므로
     FuncCall 탐지 외에 << / >> 연산자 조합도 회전으로 인정한다.
     """
-    key_funcs = _funcs_matching(root, _KEY_KW)
+    # CMAC/GCM 서브키 파생 함수는 블록 암호 키 스케줄이 아님 → 제외
+    _DERIVED_KEY_EXCL = {"cmac", "subkey", "gcm", "ghash", "gmac"}
+    key_funcs = [
+        fd for fd in _funcs_matching(root, _KEY_KW)
+        if not any(kw in _func_name(fd).lower() for kw in _DERIVED_KEY_EXCL)
+    ]
     if not key_funcs:
         return []  # 이 파일에 키 스케줄 없음 → 판단 불가, 스킵
 
