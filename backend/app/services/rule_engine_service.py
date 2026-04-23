@@ -41,6 +41,8 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 # ─────────────────────────────────────────────────────────────────────────────
 _TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector")
 _BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
+# 인프라/유틸리티 파일: 암호 알고리즘 구현이 아닌 시스템 지원 코드
+_INFRA_FILENAME_PATTERNS = ("cpu_info", "cpuinfo", "simd_detect", "platform_")
 _FUNC_DEF_RE = re.compile(
     r'^\s*(?:void|int|unsigned|uint\w+|char|float|double|static)\s+\w+\s*\(',
     re.MULTILINE,
@@ -127,6 +129,9 @@ def _classify_file(filename: str, content: str) -> str:
     for p in _TEST_FILENAME_PATTERNS:
         if p in name_lower:
             return "test"
+    for p in _INFRA_FILENAME_PATTERNS:
+        if p in name_lower:
+            return "data"  # 인프라 파일은 data로 분류 → missing/semantic 규칙 제외
 
     # main.c 파일: 보통 테스트/데모 드라이버 (단일 main 함수만 포함)
     base = name_lower.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
