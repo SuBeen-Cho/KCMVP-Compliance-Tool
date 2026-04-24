@@ -1,15 +1,15 @@
-"""DOC 위반 AI 재판정 — run_doc_l2_contextualizer."""
+"""DOC 위반 AI 재판정 — run_doc_l3_contextualizer."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.services.llm.gemini_client import (
-    GOOGLE_API_KEY, OPENAI_API_KEY, L2_PROVIDER,
+    GOOGLE_API_KEY, OPENAI_API_KEY, L3_PROVIDER,
     _call_gemini_with_retry,
 )
 from app.services.llm.prompt_templates import _DOC_PROMPT_TEMPLATES
 
 
-def run_doc_l2_contextualizer(
+def run_doc_l3_contextualizer(
     violations_doc: List[Dict[str, Any]],
     doc_preprocess_result: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
@@ -22,9 +22,9 @@ def run_doc_l2_contextualizer(
     - AI가 is_real_issue=False로 판정하면 최종 위반 목록에서 제외.
     - API 키 없거나 실패 시 원본 목록 그대로 반환 (안전 fallback).
     """
-    has_key = (L2_PROVIDER == "gemini" and GOOGLE_API_KEY) or \
-              (L2_PROVIDER == "openai" and OPENAI_API_KEY) or \
-              (L2_PROVIDER == "local")
+    has_key = (L3_PROVIDER == "gemini" and GOOGLE_API_KEY) or \
+              (L3_PROVIDER == "openai" and OPENAI_API_KEY) or \
+              (L3_PROVIDER == "local")
     if not has_key:
         return violations_doc
 
@@ -38,10 +38,58 @@ def run_doc_l2_contextualizer(
     if not semantic_violations:
         return violations_doc
 
-    # doc_type별 풀텍스트 캐시 (섹션 title + text 결합)
-    # priority_section: 해당 섹션 우선 배치 + 더 많은 문자 할당
-    def _build_doc_fulltext(doc_type: str, priority_section: str = "") -> str:
+    # 표(table) 데이터를 텍스트로 직렬화 (Phase 3: 표 내용 L3에 전달)
+    def _serialize_tables(tables: list) -> str:
+        parts: List[str] = []
+        for tbl in (tables or [])[:6]:
+            t_name = str(tbl.get("name") or "").strip()
+            hdrs = [str(h).strip() for h in (tbl.get("headers") or []) if str(h).strip()]
+            rows_raw = tbl.get("rows") or []
+            t_lines: List[str] = []
+            if t_name:
+                t_lines.append(f"[표 {t_name}]")
+            if hdrs:
+                t_lines.append(" | ".join(hdrs))
+            for row in rows_raw[:20]:
+                cells = [str(c).strip() for c in (row or []) if str(c).strip()]
+                if cells:
+                    t_lines.append(" | ".join(cells))
+            if t_lines:
+                parts.append("\n".join(t_lines))
+        return ("\n\n" + "\n\n".join(parts)) if parts else ""
+
+    # doc_type별 풀텍스트 캐시 (섹션 title + text + 표 데이터 결합)
+    # section_keywords: 규칙이 지정한 관련 섹션 제목 키워드 → 해당 섹션만 추출 (옵션)
+    # priority_section: 위반 관련 섹션 우선 배치
+    def _build_doc_fulltext(
+        doc_type: str,
+        priority_section: str = "",
+        section_keywords: Optional[List[str]] = None,
+    ) -> str:
         sections = doc_preprocess_result.get("sections") or []
+
+        # section_keywords가 있으면 해당 섹션만 추출 (표 포함)
+        if section_keywords:
+            targeted_chunks: List[str] = []
+            for s in sections:
+                dt = (s.get("doc_type") or "").lower().strip()
+                if dt == "scm":
+                    dt = "config_mgmt"
+                if dt != doc_type:
+                    continue
+                title = str(s.get("title") or "").strip()
+                if any(kw.lower() in title.lower() for kw in section_keywords):
+                    text = str(s.get("text") or "").strip()
+                    table_text = _serialize_tables(s.get("tables"))
+                    header = f"[{title}]" if title else ""
+                    full = (text + table_text)[:5000]
+                    targeted_chunks.append((header + "\n" + full).strip())
+            if targeted_chunks:
+                return "\n\n".join(targeted_chunks)[:15000]
+            # 매칭 섹션 없으면 fallback → 전체 컨텍스트
+
+        # 전체 섹션 컨텍스트: 텍스트 + 표 데이터 포함
+        # priority_section: 해당 섹션 우선 배치 + 더 많은 문자 할당
         priority_chunks: List[str] = []
         other_chunks: List[str] = []
         for s in sections:
@@ -52,19 +100,20 @@ def run_doc_l2_contextualizer(
                 continue
             title = str(s.get("title") or "").strip()
             text = str(s.get("text") or "").strip()
+            table_text = _serialize_tables(s.get("tables"))
             header = f"[{title}]" if title else ""
-            # 우선 섹션: title에 priority_section 키워드가 포함되면 최대 3000자
+            full_content = text + table_text
             if priority_section and priority_section.strip() and \
                priority_section.lower() in title.lower():
-                chunk = (header + "\n" + text[:3000]).strip()
+                chunk = (header + "\n" + full_content[:3500]).strip()
                 priority_chunks.append(chunk)
             else:
-                chunk = (header + "\n" + text[:1000]).strip()  # 일반 섹션 1000자
+                chunk = (header + "\n" + full_content[:1200]).strip()
                 other_chunks.append(chunk)
         combined = "\n\n".join(priority_chunks + other_chunks)
-        return combined[:12000]  # 전체 12000자 (기존 3000자 → 4배 확장)
+        return combined[:15000]  # 표 데이터 포함으로 15000자로 확장
 
-    # 캐시 키: (doc_type, priority_section) — 섹션별 독립 캐시
+    # 캐시 키: (doc_type, priority_section, section_keywords) — 독립 캐시
     fulltext_cache: Dict[str, str] = {}
 
     # 판정 대상: rule_id별 최대 5건, 전체 최대 50건
@@ -77,7 +126,7 @@ def run_doc_l2_contextualizer(
         if per_rule[rid] <= 5 and len(candidates) < 50:
             candidates.append(v)
 
-    print(f"[DOC-L2] 판정 대상 {len(candidates)}건 (전체 AI검토대상: {len(semantic_violations)}건)")
+    print(f"[DOC-L3] 판정 대상 {len(candidates)}건 (전체 AI검토대상: {len(semantic_violations)}건)")
 
     # [P3] 판정 결과 저장: 위반 인스턴스별 (id(v) → is_real_issue)
     # 평가된 위반 인스턴스는 독립 판정, 미평가 인스턴스는 같은 rule_id의 결과 전파
@@ -89,10 +138,14 @@ def run_doc_l2_contextualizer(
         doc_type = v.get("doc_type") or "design"
         msg = v.get("message") or ""
         section_title = v.get("section") or v.get("title") or ""
+        section_keywords: List[str] = v.get("section_keywords") or []
 
-        cache_key = f"{doc_type}::{section_title}"
+        kw_key = ",".join(sorted(section_keywords))
+        cache_key = f"{doc_type}::{section_title}::{kw_key}"
         if cache_key not in fulltext_cache:
-            fulltext_cache[cache_key] = _build_doc_fulltext(doc_type, section_title)
+            fulltext_cache[cache_key] = _build_doc_fulltext(
+                doc_type, section_title, section_keywords or None
+            )
         doc_text = fulltext_cache[cache_key]
 
         if not doc_text:
@@ -146,7 +199,7 @@ def run_doc_l2_contextualizer(
 
         obj = _call_gemini_with_retry(prompt)
         if obj is None:
-            print(f"[DOC-L2] {rule_id} 판정 실패 → 위반 유지")
+            print(f"[DOC-L3] {rule_id} 판정 실패 → 위반 유지")
             judgment_by_instance[id(v)] = True
             judgment_by_rule.setdefault(rule_id, True)
             continue
@@ -157,7 +210,7 @@ def run_doc_l2_contextualizer(
         # rule_id fallback: 첫 번째 확정 판정을 기준으로 저장
         if rule_id not in judgment_by_rule:
             judgment_by_rule[rule_id] = is_real
-        print(f"[DOC-L2] {rule_id}: {'위반 확정' if is_real else '오탐 제거'} — {reason}")
+        print(f"[DOC-L3] {rule_id}: {'위반 확정' if is_real else '오탐 제거'} — {reason}")
 
     # 원본 목록에서 AI가 오탐으로 판정한 위반 제거
     # 인스턴스별 판정 우선, 없으면 rule_id 수준 판정 사용
@@ -175,7 +228,7 @@ def run_doc_l2_contextualizer(
                 continue
 
             if not is_real:
-                print(f"[DOC-L2] {rid} 제거 (오탐)")
+                print(f"[DOC-L3] {rid} 제거 (오탐)")
                 continue
             # 확정 위반으로 표시
             v = dict(v)

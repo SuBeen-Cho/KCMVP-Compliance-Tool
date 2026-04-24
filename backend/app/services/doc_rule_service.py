@@ -218,6 +218,7 @@ def run_doc_rule_engine(
                     "ranges": [],
                     "needs_ai_review": True,
                     "keyword_found": matched,
+                    "section_keywords": rule.get("section_keywords") or [],
                 }
             )
         # pattern_type: regex → 패턴이 발견된 위치(ranges)를 함께 반환
