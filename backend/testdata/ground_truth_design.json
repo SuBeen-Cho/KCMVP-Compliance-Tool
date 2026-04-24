@@ -1,0 +1,184 @@
+{
+  "version": "1.0",
+  "created": "2026-04-24",
+  "methodology": "PDF manual review (full text) + design.yaml rule mapping",
+  "evaluator": "Claude (PDF manual read)",
+  "documents": [
+    {
+      "filename": "fake_design_doc.pdf",
+      "doc_type": "design",
+      "description": "LEA 암호모듈 기본 및 상세설계서 V1.2 — 의도적 위반 5개 포함",
+      "confidence": "high",
+      "annotation_source": "document_self_labeled",
+      "note": "마지막 페이지에 '의도적 위반 5개 포함: DOC-003, DOC-012, DOC-022, DOC-040, DOC-048' 명시됨",
+      "expected_violations": {
+        "DOC-003": {
+          "reason": "알고리즘별 CSP(비밀키/라운드키) 연관 명세 누락 — 섹션2에 키 목록 없음",
+          "confidence": "high"
+        },
+        "DOC-012": {
+          "reason": "서비스별 데이터 출력 항목 미명세 — 섹션3 인터페이스 표에 출력 데이터 항목 없음",
+          "confidence": "high"
+        },
+        "DOC-022": {
+          "reason": "제로화 서비스 동작 상세 미기술 — lea_zeroize() API 없음, CSP 대상 미명시",
+          "confidence": "high"
+        },
+        "DOC-040": {
+          "reason": "섹션 6.7 메모리 정리에 '수행한다' 단독 기술 — 절차적/운영적 제로화 방법 누락",
+          "confidence": "high"
+        },
+        "DOC-048": {
+          "reason": "섹션 8.1 암호모듈 동작 흐름에 '구현 코드를 참조한다'로 얼버무림 — 유한상태모델/상태천이도 없음",
+          "confidence": "high"
+        }
+      },
+      "expected_passes": {
+        "DOC-001": {
+          "reason": "섹션1 개요에 '소프트웨어 모듈' 유형 명시",
+          "confidence": "high"
+        },
+        "DOC-004": {
+          "reason": "표지에 V1.2 버전 명시",
+          "confidence": "high"
+        },
+        "DOC-010": {
+          "reason": "섹션3 인터페이스에 상태 출력 언급",
+          "confidence": "high"
+        },
+        "DOC-019": {
+          "reason": "섹션4 서비스 목록에 버전 확인 API 있음",
+          "confidence": "high"
+        },
+        "DOC-020": {
+          "reason": "섹션4 서비스 목록에 상태 확인 API 있음",
+          "confidence": "high"
+        },
+        "DOC-047": {
+          "reason": "섹션8 자가시험에 주기적 자가시험 항목 있음",
+          "confidence": "high"
+        }
+      }
+    },
+    {
+      "filename": "sifr_kit설계서 예시.pdf",
+      "doc_type": "design",
+      "description": "sifr.kit v1.0 보안정책서 (국립금오공과대학교) — 14페이지 실제 제출용 문서",
+      "confidence": "medium",
+      "annotation_source": "manual_review",
+      "note": "보안수준 1 기준 작성. 간결하나 핵심 요건 대부분 포함. 실제 KCMVP 제출 문서.",
+      "expected_violations": {
+        "DOC-040": {
+          "reason": "절차적/운영적 제로화 기법(volatile 사용, 복구불가 덮어쓰기) 상세 미기술",
+          "confidence": "medium"
+        },
+        "DOC-048": {
+          "reason": "유한상태모델/상태천이도/상태천이표 명시 없음 — 14페이지 전체 미발견",
+          "confidence": "high"
+        },
+        "DOC-050": {
+          "reason": "소프트웨어 개발환경/컴파일러/빌드도구 상세 정보 미기술",
+          "confidence": "high"
+        }
+      },
+      "expected_passes": {
+        "DOC-001": {
+          "reason": "표2.1에 '소프트웨어 모듈 (동적라이브러리)' 명시",
+          "confidence": "high"
+        },
+        "DOC-004": {
+          "reason": "표지 및 본문에 v1.0 버전 명시",
+          "confidence": "high"
+        },
+        "DOC-005": {
+          "reason": "섹션6 운영환경에 Windows/Ubuntu OS 표 있음",
+          "confidence": "high"
+        },
+        "DOC-010": {
+          "reason": "섹션3 인터페이스 표에 '상태 출력' 명시",
+          "confidence": "high"
+        },
+        "DOC-011": {
+          "reason": "섹션3에 물리적/논리적 인터페이스 연관 표 있음",
+          "confidence": "high"
+        },
+        "DOC-018": {
+          "reason": "섹션4 서비스 표에 '인가된 역할' 컬럼 있음",
+          "confidence": "high"
+        },
+        "DOC-019": {
+          "reason": "섹션4에 버전확인 API __sifr_version() 명시",
+          "confidence": "high"
+        },
+        "DOC-020": {
+          "reason": "섹션4에 상태확인 API __sifr_status() 명시",
+          "confidence": "high"
+        },
+        "DOC-026": {
+          "reason": "섹션5에 HMAC_SHA2 무결성 검증 명시",
+          "confidence": "high"
+        },
+        "DOC-047": {
+          "reason": "섹션8 자가시험 표에 주기적 자가시험 항목 있음",
+          "confidence": "high"
+        }
+      }
+    },
+    {
+      "filename": "한컴위드설계서예시.pdf",
+      "doc_type": "design",
+      "description": "XecureCrypto v2.2.0.0 보안정책서 (한컴위드) — 20페이지 실제 제출용 문서",
+      "confidence": "medium",
+      "annotation_source": "manual_review",
+      "note": "보안수준 1 충족 (물리적/비침투 보안 n/a). 13개 섹션으로 체계적 구성. 실제 KCMVP 검증 통과 문서.",
+      "expected_violations": {
+        "DOC-040": {
+          "reason": "절차적/운영적 제로화 기법(volatile 키워드, 복구불가 덮어쓰기) 상세 미기술",
+          "confidence": "medium"
+        },
+        "DOC-048": {
+          "reason": "유한상태모델/상태천이도/상태천이표 명시 없음 — 20페이지 전체 미발견",
+          "confidence": "high"
+        }
+      },
+      "expected_passes": {
+        "DOC-001": {
+          "reason": "섹션2에 '소프트웨어 암호모듈' 유형 명시",
+          "confidence": "high"
+        },
+        "DOC-004": {
+          "reason": "표지에 v2.2.0.0 버전 명시",
+          "confidence": "high"
+        },
+        "DOC-005": {
+          "reason": "섹션6 운영환경에 15개 OS/플랫폼 표 있음",
+          "confidence": "high"
+        },
+        "DOC-010": {
+          "reason": "섹션4 서비스 표에 상태출력 기능 있음",
+          "confidence": "high"
+        },
+        "DOC-011": {
+          "reason": "섹션3에 논리적 인터페이스 표 있음",
+          "confidence": "high"
+        },
+        "DOC-018": {
+          "reason": "섹션4 허용 서비스 표에 역할 컬럼 있음",
+          "confidence": "high"
+        },
+        "DOC-026": {
+          "reason": "섹션5에 RSA-PSS 전자서명으로 무결성 검증 명시",
+          "confidence": "high"
+        },
+        "DOC-031": {
+          "reason": "섹션6 운영환경에 OS 종류/버전/비트 상세 표 있음",
+          "confidence": "high"
+        },
+        "DOC-047": {
+          "reason": "섹션10 자가시험 표에 주기적 자가시험 항목 있음",
+          "confidence": "high"
+        }
+      }
+    }
+  ]
+}
