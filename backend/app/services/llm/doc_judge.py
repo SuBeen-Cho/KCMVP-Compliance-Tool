@@ -39,9 +39,11 @@ def run_doc_l2_contextualizer(
         return violations_doc
 
     # doc_type별 풀텍스트 캐시 (섹션 title + text 결합)
-    def _build_doc_fulltext(doc_type: str) -> str:
+    # priority_section: 해당 섹션 우선 배치 + 더 많은 문자 할당
+    def _build_doc_fulltext(doc_type: str, priority_section: str = "") -> str:
         sections = doc_preprocess_result.get("sections") or []
-        chunks = []
+        priority_chunks: List[str] = []
+        other_chunks: List[str] = []
         for s in sections:
             dt = (s.get("doc_type") or "").lower().strip()
             if dt == "scm":
@@ -50,12 +52,19 @@ def run_doc_l2_contextualizer(
                 continue
             title = str(s.get("title") or "").strip()
             text = str(s.get("text") or "").strip()
-            if title:
-                chunks.append(f"[{title}]")
-            if text:
-                chunks.append(text[:500])  # 섹션당 최대 500자
-        return "\n".join(chunks)[:3000]  # 전체 3000자 제한
+            header = f"[{title}]" if title else ""
+            # 우선 섹션: title에 priority_section 키워드가 포함되면 최대 3000자
+            if priority_section and priority_section.strip() and \
+               priority_section.lower() in title.lower():
+                chunk = (header + "\n" + text[:3000]).strip()
+                priority_chunks.append(chunk)
+            else:
+                chunk = (header + "\n" + text[:1000]).strip()  # 일반 섹션 1000자
+                other_chunks.append(chunk)
+        combined = "\n\n".join(priority_chunks + other_chunks)
+        return combined[:12000]  # 전체 12000자 (기존 3000자 → 4배 확장)
 
+    # 캐시 키: (doc_type, priority_section) — 섹션별 독립 캐시
     fulltext_cache: Dict[str, str] = {}
 
     # 판정 대상: rule_id별 최대 5건, 전체 최대 50건
@@ -81,9 +90,10 @@ def run_doc_l2_contextualizer(
         msg = v.get("message") or ""
         section_title = v.get("section") or v.get("title") or ""
 
-        if doc_type not in fulltext_cache:
-            fulltext_cache[doc_type] = _build_doc_fulltext(doc_type)
-        doc_text = fulltext_cache[doc_type]
+        cache_key = f"{doc_type}::{section_title}"
+        if cache_key not in fulltext_cache:
+            fulltext_cache[cache_key] = _build_doc_fulltext(doc_type, section_title)
+        doc_text = fulltext_cache[cache_key]
 
         if not doc_text:
             # 문서 텍스트 없으면 판정 불가 → 보수적으로 위반 유지
