@@ -654,6 +654,18 @@ def _apply_ast_rule(
     mode_kw  = (rule.get("mode") or "").lower()
     fallback = rule.get("fallback_pattern", "")
 
+    # check_in: 규칙을 특정 파일 타입에만 적용 (예: ["test", "benchmark"])
+    # MCT/MMT 검증 규칙은 테스트/벤치마크 파일에만 존재해야 함 — 구현 파일 FP 방지
+    check_in = rule.get("check_in")
+    if check_in:
+        # check_in이 지정된 경우, 해당 파일 타입의 파일만 검사 대상으로 제한
+        file_cache = [
+            item for item in file_cache
+            if item.get("file_type", "impl") in check_in
+        ]
+        if not file_cache:
+            return []  # 해당 파일 타입이 없으면 규칙 적용 자체를 건너뜀
+
     violations: List[Dict[str, Any]] = []
     ast_checker_handled = False  # ast_checker_service 가 처리했는지 여부
 
@@ -1222,6 +1234,12 @@ def run_rule_engine(
 
         for item in file_cache:
             ft = item.get("file_type", "impl")
+
+            # check_in field: 규칙이 특정 파일 타입에만 적용되도록 제한
+            # 예: check_in: ["test", "benchmark"] → 구현 파일에는 미적용
+            _check_in = rule.get("check_in")
+            if _check_in and ft not in _check_in:
+                continue  # 이 파일의 타입이 check_in 목록에 없으면 건너뜀
 
             # 파일 분류 기반 필터링: 테스트/데이터/벤치마크/wrapper 파일에는 구현 품질 규칙 미적용
             if ft in ("test", "data", "benchmark", "wrapper"):

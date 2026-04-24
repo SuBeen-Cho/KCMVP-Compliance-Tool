@@ -92,7 +92,7 @@ rules:
     name: "LEA CTR 모드 SIMD 가속 적용 권고"
     pattern_type: missing
     scope: project
-    pattern: "(?i)\\blea_ctr\\b.*(sse2|avx2|neon|simd)"
+    pattern: "(?i)\\blea_ctr.*(sse2|avx2|neon|simd)"
     severity: low
     description: "병렬 처리가 가능한 LEA CTR 모드의 특성을 활용하여 암·복호화 시 SIMD 가속 구현을 권장함"
     kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §3"
@@ -104,5 +104,5 @@ rules:
     pattern_type: ast
     severity: high
     description: "몬테카를로 테스트 시 매 연산마다 카운터를 (CTR+1) mod 2^128로 증가시키고 결과 암호문으로 키를 갱신하는 LEA 전용 로직 확인"
-    fallback_pattern: '(?i)(CTR.*MCT|MCT.*CTR|ctr_mct|mct_ctr|counter.*update.*mct|ctr_key_update)'
+    fallback_pattern: '(?i)(CTR.*MCT|MCT.*CTR|ctr_mct|mct_ctr|counter.*update.*mct|ctr_key_update|lea_mct_ctr|mmt_ctr_test|lea_mmt_ctr)'
     kcmvp_ref: "LEA 검증시스템 §6.4"

@@ -2165,6 +2165,38 @@ def _check_cfb_002(root, offset: int, filename: str) -> Optional[List[Dict[str, 
 # LEA-005: 바이트→워드 빅 엔디안 변환 탐지
 # ──────────────────────────────────────────────────────────────────
 
+def _subscript_const_offset(subscript) -> Optional[int]:
+    """배열 첨자의 상수 오프셋 추출.
+
+    지원 패턴:
+      a[0]       → 0   (단순 상수)
+      a[4*i+0]   → 0   (곱셈+덧셈; 상수 항 추출)
+      a[4*i+3]   → 3   (곱셈+덧셈; 오프셋 3)
+      a[4*i]     → 0   (곱셈만; 오프셋 없으면 0으로 간주)
+    반환 None: 판단 불가
+    """
+    if not _HAS_PYCPARSER:
+        return None
+    # 단순 상수: a[0]
+    cv = _const_value(subscript)
+    if cv is not None:
+        return cv
+    if not isinstance(subscript, c_ast.BinaryOp):
+        return None
+    # 덧셈: N*i+k 또는 k+N*i
+    if subscript.op == "+":
+        rv = _const_value(subscript.right)
+        if rv is not None:
+            return rv
+        lv = _const_value(subscript.left)
+        if lv is not None:
+            return lv
+    # 곱셈만 (N*i): 오프셋 = 0 (첫 번째 원소)
+    if subscript.op == "*":
+        return 0
+    return None
+
+
 def _check_lea_005(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """LEA-005: 바이트→워드 변환 시 빅 엔디안(BE) 패턴 탐지.
 
@@ -2172,8 +2204,9 @@ def _check_lea_005(root, offset: int, filename: str) -> List[Dict[str, Any]]:
       LE(정상): word = a[0] | (a[1]<<8) | (a[2]<<16) | (a[3]<<24)
       BE(위반): word = (a[0]<<24) | (a[1]<<16) | (a[2]<<8) | a[3]
 
-    탐지 전략: array[0] << 24 패턴 (BE 첫 바이트를 MSB에 위치) → 위반
-    보수적 검사: 정수 상수 인덱스 0이고 시프트 24인 경우만 위반으로 확정.
+    탐지 전략: array[0또는4i+0] << 24 패턴 (BE 첫 바이트를 MSB에 위치) → 위반
+    - a[0] << 24       : 단순 인덱스 0
+    - a[4*i+0] << 24   : 반복 내 첫 바이트를 MSB로 이동 (빅 엔디안 루프)
     """
     if not _HAS_PYCPARSER:
         return []
@@ -2185,28 +2218,33 @@ def _check_lea_005(root, offset: int, filename: str) -> List[Dict[str, Any]]:
         # 오른쪽 피연산자가 상수 24인지 확인
         if _const_value(bop.right) != 24:
             continue
-        # 왼쪽 피연산자가 ArrayRef인지 확인
-        if not isinstance(bop.left, c_ast.ArrayRef):
+        # 왼쪽 피연산자가 ArrayRef 또는 캐스트된 ArrayRef인지 확인
+        # e.g., a[0] << 24  또는  (uint32_t)a[4*i+0] << 24
+        left_operand = bop.left
+        if isinstance(left_operand, c_ast.Cast):
+            left_operand = left_operand.expr  # 캐스트 벗기기
+        if not isinstance(left_operand, c_ast.ArrayRef):
             continue
-        # 배열 인덱스가 상수 0인지 확인 (a[0] << 24 패턴)
-        if _const_value(bop.left.subscript) != 0:
+        # 배열 인덱스의 상수 오프셋이 0인지 확인 (a[0] 또는 a[4*i+0] 패턴)
+        offset_val = _subscript_const_offset(left_operand.subscript)
+        if offset_val != 0:
             continue
-        # a[0] << 24 확인 → BE 위반
-        arr_name = _array_base(bop.left) or "배열"
+        # a[0] 또는 (T)a[4*i+0] << 24 확인 → BE 위반
+        arr_name = _array_base(left_operand) or "배열"
         coord = getattr(bop, "coord", None)
         raw_line = getattr(coord, "line", None) if coord else None
         line = (raw_line - offset) if raw_line and (raw_line - offset) > 0 else None
         violations.append({
             "line": line,
             "message": (
-                f"{arr_name}[0] << 24 패턴 — 빅 엔디안 변환 위반: "
-                "LEA는 리틀 엔디안 규약 사용 (a[0]이 최하위 바이트여야 함, a[3]<<24이 정상)"
+                f"{arr_name}[...+0] << 24 패턴 — 빅 엔디안 변환 위반: "
+                "LEA는 리틀 엔디안 규약 사용 (첫 바이트(오프셋 0)는 최하위 바이트여야 함, 마지막 바이트<<24이 정상)"
             ),
             "ast_evidence": (
-                f"BinaryOp('<<', left=ArrayRef({arr_name}[0]), right=Constant(24)) 탐지. "
-                "a[0](첫 바이트)를 24비트 좌이동 → MSB(bit 31-24) 위치에 배치 = 빅 엔디안. "
+                f"BinaryOp('<<', left=ArrayRef({arr_name}[offset=0]), right=Constant(24)) 탐지. "
+                "첫 바이트(인덱스 오프셋 0)를 24비트 좌이동 → MSB(bit 31-24) 위치에 배치 = 빅 엔디안. "
                 "LEA 리틀 엔디안 표준: word = a[0]|(a[1]<<8)|(a[2]<<16)|(a[3]<<24) — "
-                "a[0]가 최하위, a[3]<<24이 정상"
+                "a[0]가 최하위 바이트, 마지막 바이트<<24이 정상"
             ),
         })
 

@@ -61,6 +61,7 @@ from app.services.llm.prompt_builder import (  # noqa: F401
     _make_l2_result,
     _build_structured_evidence,
     _build_global_flow_summary,
+    _build_flow_context,
     _LEA_DELTA_STANDARD_LC,
     _SAFE_CONST_PATTERNS,
 )

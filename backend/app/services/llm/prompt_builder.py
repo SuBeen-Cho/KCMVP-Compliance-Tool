@@ -577,3 +577,139 @@ def _build_structured_evidence(
     header = "=== 구조화된 증거 (Structured Evidence) ==="
     footer = "=" * len(header)
     return header + "\n" + "\n".join(parts) + "\n" + footer + "\n\n"
+
+
+# ─────────────────────────────────────────────────────────────────
+# Priority 2: Flow-Sensitive LLM Context (ZeroFalse style)
+# arxiv 2510.02534: flow-sensitive trace reconstruction improves
+# LLM judgment accuracy by providing macro definitions + call paths.
+# 주 대상: LEA-024, LEA-030, LEA-035 (pycparser MAKE_FUNC parse failure)
+# ─────────────────────────────────────────────────────────────────
+
+# MAKE_FUNC-style 매크로를 사용하는 규칙: pycparser가 이를 파싱하지 못해 None 반환
+_MAKE_FUNC_RULES = {"LEA-024", "LEA-030", "LEA-035"}
+
+# 매크로 정의 추출 정규식 (#define NAME(...) body 형태)
+_MACRO_DEF_RE = re.compile(
+    r"^\s*#\s*define\s+(\w+)\s*(\([^)]*\))?\s*(.+)$",
+    re.MULTILINE,
+)
+
+# MAKE_FUNC 계열 매크로 패턴 (함수 인라인 확장형)
+_MAKE_FUNC_RE = re.compile(
+    r"(?i)\b(MAKE_FUNC|MAKE_ENC|MAKE_DEC|MAKE_KEY|INLINE_FUNC|DEFINE_FUNC)\b",
+)
+
+
+def _build_flow_context(
+    v: Dict[str, Any],
+    file_content: str,
+    symbol_graph: Optional[Dict[str, Any]] = None,
+    max_macros: int = 15,
+    max_callers: int = 5,
+) -> str:
+    """Flow-sensitive context for L2 LLM judgment.
+
+    Addresses Cause B (pycparser MAKE_FUNC failure): when pycparser cannot parse
+    MAKE_FUNC-style macros, it returns None and the fallback fires.  This function
+    extracts the macro definitions visible in the file so the LLM can understand
+    the actual code structure rather than relying on incomplete snippets.
+
+    Also extracts caller information from symbol_graph to provide call-path context
+    (ZeroFalse §3.2: caller-context injection).
+
+    Parameters
+    ----------
+    v            : violation dict
+    file_content : raw content of the file containing the violation
+    symbol_graph : optional symbol graph for call-path extraction
+    max_macros   : maximum number of macro definitions to include
+    max_callers  : maximum number of callers to include
+
+    Returns
+    -------
+    str : flow context string (empty if nothing useful found)
+    """
+    if not file_content:
+        return ""
+
+    rule_id = (v.get("rule_id") or "").upper()
+    parts: List[str] = []
+
+    # ── 1. #define 매크로 추출 ──────────────────────────────────────
+    macro_defs = _MACRO_DEF_RE.findall(file_content)
+    if macro_defs:
+        # MAKE_FUNC 계열 매크로 우선, 그 다음 일반 함수형 매크로
+        make_func_macros = [
+            m for m in macro_defs
+            if _MAKE_FUNC_RE.search(m[0]) or _MAKE_FUNC_RE.search(m[2])
+        ]
+        func_macros = [
+            m for m in macro_defs
+            if m[1]  # 파라미터 있는 함수형 매크로
+            and m not in make_func_macros
+        ]
+        const_macros = [
+            m for m in macro_defs
+            if not m[1]  # 단순 상수 매크로 (파라미터 없음)
+            and len(m[2]) < 60  # 짧은 것만
+        ]
+
+        selected = make_func_macros[:5] + func_macros[:5] + const_macros[:5]
+        selected = selected[:max_macros]
+
+        if selected:
+            parts.append("[파일 내 매크로 정의 (MAKE_FUNC 포함)]")
+            for name, params, body in selected:
+                param_str = params if params else ""
+                parts.append(f"  #define {name}{param_str} {body[:80].strip()}")
+
+    # ── 2. MAKE_FUNC 위반 규칙 전용: 파일 내 함수 정의 패턴 확인 ──
+    if rule_id in _MAKE_FUNC_RULES:
+        # MAKE_FUNC 계열 매크로가 파일에 있는지 확인
+        has_make_func = bool(_MAKE_FUNC_RE.search(file_content))
+        if has_make_func:
+            parts.append(
+                "\n[MAKE_FUNC 감지] 이 파일은 MAKE_FUNC 계열 매크로로 함수를 정의합니다."
+            )
+            parts.append(
+                "  pycparser는 이 매크로를 직접 파싱할 수 없으므로 아래 코드를 직접 분석하십시오."
+            )
+            # 매크로가 확장하는 실제 함수 패턴 찾기
+            func_pattern = re.compile(
+                r"MAKE_\w+\s*\(\s*(\w+)\s*,",
+                re.IGNORECASE,
+            )
+            func_usages = func_pattern.findall(file_content)
+            if func_usages:
+                parts.append(f"  생성되는 함수들: {', '.join(func_usages[:8])}")
+
+    # ── 3. 호출 경로 (symbol_graph call_graph) ──────────────────────
+    if symbol_graph:
+        call_graph: List[Dict[str, Any]] = symbol_graph.get("call_graph") or []
+        file_hint = (v.get("file") or "").split("/")[-1]
+        func_name = v.get("func_name") or ""
+
+        # 위반 파일/함수의 callers 찾기
+        callers: List[str] = []
+        for edge in call_graph:
+            callee = edge.get("callee_name") or ""
+            caller_file = (edge.get("caller_file") or "").split("/")[-1]
+            caller_func = edge.get("caller_name") or ""
+
+            # 대상 함수가 호출되는 경우
+            if func_name and func_name in callee:
+                callers.append(f"  {caller_file}::{caller_func} → {callee}")
+            elif file_hint and caller_file == file_hint and caller_func:
+                callers.append(f"  {caller_file}::{caller_func} → {callee}")
+
+        if callers:
+            parts.append(f"\n[호출 경로 (Call Path)]")
+            parts.extend(callers[:max_callers])
+
+    if not parts:
+        return ""
+
+    header = "=== 흐름 민감 컨텍스트 (Flow-Sensitive Context) ==="
+    footer = "=" * len(header)
+    return header + "\n" + "\n".join(parts) + "\n" + footer + "\n\n"
