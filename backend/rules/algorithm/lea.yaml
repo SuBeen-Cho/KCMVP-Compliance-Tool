@@ -102,8 +102,17 @@ rules:
   pattern_type: missing
   scope: project
   pattern: (?i)(0xc3efe9db|0x44626b02|0x79e27c8a|0x78df30ec|0x715ea49e|0xc785da0a|0xe04ef22a|0xe5c40957)
+  required_all_patterns:
+    - "(?i)0xc3efe9db"
+    - "(?i)0x44626b02"
+    - "(?i)0x79e27c8a"
+    - "(?i)0x78df30ec"
+    - "(?i)0x715ea49e"
+    - "(?i)0xc785da0a"
+    - "(?i)0xe04ef22a"
+    - "(?i)0xe5c40957"
   severity: high
-  description: 표준에 정의된 8개의 델타 상수(δ[0]~δ[7])가 누락 없이 포함되어야 함
+  description: 표준에 정의된 8개의 델타 상수(δ[0]~δ[7])가 누락 없이 포함되어야 함. 하나라도 변조/누락 시 위반.
   kcmvp_ref: LEA 표준 규격서 §5.2.2
 - id: LEA-012
   category: algorithm

@@ -188,6 +188,73 @@ _ZERO_FILL_LOOP_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+# COM-001 함수별 키 변수 미제거 탐지 헬퍼
+# LEA_KEY/LEA_CTX 지역 변수 또는 uint8_t 암호 배열을 선언하고도 제거 함수를
+# 호출하지 않는 함수가 존재하는지 탐지한다. (AST 없이 정규식 기반)
+_COM001_ANY_CLEAR_FUNCS = (
+    "memset", "memset_s", "lea_zeroize", "lea_module_zeroize", "lea_secure_zero",
+    "explicit_bzero", "SecureZeroMemory", "bzero", "RtlSecureZeroMemory",
+    "secure_clear", "wipe_buffer",
+)
+_COM001_KEY_TYPE_DECL_RE = re.compile(
+    r"^\s+(?:LEA_KEY|LEA_CTX)\s+(\w+)\s*;",
+    re.MULTILINE,
+)
+_COM001_KEY_ARRAY_DECL_RE = re.compile(
+    r"^\s+uint8_t\s+(\w+)\s*\[(?:8|16|24|32)\]",
+    re.MULTILINE,
+)
+_COM001_CRYPTO_ARRAY_KWS = frozenset(
+    ["iv", "ctr", "ks", "key", "nonce", "block", "buf", "mac", "tag"]
+)
+
+
+def _extract_top_level_blocks(content: str) -> list:
+    """C 소스에서 최상위 {} 블록(함수 본체 등)을 브레이스 매칭으로 추출."""
+    blocks = []
+    depth = 0
+    start = -1
+    for i, c in enumerate(content):
+        if c == "{":
+            depth += 1
+            if depth == 1:
+                start = i
+        elif c == "}":
+            depth -= 1
+            if depth == 0 and start >= 0:
+                blocks.append(content[start : i + 1])
+                start = -1
+    return blocks
+
+
+def _has_uncleared_key_var(content: str) -> bool:
+    """파일 내 함수 본체를 분석하여 LEA_KEY/LEA_CTX 또는 암호 uint8_t 배열 변수를
+    선언하고도 안전 제거 함수로 해제하지 않는 함수가 존재하면 True 반환."""
+    stripped = _strip_c_comments(content)
+    blocks = _extract_top_level_blocks(stripped)
+    clear_func_ptn = "|".join(re.escape(f) for f in _COM001_ANY_CLEAR_FUNCS)
+    for block in blocks:
+        # LEA_KEY / LEA_CTX 지역 변수 검사
+        for m in _COM001_KEY_TYPE_DECL_RE.finditer(block):
+            varname = m.group(1)
+            clear_re = re.compile(
+                r"\b(?:" + clear_func_ptn + r")\s*\(\s*&?"
+                + re.escape(varname) + r"\s*,",
+            )
+            if not clear_re.search(block):
+                return True
+        # uint8_t 암호 배열 지역 변수 검사
+        for m in _COM001_KEY_ARRAY_DECL_RE.finditer(block):
+            varname = m.group(1)
+            if any(kw in varname.lower() for kw in _COM001_CRYPTO_ARRAY_KWS):
+                clear_re = re.compile(
+                    r"\b(?:" + clear_func_ptn + r")\s*\(\s*&?"
+                    + re.escape(varname) + r"\s*,",
+                )
+                if not clear_re.search(block):
+                    return True
+    return False
+
 # COM-003: 하드코딩 키 탐지에서 제외할 변수명/컨텍스트 키워드 (S-box, 룩업테이블, 테스트벡터 등)
 _COM003_FP_KEYWORDS = frozenset({
     "sbox", "s_box", "delta", "lookup", "table", "lut",
@@ -444,7 +511,7 @@ def _apply_rule_to_file(
             file_display = str(file_path)
         snippet = content[:200].strip() if content else ""
 
-        # 키 생명주기 분석 (COM-001 전용) — L2 AI에게 구체적 근거 제공
+        # 키 생명주기 분석 (COM-001 전용) — L3 AI에게 구체적 근거 제공
         key_lifecycle = _build_key_lifecycle(content, file_display, symbol_graph)
 
         violations.append({
@@ -644,7 +711,7 @@ def _apply_ast_rule(
     3. fallback_pattern 없음 → 알고리즘/모드 관련 파일(최대 3개)에 파일 레벨
        "후보" 위반 생성, description 을 AI 판단 컨텍스트로 포함
 
-    생성된 위반은 L2(Gemini)에서 의미적 재판정을 받는다.
+    생성된 위반은 L3(Gemini)에서 의미적 재판정을 받는다.
     """
     rule_id  = rule.get("id", "")
     severity = rule.get("severity", "medium")
@@ -792,7 +859,7 @@ def _apply_ast_rule(
                     snippet = file_lines[line - 1][:200].strip() if line <= len(file_lines) else ""
                 else:
                     snippet = content_str[:300].strip()
-                # 메시지에서 실제 함수명 추출 (L2 컨텍스트 추출에 사용)
+                # 메시지에서 실제 함수명 추출 (L3 컨텍스트 추출에 사용)
                 # AST 체커가 "함수 'funcname'" 형식으로 메시지를 작성하면 여기서 추출됨
                 import re as _re_fn
                 fn_match = _re_fn.search(r"함수\s+'([^']+)'", msg)
@@ -1008,6 +1075,20 @@ def _apply_project_missing_rule(
                         "pattern_type": rule.get("pattern_type", "missing"),
                         "key_lifecycle": _build_key_lifecycle(content, item.get("display", ""), symbol_graph),
                     })
+                elif _has_uncleared_key_var(content):
+                    # memset 없이 제로화 완전/부분 누락 케이스 (AST 없이 함수별 분석)
+                    per_file_violations.append({
+                        "rule_id": rule_id,
+                        "file": item.get("display", ""),
+                        "line": None,
+                        "scope": "file",
+                        "message": rule.get("name") or "잔존 정보 제거 필요",
+                        "severity": rule.get("severity", "high"),
+                        "confidence": "확정",
+                        "snippet": "",
+                        "pattern_type": rule.get("pattern_type", "missing"),
+                        "key_lifecycle": _build_key_lifecycle(content, item.get("display", ""), symbol_graph),
+                    })
                 continue
 
             any_ast_available = True
@@ -1039,6 +1120,22 @@ def _apply_project_missing_rule(
                     "pattern_type": rule.get("pattern_type", "missing"),
                     "key_lifecycle": _build_key_lifecycle(_content_for_lc, item.get("display", ""), symbol_graph),
                 })
+            elif not has_unsafe_memset and not has_safe_clear:
+                # memset 없이 제로화 완전/부분 누락 케이스 (AST 통화 + 함수별 분석)
+                _content_for_fn = item.get("content") or ""
+                if _has_uncleared_key_var(_content_for_fn):
+                    per_file_violations.append({
+                        "rule_id": rule_id,
+                        "file": item.get("display", ""),
+                        "line": None,
+                        "scope": "file",
+                        "message": rule.get("name") or "잔존 정보 제거 필요",
+                        "severity": rule.get("severity", "high"),
+                        "confidence": "확정",
+                        "snippet": "",
+                        "pattern_type": rule.get("pattern_type", "missing"),
+                        "key_lifecycle": _build_key_lifecycle(_content_for_fn, item.get("display", ""), symbol_graph),
+                    })
 
         # 프로젝트 전체에 안전 제로화 함수가 아예 없는 경우(AST 미파싱 환경 등)에도 최소 1건 보장
         if not per_file_violations and not any_ast_available:
@@ -1071,16 +1168,36 @@ def _apply_project_missing_rule(
     else:
         # 일반 project-level missing 룰: 정규식이 어디든 한 번이라도 매칭되면 통과
         # missing 룰은 주석 제거 콘텐츠에서 검사 (주석 속 "올바른 키워드" 오탐 방지)
-        try:
-            compiled = re.compile(pattern)
-        except re.error:
-            compiled = None
-        if compiled:
-            for item in files:
-                content = item.get("stripped_content") or item.get("content") or ""
-                if re.search(compiled, content):
-                    found = True
-                    break
+        #
+        # required_all_patterns: 목록의 패턴이 모두 존재해야 통과 (예: LEA-011 델타 상수 8개 전부)
+        required_all = rule.get("required_all_patterns") or []
+        if required_all:
+            all_content = "\n".join(
+                item.get("stripped_content") or item.get("content") or ""
+                for item in files
+                if item.get("file_type", "impl") == "impl"
+            )
+            missing_ptns = []
+            for ptn in required_all:
+                try:
+                    if not re.search(ptn, all_content, re.IGNORECASE):
+                        missing_ptns.append(ptn)
+                except re.error:
+                    pass
+            if not missing_ptns:
+                return []  # 모든 필수 패턴 존재 → 통과
+            # 하나 이상 누락 → 위반 생성 (found=False 로 fall-through)
+        else:
+            try:
+                compiled = re.compile(pattern)
+            except re.error:
+                compiled = None
+            if compiled:
+                for item in files:
+                    content = item.get("stripped_content") or item.get("content") or ""
+                    if re.search(compiled, content):
+                        found = True
+                        break
 
     if found:
         return []
@@ -1116,7 +1233,7 @@ def _apply_project_missing_rule(
         else:
             file_display = files[0].get("display") or ""
 
-    # 대표 파일의 코드 컨텍스트 준비 (L2 AI 판정용)
+    # 대표 파일의 코드 컨텍스트 준비 (L3 AI 판정용)
     repr_content = ""
     if file_display:
         for item in files:
@@ -1132,7 +1249,7 @@ def _apply_project_missing_rule(
             "scope": "project",
             "message": rule.get("name") or "",
             "severity": rule.get("severity", "high"),
-            "confidence": "후보",  # L2 AI 재판정 대상
+            "confidence": "후보",  # L3 AI 재판정 대상
             "snippet": repr_content[:300],
             "needs_ai_review": True,
             "pattern_type": rule.get("pattern_type", "missing"),

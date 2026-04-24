@@ -251,7 +251,7 @@ def _has_unchecked_real_mode_funcs(
     """키워드 매칭 함수(checked_funcs) 외에, 모드 키워드를 포함하면서
     thin wrapper/benchmark가 아닌 실제 구현 함수가 존재하는지 확인.
 
-    이 조건이 참이면 fallback(regex/L2)으로 미검사 위반을 잡을 수 있으므로
+    이 조건이 참이면 fallback(regex/L3)으로 미검사 위반을 잡을 수 있으므로
     None을 반환하여 fallback을 유도한다.
 
     KISA LEA 같은 정상 코드에서 FP를 방지하기 위해:
@@ -1718,7 +1718,7 @@ def _check_lea_047(root, offset: int, filename: str) -> Optional[List[Dict[str, 
        - ECB: 내부 루프에서 pt 갱신 없으면 위반
        - CBC: 내부 루프에서 iv 갱신 없으면 위반
        - CTR: 내부 루프에서 ctr/counter 증가 없으면 위반
-    3. 모드 이름 없으면 → None (L2 판단 위임)
+    3. 모드 이름 없으면 → None (L3 판단 위임)
     """
     if not _HAS_PYCPARSER:
         return None
@@ -1734,7 +1734,7 @@ def _check_lea_047(root, offset: int, filename: str) -> Optional[List[Dict[str, 
         mode  = _mct_mode_from_name(fname)
 
         if not mode:
-            # 모드 판단 불가 → None 반환 (이 파일은 L2로)
+            # 모드 판단 불가 → None 반환 (이 파일은 L3로)
             # 단, 다른 함수에서 판정이 나올 수 있으므로 None은 loop 후 반환
             continue
 
@@ -1806,9 +1806,9 @@ def _check_lea_047(root, offset: int, filename: str) -> Optional[List[Dict[str, 
                 ),
             })
 
-    # 모드 없는 함수만 있었으면 → None (L2 판단)
+    # 모드 없는 함수만 있었으면 → None (L3 판단)
     if not violations and all(not _mct_mode_from_name(_func_name(fd)) for fd in mct_funcs):
-        return None  # 판단 불가 → L2에 위임
+        return None  # 판단 불가 → L3에 위임
 
     return violations
 
@@ -1829,7 +1829,7 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     """CTR-001: CTR 함수 내에서 LEA 복호화 함수 직접 호출 시 위반.
 
     CTR 모드는 키스트림 생성 시 항상 ENC 방향만 사용해야 함.
-    CTR 함수가 없으면 None 반환 → L2 판단 위임.
+    CTR 함수가 없으면 None 반환 → L3 판단 위임.
     """
     if not _HAS_PYCPARSER:
         return None
@@ -2197,7 +2197,7 @@ def _check_mode_enc_only(
 ) -> Optional[List[Dict[str, Any]]]:
     """OFB/CFB 공통: 해당 모드 함수 내 DEC 호출 및 XOR 부재 탐지.
 
-    - 해당 모드 함수 없음 → None (L2 위임, 이 파일은 해당 없음)
+    - 해당 모드 함수 없음 → None (L3 위임, 이 파일은 해당 없음)
     - DEC 호출 발견    → 위반
     - XOR 부재         → 위반
     """
@@ -2379,7 +2379,7 @@ def _check_lea_006(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     - 이 패턴은 bit 0이 실제로는 MSB처럼 취급됨 → 비트 번호 혼동 위반
 
     NOTE: 비트 색인 방향은 의미론적 판단이 어려워 명확한 패턴만 탐지.
-    불명확한 경우 None 반환하여 L2에 위임.
+    불명확한 경우 None 반환하여 L3에 위임.
     """
     if not _HAS_PYCPARSER:
         return None
@@ -2582,7 +2582,7 @@ def _check_ctr_005(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     AST 수준에서 SSP 라이프사이클을 정확히 검사하기 어려우므로,
     CTR 함수가 존재하면 기본적으로 통과([])로 처리하여
     부정확한 fallback regex FP를 방지한다.
-    CTR 함수가 없으면 None 반환 → L2 판단 위임.
+    CTR 함수가 없으면 None 반환 → L3 판단 위임.
     """
     if not _HAS_PYCPARSER:
         return None
@@ -2685,6 +2685,21 @@ _LC_PARSE_ARGS: List[str] = [
     "-D__extension__=",
     "-D__volatile__(x)=",
 ]
+
+# GCC/Clang 시스템 include 경로 자동 발견 (uint8_t, uint32_t 등 stdint.h 타입 해석 필요)
+_GCC_SYS_INCLUDES: List[str] = []
+try:
+    import subprocess as _sp_sys
+    import os as _os_sys
+    _gcc_inc = _sp_sys.check_output(
+        ["gcc", "-print-file-name=include"],
+        stderr=_sp_sys.DEVNULL,
+        timeout=5,
+    ).decode().strip()
+    if _gcc_inc and _os_sys.path.isdir(_gcc_inc):
+        _GCC_SYS_INCLUDES.append(_gcc_inc)
+except Exception:
+    pass
 _LC_SYS_PREFIXES = (
     "/usr/", "/Library/", "/Applications/",
     "<built-in>", "<command", "/opt/homebrew/",
@@ -2708,6 +2723,9 @@ def _parse_c_libclang(
     if extra_includes:
         for inc in extra_includes:
             args.append(f"-I{inc}")
+    # 시스템 헤더 경로 추가 (uint8_t, uint32_t 등 표준 타입 파싱을 위해)
+    for inc in _GCC_SYS_INCLUDES:
+        args.append(f"-isystem{inc}")
     tmp_path: Optional[str] = None
     try:
         import os as _os2
@@ -3365,7 +3383,7 @@ def _lc_check_lea_030(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
         if _lc_has_op(fd, "<<") and _lc_has_op(fd, ">>"):
             return []  # 인라인 ROL/ROR 확인 → 준수 판정
 
-    return None  # 패턴 미발견 → pycparser fallback 또는 L2 위임
+    return None  # 패턴 미발견 → pycparser fallback 또는 L3 위임
 
 
 def _lc_check_lea_035(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
