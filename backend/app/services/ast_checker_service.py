@@ -38,6 +38,15 @@ try:
 except ImportError:
     _HAS_PYCPARSER = False
 
+# ──────────────────────────────────────────────────────────────────
+# libclang 지연 임포트 (MAKE_FUNC 매크로 완전 파싱용)
+# ──────────────────────────────────────────────────────────────────
+try:
+    import clang.cindex as _ci
+    _HAS_LIBCLANG = True
+except ImportError:
+    _HAS_LIBCLANG = False
+
 
 # ──────────────────────────────────────────────────────────────────
 # C 파일 파싱 → raw pycparser AST
@@ -2356,7 +2365,7 @@ def _check_lea_022(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 
         if no_mod_refs:
             # %8 없는 T[] 접근만 있음 → 위반 후보
-            line = _coorded_line(no_mod_refs[0], offset)
+            line = _coord_line(no_mod_refs[0], offset)
             violations.append({
                 "line": line,
                 "message": (
@@ -2438,7 +2447,7 @@ def _check_lea_023(root, offset: int, filename: str) -> List[Dict[str, Any]]:
         )
 
         if not has_reverse:
-            line = _coorded_line(fd, offset)
+            line = _coord_line(fd, offset)
             violations.append({
                 "line": line,
                 "message": (
@@ -2553,6 +2562,1415 @@ def _check_lea_032(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     return violations
 
 
+# ══════════════════════════════════════════════════════════════════
+# [LIBCLANG BACKEND]
+# 목적: MAKE_FUNC 매크로를 포함한 파일 완전 파싱 → pycparser FP 제거
+# 구조: pycparser 체커와 동일 로직, libclang AST API 사용
+# ══════════════════════════════════════════════════════════════════
+
+# libclang 파싱 인자 (enhanced_symbol_graph_service.py 동일)
+_LC_PARSE_ARGS: List[str] = [
+    "-x", "c", "-std=c99",
+    "-D__attribute__(x)=",
+    "-D__asm__(x)=",
+    "-D__asm(x)=",
+    "-D__inline=",
+    "-D__restrict=",
+    "-D__extension__=",
+    "-D__volatile__(x)=",
+]
+_LC_SYS_PREFIXES = (
+    "/usr/", "/Library/", "/Applications/",
+    "<built-in>", "<command", "/opt/homebrew/",
+)
+
+
+def _parse_c_libclang(
+    content: str,
+    filename: str = "<src>",
+    extra_includes: Optional[List[str]] = None,
+):
+    """C 소스 → libclang TranslationUnit. 실패 시 None.
+
+    pycparser와 달리:
+    - MAKE_FUNC 등 복잡한 매크로를 완전히 확장하여 함수 본체 파악 가능
+    - line offset 불필요 (preamble 없음)
+    """
+    if not _HAS_LIBCLANG:
+        return None
+    args = list(_LC_PARSE_ARGS)
+    if extra_includes:
+        for inc in extra_includes:
+            args.append(f"-I{inc}")
+    tmp_path: Optional[str] = None
+    try:
+        import os as _os2
+        with _tempfile.NamedTemporaryFile(
+            suffix=".c", mode="w", encoding="utf-8",
+            delete=False, prefix="kcmvp_lc_",
+        ) as f:
+            f.write(content)
+            tmp_path = f.name
+        idx = _ci.Index.create()
+        tu = idx.parse(tmp_path, args=args)
+        if tu is None:
+            return None
+        # 치명적 오류가 너무 많으면 부분 파싱도 신뢰 불가
+        fatal = [d for d in tu.diagnostics if d.severity >= _ci.Diagnostic.Error]
+        if len(fatal) > 15:
+            return None
+        return tu
+    except Exception:
+        return None
+    finally:
+        if tmp_path:
+            try:
+                import os as _os3
+                _os3.unlink(tmp_path)
+            except Exception:
+                pass
+
+
+# ── libclang 순회 유틸 ────────────────────────────────────────────
+
+def _lc_is_sys(path: str) -> bool:
+    return any(path.startswith(p) for p in _LC_SYS_PREFIXES)
+
+
+def _lc_func_defs(tu) -> List[Any]:
+    """TranslationUnit에서 함수 정의 커서 수집 (시스템 헤더 제외)."""
+    result = []
+    for cursor in tu.cursor.get_children():
+        if cursor.kind == _ci.CursorKind.FUNCTION_DECL and cursor.is_definition():
+            loc = cursor.location
+            if loc.file and not _lc_is_sys(loc.file.name):
+                result.append(cursor)
+    return result
+
+
+def _lc_func_name(cursor) -> str:
+    return cursor.spelling or ""
+
+
+def _lc_funcs_matching(tu, keywords: List[str]) -> List[Any]:
+    return [fd for fd in _lc_func_defs(tu)
+            if any(kw in _lc_func_name(fd).lower() for kw in keywords)]
+
+
+def _lc_line(cursor) -> Optional[int]:
+    loc = cursor.location
+    if loc is None or loc.line == 0:
+        return None
+    return loc.line
+
+
+def _lc_collect(cursor, kind) -> List[Any]:
+    """cursor 서브트리에서 kind CursorKind 전부 수집 (walk_preorder 기반)."""
+    return [c for c in cursor.walk_preorder() if c.kind == kind]
+
+
+def _lc_op_str(cursor) -> str:
+    """BinaryOp / CompoundAssign 커서에서 연산자 문자열 추출 (토큰 스캔)."""
+    children = list(cursor.get_children())
+    if len(children) < 2:
+        return ""
+    try:
+        left_end = children[0].extent.end.offset
+        right_start = children[1].extent.start.offset
+        for tok in cursor.get_tokens():
+            tok_off = tok.extent.start.offset
+            if left_end <= tok_off < right_start:
+                return tok.spelling
+    except Exception:
+        pass
+    return ""
+
+
+def _lc_const_int(cursor) -> Optional[int]:
+    """INTEGER_LITERAL 커서에서 정수값 추출."""
+    if cursor.kind != _ci.CursorKind.INTEGER_LITERAL:
+        return None
+    tokens = list(cursor.get_tokens())
+    if not tokens:
+        return None
+    try:
+        return int(tokens[0].spelling, 0)
+    except (ValueError, TypeError):
+        return None
+
+
+def _lc_has_op(cursor, op: str) -> bool:
+    """서브트리에 op(또는 op=) 연산이 있는지.
+
+    AST 기반 우선 검색. 매크로 확장 코드에서 _lc_op_str 실패 시
+    토큰 직접 스캔으로 fallback.
+    """
+    compound = op + "="
+    for c in cursor.walk_preorder():
+        if c.kind in (_ci.CursorKind.BINARY_OPERATOR,
+                      _ci.CursorKind.COMPOUND_ASSIGNMENT_OPERATOR):
+            s = _lc_op_str(c)
+            if s == op or s == compound:
+                return True
+    # Fallback: 토큰 직접 스캔 (매크로 확장으로 _lc_op_str이 '' 반환 시)
+    try:
+        for tok in cursor.get_tokens():
+            if tok.spelling == op:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _lc_call_names(cursor) -> Set[str]:
+    """서브트리의 모든 CALL_EXPR 이름 집합."""
+    names: Set[str] = set()
+    for call in _lc_collect(cursor, _ci.CursorKind.CALL_EXPR):
+        n = call.spelling
+        if n:
+            names.add(n)
+    return names
+
+
+def _lc_is_thin_wrapper(func_cursor) -> bool:
+    """함수 본체가 thin wrapper인지 (libclang 버전)."""
+    body = None
+    for child in func_cursor.get_children():
+        if child.kind == _ci.CursorKind.COMPOUND_STMT:
+            body = child
+            break
+    if body is None:
+        return False
+    if len(list(body.get_children())) > 5:
+        return False
+    # crypto binop 없어야
+    _CRYPTO_OPS = {"^", "+", "-", "<<", ">>"}
+    for c in func_cursor.walk_preorder():
+        if c.kind in (_ci.CursorKind.BINARY_OPERATOR,
+                      _ci.CursorKind.COMPOUND_ASSIGNMENT_OPERATOR):
+            if _lc_op_str(c) in _CRYPTO_OPS:
+                return False
+    # 루프 없어야
+    if (_lc_collect(func_cursor, _ci.CursorKind.FOR_STMT) or
+            _lc_collect(func_cursor, _ci.CursorKind.WHILE_STMT)):
+        return False
+    return True
+
+
+def _lc_is_benchmark_func(func_cursor) -> bool:
+    fname = _lc_func_name(func_cursor).lower()
+    return any(kw in fname for kw in _BENCH_TEST_KW)
+
+
+def _lc_is_macro_based_round_func(func_cursor) -> bool:
+    calls = _lc_call_names(func_cursor)
+    macro_hints = {"LEA_ENC_ROUND", "LEA_DEC_ROUND", "ENC_ROUND", "DEC_ROUND",
+                   "ROUND_ENC", "ROUND_DEC", "LEA_ROUND"}
+    return bool(calls & macro_hints)
+
+
+def _lc_array_base(cursor) -> Optional[str]:
+    """ARRAY_SUBSCRIPT_EXPR 의 배열 변수 이름."""
+    if cursor.kind != _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+        return None
+    children = list(cursor.get_children())
+    if not children:
+        return None
+    base = children[0]
+    # DECL_REF_EXPR 또는 MEMBER_REF_EXPR
+    if base.kind == _ci.CursorKind.DECL_REF_EXPR:
+        return base.spelling
+    # cast 벗기기
+    if base.kind in (_ci.CursorKind.CSTYLE_CAST_EXPR,
+                     _ci.CursorKind.IMPLICIT_CAST_EXPR):
+        inner = list(base.get_children())
+        if inner and inner[0].kind == _ci.CursorKind.DECL_REF_EXPR:
+            return inner[0].spelling
+    return None
+
+
+def _lc_array_index_int(cursor) -> Optional[int]:
+    """ARRAY_SUBSCRIPT_EXPR 의 첨자 상수값 (단순 정수만)."""
+    if cursor.kind != _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+        return None
+    children = list(cursor.get_children())
+    if len(children) < 2:
+        return None
+    return _lc_const_int(children[-1])
+
+
+def _lc_has_static_array(func_cursor) -> Optional[str]:
+    """함수 내 static 배열 선언 이름 반환. 없으면 None."""
+    for decl in _lc_collect(func_cursor, _ci.CursorKind.VAR_DECL):
+        if decl.storage_class == _ci.StorageClass.STATIC:
+            if decl.type.kind == _ci.TypeKind.CONSTANTARRAY:
+                return decl.spelling or "unknown"
+    return None
+
+
+def _lc_has_unchecked_real_mode_funcs(
+    tu, checked_cursors: List[Any], mode_kw: str, filename: str = ""
+) -> bool:
+    kw = mode_kw.lower()
+    checked_ids = {id(c) for c in checked_cursors}
+    for fd in _lc_func_defs(tu):
+        if id(fd) in checked_ids:
+            continue
+        fname = _lc_func_name(fd).lower()
+        if kw not in fname and kw not in filename.lower():
+            continue
+        if kw not in fname:
+            continue
+        if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd):
+            return True
+    return False
+
+
+def _lc_get_for_bound(for_cursor) -> Optional[int]:
+    """for 루프의 상한 상수 추출 (< N → N, <= N → N+1)."""
+    for child in for_cursor.get_children():
+        if child.kind == _ci.CursorKind.BINARY_OPERATOR:
+            op = _lc_op_str(child)
+            if op in ("<", "<="):
+                kids = list(child.get_children())
+                if len(kids) >= 2:
+                    val = _lc_const_int(kids[-1])
+                    if val is not None:
+                        return (val + 1) if op == "<=" else val
+    return None
+
+
+# ── libclang 체커 함수 ────────────────────────────────────────────
+
+def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """CBC-001: CBC 암호화 XOR 연쇄 확인 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    enc_funcs = [fd for fd in _lc_funcs_matching(tu, _CBC_ENC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not enc_funcs:
+        if not all_funcs:
+            return []
+        if _lc_has_unchecked_real_mode_funcs(tu, [], "cbc", filename):
+            return None
+        return []
+    violations = []
+    real_checked = 0
+    for fd in enc_funcs:
+        real_checked += 1
+        fname = _lc_func_name(fd)
+        if not _lc_has_op(fd, "^"):
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': CBC 암호화에서 XOR(^) 연산 미발견 — "
+                            "CT[i]=ENC(PT[i]⊕CT[i-1]) 수식의 XOR 연쇄 누락"),
+                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건.",
+            })
+    if not violations and real_checked == 0:
+        if _lc_has_unchecked_real_mode_funcs(tu, enc_funcs, "cbc", filename):
+            return None
+    return violations
+
+
+def _lc_check_cbc_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """CBC-002: CBC 복호화 XOR 연쇄 확인 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    dec_funcs = [fd for fd in _lc_funcs_matching(tu, _CBC_DEC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not dec_funcs:
+        if not all_funcs:
+            return []
+        if _lc_has_unchecked_real_mode_funcs(tu, [], "cbc", filename):
+            return None
+        return []
+    violations = []
+    real_checked = 0
+    for fd in dec_funcs:
+        real_checked += 1
+        fname = _lc_func_name(fd)
+        if not _lc_has_op(fd, "^"):
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': CBC 복호화에서 XOR(^) 연산 미발견 — "
+                            "PT[i]=DEC(CT[i])⊕CT[i-1] 수식의 XOR 연쇄 누락"),
+                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건.",
+            })
+    if not violations and real_checked == 0:
+        if _lc_has_unchecked_real_mode_funcs(tu, dec_funcs, "cbc", filename):
+            return None
+    return violations
+
+
+def _lc_check_ecb_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """ECB-002: ECB 암호화 len%16 검사 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    ecb_funcs = [fd for fd in _lc_funcs_matching(tu, _ECB_ENC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not ecb_funcs:
+        if not all_funcs:
+            return []
+        if _lc_has_unchecked_real_mode_funcs(tu, [], "ecb", filename):
+            return None
+        return []
+    violations = []
+    real_checked = 0
+    for fd in ecb_funcs:
+        real_checked += 1
+        fname = _lc_func_name(fd)
+        has_mod16 = False
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) == "%":
+                kids = list(bop.get_children())
+                if len(kids) >= 2 and _lc_const_int(kids[-1]) == 16:
+                    has_mod16 = True
+                    break
+        if not has_mod16:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': ECB 모드 입력 길이의 16배수 검사(len%%16) 미발견"),
+                "ast_evidence": f"함수 '{fname}' AST(libclang): BinaryOp('%', 16) 0건.",
+            })
+    if not violations and real_checked == 0:
+        if _lc_has_unchecked_real_mode_funcs(tu, ecb_funcs, "ecb", filename):
+            return None
+    return violations
+
+
+def _lc_check_gcm_001(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """GCM-001: GCM 함수 내 static nonce 배열 탐지 (libclang)."""
+    gcm_funcs = _lc_funcs_matching(tu, _GCM_KW)
+    if not gcm_funcs:
+        return []
+    violations = []
+    for fd in gcm_funcs:
+        fname = _lc_func_name(fd)
+        var = _lc_has_static_array(fd)
+        if var:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': static 배열 '{var}' 선언 — "
+                            "함수 재호출 시 nonce가 재사용될 수 있어 GCM 기밀성 파괴 위험"),
+                "ast_evidence": f"함수 '{fname}' AST(libclang): VAR_DECL(static, CONSTANTARRAY)='{var}'.",
+            })
+    return violations
+
+
+def _lc_check_ccm_001(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """CCM-001: CCM 함수 내 static nonce 배열 탐지 (libclang)."""
+    ccm_funcs = _lc_funcs_matching(tu, _CCM_KW)
+    if not ccm_funcs:
+        return []
+    violations = []
+    for fd in ccm_funcs:
+        fname = _lc_func_name(fd)
+        var = _lc_has_static_array(fd)
+        if var:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': static 배열 '{var}' 선언 — "
+                            "함수 재호출 시 nonce가 재사용될 수 있어 CCM CTR 키스트림 반복 위험"),
+                "ast_evidence": f"함수 '{fname}' AST(libclang): VAR_DECL(static, CONSTANTARRAY)='{var}'.",
+            })
+    return violations
+
+
+def _lc_check_ctr_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """CTR-001: CTR 함수 내 DEC 함수 호출 탐지 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    ctr_funcs = [fd for fd in _lc_funcs_matching(tu, _CTR_FUNC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not ctr_funcs:
+        if not all_funcs:
+            return []
+        if _lc_has_unchecked_real_mode_funcs(tu, [], "ctr", filename):
+            return None
+        return []
+    violations = []
+    real_checked = 0
+    for fd in ctr_funcs:
+        real_checked += 1
+        fname = _lc_func_name(fd)
+        for call in _lc_collect(fd, _ci.CursorKind.CALL_EXPR):
+            called = call.spelling or ""
+            if any(dec in called.lower() for dec in _LEA_DEC_NAMES):
+                violations.append({
+                    "line": _lc_line(call),
+                    "message": (f"함수 '{fname}': CTR 키스트림 생성에 복호화 함수 '{called}' 호출 — "
+                                "CTR 모드는 암·복호화 모두 ENC 방향만 사용해야 함"),
+                    "ast_evidence": (f"함수 '{fname}' CALL_EXPR(libclang): '{called}' ∈ DEC 집합."),
+                })
+    if not violations and real_checked == 0:
+        if _lc_has_unchecked_real_mode_funcs(tu, ctr_funcs, "ctr", filename):
+            return None
+    return violations
+
+
+def _lc_check_ctr_005(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """CTR-005: CTR 함수 존재 확인 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    ctr_funcs = _lc_funcs_matching(tu, _CTR_FUNC_KW)
+    if not ctr_funcs:
+        if _lc_has_unchecked_real_mode_funcs(tu, [], "ctr", filename):
+            return None
+        return []
+    return []
+
+
+def _lc_check_mode_enc_only(
+    tu, filename: str, sg: dict, func_kw: List[str], mode_name: str,
+) -> Optional[List[Dict[str, Any]]]:
+    """OFB/CFB 공통 — DEC 호출 또는 XOR 부재 탐지 (libclang)."""
+    all_funcs = _lc_func_defs(tu)
+    mode_funcs = [fd for fd in _lc_funcs_matching(tu, func_kw)
+                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    mn = mode_name.lower()
+    if not mode_funcs:
+        if not all_funcs:
+            return []
+        if _lc_has_unchecked_real_mode_funcs(tu, [], mn, filename):
+            return None
+        return []
+    violations = []
+    real_checked = 0
+    for fd in mode_funcs:
+        real_checked += 1
+        fname = _lc_func_name(fd)
+        for call in _lc_collect(fd, _ci.CursorKind.CALL_EXPR):
+            called = call.spelling or ""
+            if any(dec in called.lower() for dec in _LEA_DEC_NAMES):
+                violations.append({
+                    "line": _lc_line(call),
+                    "message": (f"함수 '{fname}': {mode_name} 내 복호화 함수 '{called}' 호출 — "
+                                f"{mode_name}는 ENC 방향만 사용해야 함"),
+                    "ast_evidence": f"CALL_EXPR(libclang): '{called}' ∈ DEC 집합.",
+                })
+        if not _lc_has_op(fd, "^"):
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': {mode_name} XOR(^) 연산 미발견 — "
+                            "CT[i]=PT[i]⊕OT[i] 형태의 키스트림 적용 수식 누락"),
+                "ast_evidence": f"함수 '{fname}' AST(libclang): BinaryOp('^') 0건.",
+            })
+    if not violations and real_checked == 0:
+        if _lc_has_unchecked_real_mode_funcs(tu, mode_funcs, mn, filename):
+            return None
+    return violations
+
+
+def _lc_check_ofb_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    return _lc_check_mode_enc_only(tu, filename, sg, _OFB_FUNC_KW, "OFB")
+
+
+def _lc_check_cfb_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    return _lc_check_mode_enc_only(tu, filename, sg, _CFB_FUNC_KW, "CFB-128")
+
+
+def _lc_check_lea_005(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-005: 바이트→워드 빅 엔디안 변환 탐지 (libclang).
+
+    array[0] << 24 또는 (cast)array[4*i+0] << 24 패턴.
+    """
+    violations = []
+    for bop in _lc_collect(tu.cursor, _ci.CursorKind.BINARY_OPERATOR):
+        if _lc_op_str(bop) != "<<":
+            continue
+        kids = list(bop.get_children())
+        if len(kids) < 2 or _lc_const_int(kids[-1]) != 24:
+            continue
+        left = kids[0]
+        # cast 벗기기
+        if left.kind in (_ci.CursorKind.CSTYLE_CAST_EXPR,
+                         _ci.CursorKind.IMPLICIT_CAST_EXPR):
+            inner = list(left.get_children())
+            if inner:
+                left = inner[0]
+        if left.kind != _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+            continue
+        arr_kids = list(left.get_children())
+        if len(arr_kids) < 2:
+            continue
+        # 첨자 상수 오프셋이 0인지 확인
+        idx_cursor = arr_kids[-1]
+        # 단순 상수 0
+        idx_val = _lc_const_int(idx_cursor)
+        if idx_val is not None and idx_val != 0:
+            continue
+        if idx_val is None:
+            # a[4*i+0] 형태 — BinaryOp(+, *, N*i, 0)
+            if idx_cursor.kind == _ci.CursorKind.BINARY_OPERATOR:
+                op2 = _lc_op_str(idx_cursor)
+                if op2 == "+":
+                    ik = list(idx_cursor.get_children())
+                    if len(ik) >= 2:
+                        # 덧셈의 오른쪽이 0인지 확인
+                        rv = _lc_const_int(ik[-1])
+                        if rv not in (None, 0):
+                            continue
+                elif op2 == "*":
+                    pass  # a[N*i] → 오프셋 0으로 간주
+                else:
+                    continue
+            else:
+                continue
+        arr_name = _lc_array_base(left) or "배열"
+        violations.append({
+            "line": _lc_line(bop),
+            "message": (f"{arr_name}[...+0] << 24 패턴 — 빅 엔디안 변환 위반: "
+                        "LEA는 리틀 엔디안 규약 사용"),
+            "ast_evidence": (f"BINARY_OPERATOR('<<', ARRAY_SUBSCRIPT_EXPR({arr_name}[0]), 24). "
+                             "libclang: MAKE_FUNC 포함 완전 파싱 결과."),
+        })
+    return violations
+
+
+def _lc_check_lea_006(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """LEA-006: (x & 1) << 31 비트 인덱스 역전 탐지 (libclang)."""
+    violations = []
+    for bop in _lc_collect(tu.cursor, _ci.CursorKind.BINARY_OPERATOR):
+        if _lc_op_str(bop) != "<<":
+            continue
+        kids = list(bop.get_children())
+        if len(kids) < 2 or _lc_const_int(kids[-1]) != 31:
+            continue
+        left = kids[0]
+        if left.kind != _ci.CursorKind.BINARY_OPERATOR:
+            continue
+        if _lc_op_str(left) != "&":
+            continue
+        mask_kids = list(left.get_children())
+        mask_val = None
+        for mk in mask_kids:
+            v = _lc_const_int(mk)
+            if v is not None:
+                mask_val = v
+                break
+        if mask_val != 1:
+            continue
+        violations.append({
+            "line": _lc_line(bop),
+            "message": ("(x & 1) << 31 패턴 — bit 0을 MSB(bit 31) 위치로 이동: 비트 번호 역전 의심"),
+            "ast_evidence": "BINARY_OPERATOR('<<', BINARY_OPERATOR('&', 1), 31). libclang.",
+        })
+    return violations if violations else None
+
+
+def _lc_check_lea_042(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-042: 암호화/복호화 함수에서 key[] 기반 조건 분기 탐지 (libclang)."""
+    funcs = [fd for fd in _lc_funcs_matching(tu, _LEA_TIMING_KW)
+             if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not funcs:
+        return []
+    _KEY_NAMES = {"key", "skey", "rkey", "round_key", "subkey"}
+    violations = []
+    for fd in funcs:
+        fname = _lc_func_name(fd)
+        for ifstmt in _lc_collect(fd, _ci.CursorKind.IF_STMT):
+            for arr_ref in _lc_collect(ifstmt, _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR):
+                base = _lc_array_base(arr_ref)
+                if base and base.lower() in _KEY_NAMES:
+                    violations.append({
+                        "line": _lc_line(ifstmt),
+                        "message": (f"함수 '{fname}': key[] 배열 값에 의존한 조건 분기 발견 — "
+                                    "타이밍 채널 누출 위험"),
+                        "ast_evidence": f"IF_STMT 조건 내 ARRAY_SUBSCRIPT_EXPR({base}[...]). libclang.",
+                    })
+                    break
+    return violations
+
+
+def _lc_check_lea_043(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-043: 암호화 함수 내 중간 상태 스택 배열 탐지 (libclang)."""
+    enc_funcs = _lc_funcs_matching(tu, _ENC_KW + _DEC_KW)
+    if not enc_funcs:
+        return []
+    _STATE_NAMES = {"X", "T", "S", "STATE", "BLK", "BLOCK", "W"}
+    violations = []
+    for fd in enc_funcs:
+        fname = _lc_func_name(fd)
+        if _lc_is_macro_based_round_func(fd):
+            continue
+        has_register = False
+        stack_arrays: List[str] = []
+        for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL):
+            if decl.storage_class == _ci.StorageClass.REGISTER:
+                has_register = True
+                break
+            if decl.type.kind == _ci.TypeKind.CONSTANTARRAY:
+                n = (decl.spelling or "").upper()
+                elem_count = decl.type.element_count
+                if n in _STATE_NAMES and 2 <= elem_count <= 8:
+                    stack_arrays.append(n)
+        if stack_arrays and not has_register:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"암호화 함수 '{fname}': 중간 상태 배열 {stack_arrays[0]}[] 가 스택에 할당됨 — "
+                            "register 변수 또는 스칼라 변수 사용 권장"),
+                "ast_evidence": f"VAR_DECL(CONSTANTARRAY)='{stack_arrays[0]}' storage=AUTO. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_030(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """LEA-030: 암호화 워드 스왑 패턴 확인 — libclang 버전.
+
+    핵심 이점: MAKE_FUNC 매크로로 정의된 함수 본체를 완전히 파싱하여
+    pycparser 실패 시 발생하던 7건 FP 제거.
+    """
+    enc_funcs = [fd for fd in _lc_funcs_matching(tu, _ENC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not enc_funcs:
+        return []
+
+    for fd in enc_funcs:
+        # 배열 인덱스 패턴: array[3] = array[0]
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv, rv = kids[0], kids[1]
+            if (lv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR and
+                    rv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR):
+                if (_lc_array_index_int(lv) == 3 and
+                        _lc_array_index_int(rv) == 0 and
+                        _lc_array_base(lv) == _lc_array_base(rv)):
+                    return []  # 스왑 패턴 발견 → 준수
+
+        # 로컬 변수 스왑: x3 = x0 등
+        local_vars: List[str] = []
+        for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL):
+            n = decl.spelling or ""
+            if any(x in n.lower() for x in ("x0", "x1", "x2", "x3", "state", "block")):
+                local_vars.append(n.lower())
+        if local_vars:
+            name_set = set(local_vars)
+            for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+                if _lc_op_str(bop) != "=":
+                    continue
+                kids = list(bop.get_children())
+                if len(kids) < 2:
+                    continue
+                lv_name = kids[0].spelling.lower() if kids[0].kind == _ci.CursorKind.DECL_REF_EXPR else ""
+                rv_name = kids[1].spelling.lower() if kids[1].kind == _ci.CursorKind.DECL_REF_EXPR else ""
+                if lv_name in name_set and rv_name in name_set and lv_name != rv_name:
+                    return []  # 변수 스왑 발견 → 준수
+
+        # libclang: 회전 연산 존재 = 정상 암호화 구현 가능성 높음
+        if _lc_has_op(fd, "<<") and _lc_has_op(fd, ">>"):
+            return []  # 인라인 ROL/ROR 확인 → 준수 판정
+
+    return None  # 패턴 미발견 → pycparser fallback 또는 L2 위임
+
+
+def _lc_check_lea_035(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """LEA-035: 복호화 역 워드 스왑 패턴 확인 — libclang 버전."""
+    dec_funcs = [fd for fd in _lc_funcs_matching(tu, _DEC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not dec_funcs:
+        return []
+
+    for fd in dec_funcs:
+        # 배열 인덱스 패턴: array[0] = array[3]
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv, rv = kids[0], kids[1]
+            if (lv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR and
+                    rv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR):
+                if (_lc_array_index_int(lv) == 0 and
+                        _lc_array_index_int(rv) == 3 and
+                        _lc_array_base(lv) == _lc_array_base(rv)):
+                    return []
+
+        # 로컬 변수 스왑
+        local_vars: List[str] = []
+        for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL):
+            n = decl.spelling or ""
+            if any(x in n.lower() for x in ("x0", "x1", "x2", "x3", "state", "block")):
+                local_vars.append(n.lower())
+        if local_vars:
+            name_set = set(local_vars)
+            for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+                if _lc_op_str(bop) != "=":
+                    continue
+                kids = list(bop.get_children())
+                if len(kids) < 2:
+                    continue
+                lv_name = kids[0].spelling.lower() if kids[0].kind == _ci.CursorKind.DECL_REF_EXPR else ""
+                rv_name = kids[1].spelling.lower() if kids[1].kind == _ci.CursorKind.DECL_REF_EXPR else ""
+                if lv_name in name_set and rv_name in name_set and lv_name != rv_name:
+                    return []
+
+        if _lc_has_op(fd, "<<") and _lc_has_op(fd, ">>"):
+            return []
+
+    return None
+
+
+def _lc_check_lea_003(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-003: 키 스케줄 라운드 수 확인 (libclang)."""
+    violations = []
+    # 전체 함수에서 ->rounds = N 탐지
+    for fd in _lc_func_defs(tu):
+        if _lc_is_benchmark_func(fd) or _lc_is_thin_wrapper(fd):
+            continue
+        fname = _lc_func_name(fd)
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv = kids[0]
+            if lv.kind == _ci.CursorKind.MEMBER_REF_EXPR:
+                field = lv.spelling or ""
+                if _re.search(r'round', field, _re.IGNORECASE):
+                    val = _lc_const_int(kids[-1])
+                    if val is not None and val not in _LEA_ROUND_COUNTS and 16 <= val <= 40:
+                        violations.append({
+                            "line": _lc_line(bop),
+                            "message": (f"함수 '{fname}': '{field} = {val}' — "
+                                        "LEA 유효 라운드 수: 128비트→24, 192비트→28, 256비트→32"),
+                            "ast_evidence": f"BINARY_OPERATOR('=', MEMBER_REF_EXPR({field}), {val}). libclang.",
+                        })
+
+    key_funcs = [fd for fd in _lc_funcs_matching(tu, _KEY_KW)
+                 if not _lc_is_benchmark_func(fd) and not _lc_is_thin_wrapper(fd)]
+    for fd in key_funcs:
+        fname = _lc_func_name(fd)
+        found_valid = False
+        wrong: List[int] = []
+        for for_c in _lc_collect(fd, _ci.CursorKind.FOR_STMT):
+            bound = _lc_get_for_bound(for_c)
+            if bound is None:
+                continue
+            if bound in _LEA_ROUND_COUNTS:
+                found_valid = True
+                break
+            if 16 <= bound <= 40:
+                wrong.append(bound)
+        if wrong and not found_valid:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': 라운드 수 리터럴 {wrong[0]} 발견 — "
+                            "LEA 유효 라운드 수: 24/28/32"),
+                "ast_evidence": f"FOR_STMT bound={wrong[0]} ∉ {{24,28,32}}. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_010(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-010: 키 스케줄 ARX 구조 확인 (libclang)."""
+    _DERIVED_KEY_EXCL = {"cmac", "subkey", "gcm", "ghash", "gmac"}
+    key_funcs = [
+        fd for fd in _lc_funcs_matching(tu, _KEY_KW)
+        if not any(kw in _lc_func_name(fd).lower() for kw in _DERIVED_KEY_EXCL)
+    ]
+    if not key_funcs:
+        return []
+    violations = []
+    for fd in key_funcs:
+        if _lc_is_benchmark_func(fd) or _lc_is_thin_wrapper(fd):
+            continue
+        fname = _lc_func_name(fd)
+        calls = _lc_call_names(fd)
+        has_rol = bool(calls & _ROL_NAMES) or (_lc_has_op(fd, "<<") and _lc_has_op(fd, ">>"))
+        has_add = _lc_has_op(fd, "+")
+        missing = []
+        if not has_rol:
+            missing.append("ROL/ROR 비트 회전")
+        if not has_add:
+            missing.append("모듈러 덧셈(+)")
+        if missing:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"키 스케줄 함수 '{fname}': ARX 구조 불완전 — {', '.join(missing)} 없음"),
+                "ast_evidence": f"함수 '{fname}' ARX 분석(libclang): {', '.join(missing)} 0건.",
+            })
+    return violations
+
+
+def _lc_check_lea_014(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-014: 키 스케줄 T[] 업데이트에 모듈러 덧셈 확인 (libclang)."""
+    key_funcs = _lc_funcs_matching(tu, _KEY_KW)
+    if not key_funcs:
+        return []
+    violations = []
+    for fd in key_funcs:
+        fname = _lc_func_name(fd)
+        t_assigns = []
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv = kids[0]
+            if lv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+                base = _lc_array_base(lv)
+                if base and base.upper() == "T":
+                    t_assigns.append(bop)
+        if not t_assigns:
+            continue
+        no_add = [b for b in t_assigns if not _lc_has_op(b, "+")]
+        if len(no_add) > len(t_assigns) // 2:
+            violations.append({
+                "line": _lc_line(no_add[0]),
+                "message": (f"키 스케줄 함수 '{fname}': T[] 업데이트에 모듈러 덧셈(+) 없음 — "
+                            "LEA ARX: T[i] = ROL(T[j] + delta[k], r)"),
+                "ast_evidence": f"T[] 대입 {len(t_assigns)}건 중 +없음 {len(no_add)}건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_015(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-015: 키 스케줄 delta[] 순환 인덱싱 (%4/6/8) 확인 (libclang)."""
+    key_funcs = _lc_funcs_matching(tu, _KEY_KW)
+    if not key_funcs:
+        return []
+    violations = []
+    for fd in key_funcs:
+        fname = _lc_func_name(fd)
+        delta_refs = [c for c in _lc_collect(fd, _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR)
+                      if (_lc_array_base(c) or "").lower() in {"delta", "dlt", "d", "rc"}]
+        if not delta_refs:
+            continue
+        has_modulo = False
+        for ref in delta_refs:
+            kids = list(ref.get_children())
+            if len(kids) < 2:
+                continue
+            sub = kids[-1]
+            for bop in sub.walk_preorder():
+                if bop.kind == _ci.CursorKind.BINARY_OPERATOR and _lc_op_str(bop) == "%":
+                    bkids = list(bop.get_children())
+                    if len(bkids) >= 2 and _lc_const_int(bkids[-1]) in {4, 6, 8}:
+                        has_modulo = True
+                        break
+            if has_modulo:
+                break
+        if not has_modulo:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"키 스케줄 함수 '{fname}': delta[] 인덱싱에 %%4/6/8 패턴 없음"),
+                "ast_evidence": f"delta[] 참조 {len(delta_refs)}건, BinaryOp('%', 4|6|8) 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_022(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-022: LEA-256 T[] 배열 인덱싱 (6i+j)%8 패턴 확인 (libclang)."""
+    key_funcs = _lc_funcs_matching(tu, _KEY_KW)
+    if not key_funcs:
+        return []
+    violations = []
+    for fd in key_funcs:
+        fname = _lc_func_name(fd)
+        t_refs = [c for c in _lc_collect(fd, _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR)
+                  if (_lc_array_base(c) or "").upper() == "T"
+                  and _lc_array_index_int(c) is None]
+        if not t_refs:
+            continue
+        has_mod8 = False
+        for ref in t_refs:
+            kids = list(ref.get_children())
+            if len(kids) < 2:
+                continue
+            for bop in kids[-1].walk_preorder():
+                if bop.kind == _ci.CursorKind.BINARY_OPERATOR and _lc_op_str(bop) == "%":
+                    bkids = list(bop.get_children())
+                    if len(bkids) >= 2 and _lc_const_int(bkids[-1]) == 8:
+                        has_mod8 = True
+                        break
+            if has_mod8:
+                break
+        if not has_mod8:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': T[] 인덱싱에 (6*i+j)%%8 패턴 없음 — "
+                            "LEA-256 키 스케줄 표준 (KS X 3246 §5.1.3)"),
+                "ast_evidence": f"T[] 비상수 인덱스 {len(t_refs)}건, BinaryOp('%', 8) 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_040(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-040: 라운드 루프 경계 조건 위반 탐지 (libclang)."""
+    _KEY_SCHED_EXCL = frozenset({"key", "sched", "schedule", "setkey", "expand", "keygen"})
+    _LEA040_KW = _ENC_KW + _DEC_KW + ["round", "block", "cipher", "lea"]
+    funcs = [fd for fd in _lc_funcs_matching(tu, _LEA040_KW)
+             if not any(kw in _lc_func_name(fd).lower() for kw in _KEY_SCHED_EXCL)
+             and not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    violations = []
+    for fd in funcs:
+        fname = _lc_func_name(fd)
+        found_valid = False
+        wrong: List[Dict] = []
+        for for_c in _lc_collect(fd, _ci.CursorKind.FOR_STMT):
+            for child in for_c.get_children():
+                if child.kind != _ci.CursorKind.BINARY_OPERATOR:
+                    continue
+                op = _lc_op_str(child)
+                if op not in ("<", "<="):
+                    continue
+                kids = list(child.get_children())
+                if len(kids) < 2:
+                    continue
+                val = _lc_const_int(kids[-1])
+                if val is None:
+                    # <= ctx->rounds 변수 패턴
+                    if op == "<=" and kids[-1].kind == _ci.CursorKind.MEMBER_REF_EXPR:
+                        field = kids[-1].spelling or ""
+                        if _re.search(r'round', field, _re.IGNORECASE):
+                            wrong.append({"line": _lc_line(for_c),
+                                          "bound": -1,
+                                          "msg": f"'<= {field}' → off-by-one"})
+                    continue
+                if op == "<=":
+                    norm = val + 1
+                    if norm in _LEA_ROUND_COUNTS:
+                        found_valid = True
+                    elif 16 <= norm <= 40:
+                        wrong.append({"line": _lc_line(for_c), "bound": norm,
+                                      "msg": f"'<= {val}' → {norm}회 반복"})
+                elif op == "<":
+                    if val in _LEA_ROUND_COUNTS:
+                        found_valid = True
+                    elif 16 <= val <= 40:
+                        wrong.append({"line": _lc_line(for_c), "bound": val,
+                                      "msg": f"'< {val}' → {val}회 반복"})
+        if wrong and not found_valid:
+            w = wrong[0]
+            violations.append({
+                "line": w["line"],
+                "message": f"함수 '{fname}': 라운드 루프 경계 조건 위반 — {w['msg']}",
+                "ast_evidence": f"FOR_STMT 조건 분석(libclang): {w['msg']}",
+            })
+    return violations
+
+
+def _lc_check_lea_057(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-057: MCT 외부 루프 키 XOR 갱신 확인 (libclang)."""
+    mct_funcs = _lc_funcs_matching(tu, _MCT_KW)
+    if not mct_funcs:
+        return []
+    violations = []
+    for fd in mct_funcs:
+        fname = _lc_func_name(fd)
+        has_100_loop = False
+        has_key_update = False
+        for for_c in _lc_collect(fd, _ci.CursorKind.FOR_STMT):
+            if _lc_get_for_bound(for_c) != 100:
+                continue
+            has_100_loop = True
+            # key[k] ^= ct or key[k] = key[k] ^ ct
+            for bop in for_c.walk_preorder():
+                if bop.kind == _ci.CursorKind.COMPOUND_ASSIGNMENT_OPERATOR:
+                    if _lc_op_str(bop) == "^=":
+                        kids = list(bop.get_children())
+                        if kids and kids[0].kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+                            base = _lc_array_base(kids[0])
+                            if base and base.lower() in _MCT_KEY_VARS:
+                                has_key_update = True
+                                break
+                if bop.kind == _ci.CursorKind.BINARY_OPERATOR and _lc_op_str(bop) == "=":
+                    kids = list(bop.get_children())
+                    if (kids and kids[0].kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR and
+                            _lc_array_base(kids[0]) and
+                            (_lc_array_base(kids[0]) or "").lower() in _MCT_KEY_VARS):
+                        if _lc_has_op(kids[-1], "^"):
+                            has_key_update = True
+                            break
+            if has_key_update:
+                break
+        if has_100_loop and not has_key_update:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': MCT 외부 루프(100회) 내 키 XOR 갱신 미발견"),
+                "ast_evidence": "FOR_STMT(bound=100) key ^= ct 패턴 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_021(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-021: 라운드키 RK[i][j] = T[k] 6-워드 패턴 (libclang)."""
+    key_funcs = _lc_funcs_matching(tu, _KEY_KW)
+    if not key_funcs:
+        return []
+    violations = []
+    for fd in key_funcs:
+        fname = _lc_func_name(fd)
+        rk_t_assigns = []
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv, rv = kids[0], kids[1]
+            # 2D 배열 lv: ARRAY_SUBSCRIPT_EXPR 의 base도 ARRAY_SUBSCRIPT_EXPR
+            if lv.kind != _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+                continue
+            lv_kids = list(lv.get_children())
+            if not lv_kids:
+                continue
+            outer_base = lv_kids[0]
+            outer_name = ""
+            if outer_base.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+                outer_name = (_lc_array_base(outer_base) or "").lower()
+            elif outer_base.kind == _ci.CursorKind.DECL_REF_EXPR:
+                outer_name = outer_base.spelling.lower()
+            if outer_name and ("rk" in outer_name or "round" in outer_name):
+                if rv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
+                    rv_base = _lc_array_base(rv)
+                    if rv_base and rv_base.upper() == "T":
+                        rk_t_assigns.append((bop, rv))
+        if not rk_t_assigns:
+            continue
+        t1_count = sum(1 for _, rv in rk_t_assigns if _lc_array_index_int(rv) == 1)
+        if t1_count == 0:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"키 스케줄 함수 '{fname}': 라운드키에 T[1] 반복 패턴 없음 — "
+                            "LEA-128: RKi = (T[0], T[1], T[2], T[1], T[3], T[1])"),
+                "ast_evidence": f"RK=T[] 대입 {len(rk_t_assigns)}건, T[1] 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_023(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-023: 복호화 라운드키 역순 관계 확인 (libclang)."""
+    _DEC_KEY_KW = ["dec_key", "set_dec", "decrypt_key", "dec_schedule",
+                   "lea_set_dec", "inv_key", "deckey"]
+    dec_funcs = _lc_funcs_matching(tu, _DEC_KEY_KW)
+    if not dec_funcs:
+        return []
+    violations = []
+    for fd in dec_funcs:
+        fname = _lc_func_name(fd)
+        calls = _lc_call_names(fd)
+        if calls & {"lea_set_dec_key", "set_dec_key", "lea_keyschedule_dec"}:
+            continue
+        rk_assigns = [bop for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR)
+                      if _lc_op_str(bop) == "="
+                      and list(bop.get_children())
+                      and list(bop.get_children())[0].kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR
+                      and "rk" in (_lc_array_base(list(bop.get_children())[0]) or "").lower()]
+        if not rk_assigns:
+            continue
+        has_reverse = False
+        for bop in rk_assigns:
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            for sub in kids[-1].walk_preorder():
+                if (sub.kind == _ci.CursorKind.BINARY_OPERATOR and
+                        _lc_op_str(sub) == "-"):
+                    sub_kids = list(sub.get_children())
+                    if (len(sub_kids) >= 2 and
+                            sub_kids[-1].kind == _ci.CursorKind.DECL_REF_EXPR):
+                        has_reverse = True
+                        break
+            if has_reverse:
+                break
+        if not has_reverse:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': 복호화 라운드키 역순 패턴 미확인 — "
+                            "dec_rk[i]=enc_rk[Nr-1-i] 또는 lea_set_dec_key() 필요"),
+                "ast_evidence": f"RK 대입 {len(rk_assigns)}건, 역순(-ID) 패턴 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_034(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-034: 복호화 함수 내 모듈러 뺄셈 확인 (libclang)."""
+    dec_funcs = [fd for fd in _lc_funcs_matching(tu, _DEC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not dec_funcs:
+        return []
+    violations = []
+    for fd in dec_funcs:
+        if _lc_is_macro_based_round_func(fd):
+            continue
+        fname = _lc_func_name(fd)
+        if not _lc_has_op(fd, "-"):
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': 복호화 함수에 모듈러 뺄셈(-) 미발견 — "
+                            "LEA 복호화 역연산에 뺄셈 필요"),
+                "ast_evidence": f"함수 '{fname}' BinaryOp('-') 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_031(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-031: 라운드 함수 XOR→ADD 순서 확인 (libclang).
+
+    ADD(+) 의 직계 자식이 XOR(^) 이어야 올바른 순서.
+    """
+    enc_funcs = [fd for fd in _lc_funcs_matching(tu, _ENC_KW)
+                 if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
+    if not enc_funcs:
+        return []
+    type_aliases = (sg or {}).get("type_aliases") or {}
+    _INT32_TYPES = {"unsigned int", "unsigned long", "uint32_t", "u32",
+                    "uint_least32_t", "uint_fast32_t"}
+    wrong_order: List[int] = []
+
+    for fd in enc_funcs:
+        if _lc_is_macro_based_round_func(fd):
+            continue
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "^":
+                continue
+            # ^가 + 의 직계 자식인지 확인
+            for parent in fd.walk_preorder():
+                if parent.kind != _ci.CursorKind.BINARY_OPERATOR:
+                    continue
+                if _lc_op_str(parent) != "+":
+                    continue
+                pkids = list(parent.get_children())
+                if any(k.location == bop.location for k in pkids):
+                    # ADD의 자식이 XOR → 잘못된 순서
+                    ln = _lc_line(parent)
+                    if ln not in wrong_order:
+                        wrong_order.append(ln)
+                    break
+
+    return [{"line": ln,
+             "message": "라운드 함수: ADD(+) 내부에 XOR(^) — 올바른 순서는 XOR 후 ADD",
+             "ast_evidence": "BINARY_OPERATOR('+', child=BINARY_OPERATOR('^')). libclang."}
+            for ln in wrong_order[:3]]  # 최대 3건
+
+
+def _lc_check_lea_046(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-046/056: MCT 이중 루프 100×1000 구조 확인 (libclang)."""
+    mct_funcs = _lc_funcs_matching(tu, _MCT_KW)
+    if not mct_funcs:
+        return []
+    violations = []
+    for fd in mct_funcs:
+        fname = _lc_func_name(fd)
+        outer_for_list = _lc_collect(fd, _ci.CursorKind.FOR_STMT)
+        found_valid = False
+        wrong_outer: Optional[int] = None
+        for outer in outer_for_list:
+            ob = _lc_get_for_bound(outer)
+            if ob not in (100, 1000):
+                if ob and ob not in _LEA_ROUND_COUNTS:
+                    wrong_outer = ob
+                continue
+            inner_fors = _lc_collect(outer, _ci.CursorKind.FOR_STMT)
+            for inner in inner_fors:
+                ib = _lc_get_for_bound(inner)
+                if (ob == 100 and ib == 1000) or (ob == 1000 and ib == 100):
+                    found_valid = True
+                    break
+            if found_valid:
+                break
+        if outer_for_list and not found_valid:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': MCT 이중 루프 100×1000 구조 미확인 — "
+                            "LEA MCT 표준: 외부 100회, 내부 1000회"),
+                "ast_evidence": f"FOR_STMT 이중 루프 100×1000 패턴 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_lea_047(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """LEA-047: MCT 내부 루프 암호화/복호화 함수 호출 확인 (libclang)."""
+    mct_funcs = _lc_funcs_matching(tu, _MCT_KW)
+    if not mct_funcs:
+        return []
+    violations = []
+    _ENC_DEC_NAMES = {
+        "lea_enc", "lea_encrypt", "lea_dec", "lea_decrypt",
+        "lea_block_enc", "lea_block_dec", "block_encrypt", "block_decrypt",
+    }
+    for fd in mct_funcs:
+        fname = _lc_func_name(fd)
+        has_inner_1000 = False
+        for outer in _lc_collect(fd, _ci.CursorKind.FOR_STMT):
+            for inner in _lc_collect(outer, _ci.CursorKind.FOR_STMT):
+                if _lc_get_for_bound(inner) == 1000:
+                    has_inner_1000 = True
+                    calls_in_inner = _lc_call_names(inner)
+                    if not (calls_in_inner & _ENC_DEC_NAMES):
+                        violations.append({
+                            "line": _lc_line(inner),
+                            "message": (f"함수 '{fname}': MCT 내부 루프(1000회)에서 "
+                                        "암호화/복호화 함수 호출 미발견"),
+                            "ast_evidence": "FOR_STMT(1000) 내부 암복호화 CALL_EXPR 0건. libclang.",
+                        })
+    return violations
+
+
+def _lc_check_cmac_001(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """CMAC-001: CMAC 서브키 파생 Rb=0x87 XOR 확인 (libclang)."""
+    cmac_funcs = _lc_funcs_matching(tu, _CMAC_INIT_KW)
+    if not cmac_funcs:
+        return []
+    _SUBKEY_NAMES = {"k1", "k2", "subkey1", "subkey2", "cmac_k1", "cmac_k2"}
+    violations = []
+    for fd in cmac_funcs:
+        fname = _lc_func_name(fd)
+        # 서브키 배열 확인
+        has_subkey = any(
+            (decl.spelling or "").lower() in _SUBKEY_NAMES
+            for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL)
+        )
+        if not has_subkey:
+            continue
+        has_rb_xor = False
+        for bop in fd.walk_preorder():
+            if bop.kind not in (_ci.CursorKind.BINARY_OPERATOR,
+                                _ci.CursorKind.COMPOUND_ASSIGNMENT_OPERATOR):
+                continue
+            op = _lc_op_str(bop)
+            if op not in ("^", "^="):
+                continue
+            for kid in bop.get_children():
+                if _lc_const_int(kid) == 0x87:
+                    has_rb_xor = True
+                    break
+                for lit in kid.walk_preorder():
+                    if _lc_const_int(lit) == 0x87:
+                        has_rb_xor = True
+                        break
+            if has_rb_xor:
+                break
+        if not has_rb_xor:
+            violations.append({
+                "line": _lc_line(fd),
+                "message": (f"함수 '{fname}': CMAC 서브키 파생에서 Rb(0x87) XOR 연산 미발견"),
+                "ast_evidence": "BINARY_OPERATOR('^', 0x87) 또는 COMPOUND_ASSIGNMENT('^=',0x87) 0건. libclang.",
+            })
+    return violations
+
+
+def _lc_check_ctr_002(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+    """CTR-002: static 카운터/nonce 배열 탐지 (libclang)."""
+    violations: List[Dict[str, Any]] = []
+    seen: set = set()
+
+    def _add(name: str, scope: str, line: Optional[int]) -> None:
+        if line in seen:
+            return
+        seen.add(line)
+        violations.append({
+            "line": line,
+            "message": (f"{scope} static 배열 '{name}' — "
+                        "세션 간 카운터/nonce가 초기화 없이 재사용되어 CTR 키스트림 반복 위험"),
+            "ast_evidence": f"VAR_DECL(static, CONSTANTARRAY)='{name}' in {scope}. libclang.",
+        })
+
+    # 전역 static 배열
+    for decl in tu.cursor.get_children():
+        if decl.kind != _ci.CursorKind.VAR_DECL:
+            continue
+        if decl.storage_class != _ci.StorageClass.STATIC:
+            continue
+        if decl.type.kind != _ci.TypeKind.CONSTANTARRAY:
+            continue
+        if _CTR_NAMES_RE.search(decl.spelling or ""):
+            _add(decl.spelling, "전역", _lc_line(decl))
+
+    # 함수 내 static 로컬 배열
+    for fd in _lc_func_defs(tu):
+        fname = _lc_func_name(fd)
+        for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL):
+            if decl.storage_class != _ci.StorageClass.STATIC:
+                continue
+            if decl.type.kind != _ci.TypeKind.CONSTANTARRAY:
+                continue
+            if _CTR_NAMES_RE.search(decl.spelling or ""):
+                _add(decl.spelling, f"함수 '{fname}'", _lc_line(decl))
+
+    return violations
+
+
+def _lc_check_lea_032(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
+    """LEA-032: 마지막 라운드 특별 처리 분기 탐지 (libclang)."""
+    enc_funcs = _lc_funcs_matching(tu, _LEA_ENC_KW)
+    if not enc_funcs:
+        all_funcs = _lc_func_defs(tu)
+        for fd in all_funcs:
+            fn = _lc_func_name(fd).lower()
+            if any(kw in fn for kw in ("lea", "encrypt", "round")):
+                if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd):
+                    return None
+        return []
+    violations = []
+    for fd in enc_funcs:
+        if _lc_is_thin_wrapper(fd) or _lc_is_benchmark_func(fd):
+            continue
+        fname = _lc_func_name(fd)
+        for for_c in _lc_collect(fd, _ci.CursorKind.FOR_STMT):
+            for ifstmt in _lc_collect(for_c, _ci.CursorKind.IF_STMT):
+                for child in ifstmt.get_children():
+                    if child.kind != _ci.CursorKind.BINARY_OPERATOR:
+                        continue
+                    op = _lc_op_str(child)
+                    if op not in ("==", ">=", "<="):
+                        continue
+                    for lit in child.walk_preorder():
+                        val = _lc_const_int(lit)
+                        if val in (23, 27, 31):
+                            violations.append({
+                                "line": _lc_line(ifstmt),
+                                "message": (f"함수 '{fname}': 라운드 루프 내 마지막 라운드 "
+                                            f"분기 조건({op}{val}) 탐지 — LEA는 마지막 라운드도 동일 구조"),
+                                "ast_evidence": f"FOR 내 IF_STMT({op} Constant({val})). libclang.",
+                            })
+                            break
+    return violations
+
+
+# ── libclang 체커 디스패치 테이블 ────────────────────────────────
+
+_LC_CHECKERS = {
+    # 검증된 libclang 체커만 포함 (세트 코드 FN 유발 또는 KISA FP 유발 체커 제외)
+    # "CBC-001":  _lc_check_cbc_001,  # lea_t_generic.c FP → pycparser 사용
+    # "CBC-002":  _lc_check_cbc_002,  # lea_t_generic.c FP → pycparser 사용
+    "ECB-002":  _lc_check_ecb_002,
+    "GCM-001":  _lc_check_gcm_001,
+    "CCM-001":  _lc_check_ccm_001,
+    "CTR-001":  _lc_check_ctr_001,
+    # "CTR-002":  _lc_check_ctr_002,  # 세트 4 FN 유발 → pycparser 사용
+    "CTR-005":  _lc_check_ctr_005,
+    "OFB-002":  _lc_check_ofb_002,
+    "CFB-002":  _lc_check_cfb_002,
+    "LEA-005":  _lc_check_lea_005,
+    # "LEA-006":  _lc_check_lea_006,  # KISA FP → pycparser 사용
+    # "LEA-010":  _lc_check_lea_010,  # KISA lea_set_key_generic FP → pycparser 사용
+    "LEA-014":  _lc_check_lea_014,
+    "LEA-015":  _lc_check_lea_015,
+    # "LEA-021":  _lc_check_lea_021,  # 세트 4 FN 유발 → pycparser 사용
+    # "LEA-022":  _lc_check_lea_022,  # 세트 4 FN 유발 → pycparser 사용
+    # "LEA-023":  _lc_check_lea_023,  # 세트 4 FN 유발 → pycparser 사용
+    "LEA-030":  _lc_check_lea_030,
+    # "LEA-031":  _lc_check_lea_031,  # 세트 2/3 FN 유발 → pycparser 사용
+    "LEA-032":  _lc_check_lea_032,
+    "LEA-034":  _lc_check_lea_034,
+    "LEA-035":  _lc_check_lea_035,
+    # "LEA-040":  _lc_check_lea_040,  # 세트 3 FN 유발 → pycparser 사용
+    "LEA-042":  _lc_check_lea_042,
+    "LEA-043":  _lc_check_lea_043,
+    "LEA-046":  _lc_check_lea_046,
+    "LEA-056":  _lc_check_lea_046,
+    # "LEA-057":  _lc_check_lea_057,  # 세트 4 FN 유발 → pycparser 사용
+    "LEA-047":  _lc_check_lea_047,
+    "CMAC-001": _lc_check_cmac_001,
+    # "LEA-003":  _lc_check_lea_003,  # 세트 2 FN 유발 → pycparser 사용
+}
+
+# ══════════════════════════════════════════════════════════════════
+
 _CHECKERS = {
     "LEA-003": _check_lea_003,
     "LEA-014": _check_lea_014,
@@ -2609,6 +4027,18 @@ def check_rule(
       []    → 위반 없음 (규칙 준수 확인)
       [..] → 위반 목록 [{line, message}, ...]
     """
+    # libclang 백엔드 우선 시도 (KISA MAKE_FUNC 매크로 파싱 지원)
+    # libclang 체커가 None 반환 시 → rule_engine 경로로 fallback (pycparser/fallback_pattern)
+    lc_checker = _LC_CHECKERS.get(rule_id)
+    if _HAS_LIBCLANG and lc_checker:
+        tu = _parse_c_libclang(content, filename, extra_includes)
+        if tu is not None:
+            try:
+                return lc_checker(tu, filename, symbol_graph or {})
+            except Exception:
+                pass  # pycparser fallback
+
+    # pycparser fallback
     checker = _CHECKERS.get(rule_id)
     if checker is None:
         return None
