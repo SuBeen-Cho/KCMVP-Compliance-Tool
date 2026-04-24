@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import google.genai as genai
@@ -103,7 +103,11 @@ def _call_openai(prompt: str, model: Optional[str] = None) -> Optional[str]:
         return None
 
 
-def _call_llm(prompt: str, model: Optional[str] = None) -> Optional[str]:
+def _call_llm(
+    prompt: str,
+    model: Optional[str] = None,
+    response_mime_type: Optional[str] = None,
+) -> Optional[str]:
     """
     L2_PROVIDER 설정에 따라 LLM 호출.
     - L2_PROVIDER=gemini (기본): Gemini API
@@ -116,14 +120,14 @@ def _call_llm(prompt: str, model: Optional[str] = None) -> Optional[str]:
             return call_local(prompt)
         except Exception as e:
             print(f"[LLM] local 호출 실패, gemini로 fallback: {e}")
-            return _call_gemini(prompt)
+            return _call_gemini(prompt, response_mime_type=response_mime_type)
     if L2_PROVIDER == "openai":
         result = _call_openai(prompt, model=model)
         if result is not None:
             return result
         print("[LLM] OpenAI 실패, Gemini로 fallback")
-        return _call_gemini(prompt)
-    return _call_gemini(prompt)
+        return _call_gemini(prompt, response_mime_type=response_mime_type)
+    return _call_gemini(prompt, response_mime_type=response_mime_type)
 
 
 class _Gemini503Error(Exception):
@@ -140,15 +144,28 @@ def _strip_gcfs_from_prompt(prompt: str) -> str:
     )
 
 
-def _call_gemini(prompt: str) -> Optional[str]:
+def _call_gemini(
+    prompt: str,
+    response_mime_type: Optional[str] = None,
+) -> Optional[str]:
     """Google Gemini API 호출. 키 없으면 None 반환. 503 시 _Gemini503Error 발생."""
     if not GOOGLE_API_KEY or not _HAS_GOOGLE_GENAI:
         return None
     try:
+        from google.genai import types
+
+        config = types.GenerateContentConfig(
+            temperature=0,
+            seed=42,
+        )
+        if response_mime_type:
+            config.response_mime_type = response_mime_type
+
         client = genai.Client(api_key=GOOGLE_API_KEY)
         response = client.models.generate_content(
             model=GEMINI_L2_MODEL,
             contents=prompt,
+            config=config,
         )
         text = getattr(response, "text", None)
         if text and isinstance(text, str):
@@ -179,15 +196,19 @@ _RETRY_SUFFIX_ARR = "\n\n위 JSON 배열 형식만 출력하라. 다른 텍스�
 
 def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[str, Any]]:
     """재시도 포함 LLM 호출 → 단일 JSON 객체 반환. 503 시 GCFS 제거 후 재시도."""
+    _mime = "application/json"
     for attempt in range(max_retries + 1):
         try:
-            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ)
+            raw = _call_llm(
+                prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ,
+                response_mime_type=_mime,
+            )
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
                 print("[L2] 503 → GCFS 제거 후 재시도")
                 try:
-                    raw = _call_llm(stripped)
+                    raw = _call_llm(stripped, response_mime_type=_mime)
                 except _Gemini503Error:
                     return None
             else:
@@ -206,15 +227,19 @@ def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[
 
 def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional[List[Any]]:
     """재시도 포함 LLM 호출 → JSON 배열 반환 (배치용). 503 시 GCFS 제거 후 재시도."""
+    _mime = "application/json"
     for attempt in range(max_retries + 1):
         try:
-            raw = _call_llm(prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR)
+            raw = _call_llm(
+                prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR,
+                response_mime_type=_mime,
+            )
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
                 print("[L2] 503 → GCFS 제거 후 배치 재시도")
                 try:
-                    raw = _call_llm(stripped)
+                    raw = _call_llm(stripped, response_mime_type=_mime)
                 except _Gemini503Error:
                     return None
             else:

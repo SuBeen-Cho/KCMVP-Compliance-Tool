@@ -27,6 +27,60 @@ from app.services.llm.prompt_builder import (
 )
 
 
+_FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP 암호모듈 보안 시니어 감사관입니다.
+
+아래 위반 후보에 대해 1차 AI 판정이 "오탐(is_real_issue=false)"으로 결론 내렸습니다.
+당신의 역할은 이 판정이 정말 맞는지 **독립적으로 재검증**하는 것입니다.
+
+규칙: {rule_id}
+파일: {file_path}
+라인: {line}
+L1 탐지 메시지: {message}
+
+1차 AI 판정 이유: {first_description}
+
+코드:
+```c
+{code_block}
+```
+
+【재검증 기준】
+- 1차 판정의 오탐 근거가 코드에서 실제로 확인되는가?
+- "잘 모르겠다" 또는 "증거 불충분"이면 is_real_issue=true로 보수적 판정하라.
+- 1차 판정에 동의하면 is_real_issue=false, 동의하지 않으면 is_real_issue=true.
+
+반드시 아래 JSON만 출력:
+{{"is_real_issue": true/false, "confidence": 0~100, "description": "한글 설명"}}"""
+
+
+def _verify_fp_removal(
+    v: Dict[str, Any],
+    first_obj: Dict[str, Any],
+    code_block: str,
+    file_path: str,
+) -> bool:
+    """FP 제거 판정을 비대칭 재검증. True이면 제거 확정, False이면 유지."""
+    rule_id = v.get("rule_id") or ""
+    prompt = _FP_VERIFY_PROMPT_TEMPLATE.format(
+        rule_id=rule_id,
+        file_path=file_path,
+        line=v.get("line", "?"),
+        message=v.get("message", "")[:200],
+        first_description=first_obj.get("description", "")[:300],
+        code_block=code_block[:2000],
+    )
+    verify_obj = _call_gemini_with_retry(prompt)
+    if not verify_obj:
+        # API 실패 → 보수적으로 유지 (제거 안 함)
+        print(f"[L2][FP검증] API 실패 → 보수적 유지: {rule_id} @ {file_path}:{v.get('line')}")
+        return False
+    if verify_obj.get("is_real_issue"):
+        print(f"[L2][FP검증] 재검증 결과 위반 확정 (제거 취소): {rule_id} @ {file_path}:{v.get('line')}")
+        return False
+    print(f"[L2][FP검증] 재검증 동의 → 오탐 제거 확정: {rule_id} @ {file_path}:{v.get('line')}")
+    return True
+
+
 def run_l2_contextualizer(
     preprocess_result: Dict[str, Any],
     l1_violations: List[Dict[str, Any]],
@@ -217,15 +271,18 @@ def run_l2_contextualizer(
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
-                    # score ≤ threshold: 일관된 FP (낮은 위반 확신)
-                    # score ≥ _fp_high: 모델이 is_real_issue=false + 높은 확신 → 확신있는 FP 판정
-                    print(f"[L2] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                    if _rejected_tracker is not None:
-                        _rejected_tracker.add((
-                            (v.get("file") or v.get("file_path") or "").strip(),
-                            rule_id,
-                            v.get("line"),
-                        ))
+                    # FP 제거 전 비대칭 재검증
+                    if _verify_fp_removal(v, obj, entry["code_block"], file_path):
+                        print(f"[L2] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                        if _rejected_tracker is not None:
+                            _rejected_tracker.add((
+                                (v.get("file") or v.get("file_path") or "").strip(),
+                                rule_id,
+                                v.get("line"),
+                            ))
+                    else:
+                        results.append(_make_l2_result(v, obj))
+                        print(f"[L2] FP재검증 실패→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 else:
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
@@ -295,14 +352,18 @@ def run_l2_contextualizer(
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
-                    # score ≤ threshold: 일관된 FP / score ≥ _fp_high: 확신있는 FP 판정
-                    print(f"[L2] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
-                    if _rejected_tracker is not None:
-                        _rejected_tracker.add((
-                            (v.get("file") or v.get("file_path") or "").strip(),
-                            (v.get("rule_id") or "").strip(),
-                            v.get("line"),
-                        ))
+                    # FP 제거 전 비대칭 재검증
+                    if _verify_fp_removal(v, obj, entry["code_block"], file_path):
+                        print(f"[L2] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                        if _rejected_tracker is not None:
+                            _rejected_tracker.add((
+                                (v.get("file") or v.get("file_path") or "").strip(),
+                                (v.get("rule_id") or "").strip(),
+                                v.get("line"),
+                            ))
+                    else:
+                        results.append(_make_l2_result(v, obj))
+                        print(f"[L2] FP재검증 실패→유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                 else:
                     results.append(_make_l2_result(v, obj))
                     print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
