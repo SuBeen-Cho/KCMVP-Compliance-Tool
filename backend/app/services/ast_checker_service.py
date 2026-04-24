@@ -619,6 +619,35 @@ def _check_lea_010(root, offset: int, filename: str,
                 # 값이 있고 모두 표준 → Phase 2 검증 통과 (위반 추가 없음)
                 pass
 
+    # ── Phase 2b: delta 상수 AST 직접 스캔 (symbol_graph 없을 때 fallback) ──
+    # mutation test 등 symbol_graph가 제공되지 않는 경우에도 delta 값 변조 탐지
+    if not symbol_graph and _HAS_PYCPARSER:
+        _delta_standard_set = {v.lower() for v in _LEA_DELTA_STANDARD}
+        for decl_node in _collect(root, c_ast.Decl):
+            decl_name = getattr(decl_node, "name", "") or ""
+            if not _DELTA_VAR_RE.search(decl_name):
+                continue
+            init_obj = getattr(decl_node, "init", None)
+            if init_obj is None:
+                continue
+            hex_vals = []
+            for const_node in _collect(init_obj, c_ast.Constant):
+                val = (getattr(const_node, "value", "") or "").lower()
+                if val.startswith("0x") and len(val) >= 6:
+                    hex_vals.append(val)
+            if not hex_vals:
+                continue
+            wrong = [v for v in hex_vals if v not in _delta_standard_set]
+            if wrong:
+                violations.append({
+                    "line": None,
+                    "message": (
+                        f"delta 상수 배열 '{decl_name}': KS X 3246 비표준 값 포함 — "
+                        f"비표준: {', '.join(wrong[:4])}. "
+                        f"표준 8개: {', '.join(_LEA_DELTA_STANDARD[:4])}..."
+                    ),
+                })
+
     return violations
 
 

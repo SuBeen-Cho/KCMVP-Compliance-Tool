@@ -81,9 +81,9 @@ MUTATIONS = [
         "insert_once": True,
     },
     {
-        "id": "M06", "target_rule": "COM-002",
+        "id": "M06", "target_rule": "COM-004",
         "file": "lea_vs.c",
-        "description": "비표준 난수 함수 사용",
+        "description": "비표준 난수 함수 사용 (rand 호출)",
         "insert_after_pattern": r"#include",
         "insert_text": '\nvoid generate_iv(unsigned char *iv, int len) { for(int i=0;i<len;i++) iv[i]=(unsigned char)(rand()%256); } /* MUTATION: weak RNG */\n',
         "insert_once": True,

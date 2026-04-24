@@ -1,68 +1,32 @@
 {
-  "timestamp": "2026-04-23T18:22:04.912177",
+  "timestamp": "2026-04-24T12:49:39.944299",
   "phase": "Phase 6",
   "description": "Mutation 자동화 — 파라메트릭 변형 기반 GT 확대",
   "use_l2": false,
-  "total_generated": 48,
-  "applied": 46,
-  "skipped": 2,
-  "TP": 46,
-  "FN": 0,
-  "mutation_recall": 1.0,
-  "ci_95_low": 0.9229238226702192,
-  "ci_95_high": 1,
-  "elapsed_s": 5938.7,
+  "total_generated": 10,
+  "applied": 10,
+  "skipped": 0,
+  "TP": 4,
+  "FN": 6,
+  "mutation_recall": 0.4,
+  "ci_95_low": 0.16817758120350967,
+  "ci_95_high": 0.6873304525498135,
+  "elapsed_s": 369.9,
   "combined_with_phase3": {
-    "total": 61,
-    "tp": 61,
-    "recall": 1.0,
-    "ci_95_low": 0.9407540837980555,
-    "ci_95_high": 1
+    "total": 25,
+    "tp": 12,
+    "recall": 0.48,
+    "ci_95_low": 0.30031003928960015,
+    "ci_95_high": 0.6650178204685269
   },
   "by_rule": {
     "LEA-003": {
-      "tp": 6,
+      "tp": 0,
       "total": 6
     },
     "LEA-010": {
-      "tp": 14,
-      "total": 14
-    },
-    "LEA-034": {
-      "tp": 6,
-      "total": 6
-    },
-    "LEA-040": {
       "tp": 4,
       "total": 4
-    },
-    "COM-003": {
-      "tp": 4,
-      "total": 4
-    },
-    "COM-002": {
-      "tp": 2,
-      "total": 2
-    },
-    "COM-004": {
-      "tp": 2,
-      "total": 2
-    },
-    "ECB-002": {
-      "tp": 2,
-      "total": 2
-    },
-    "CBC-001": {
-      "tp": 2,
-      "total": 2
-    },
-    "CTR-002": {
-      "tp": 2,
-      "total": 2
-    },
-    "GCM-001": {
-      "tp": 2,
-      "total": 2
     }
   },
   "results": [
@@ -70,61 +34,61 @@
       "id": "A004",
       "target_rule": "LEA-003",
       "description": "라운드 조건 24 -1",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 132.0
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 37.0
     },
     {
       "id": "A005",
       "target_rule": "LEA-003",
       "description": "라운드 조건 24 +1",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.2
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 37.5
     },
     {
       "id": "A006",
       "target_rule": "LEA-003",
       "description": "라운드 조건 24 -2",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.4
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 37.0
     },
     {
       "id": "A007",
       "target_rule": "LEA-003",
       "description": "라운드 조건 28 -1",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.6
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 36.9
     },
     {
       "id": "A008",
       "target_rule": "LEA-003",
       "description": "라운드 조건 28 +1",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.3
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 36.8
     },
     {
       "id": "A009",
       "target_rule": "LEA-003",
       "description": "라운드 조건 28 -2",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 129.0
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 35,
+      "elapsed_s": 37.1
     },
     {
       "id": "A010",
@@ -132,9 +96,9 @@
       "description": "델타 상수 0xc3efe9db LSB flip",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 127.9
+      "matched_count": 1,
+      "total_violations": 35,
+      "elapsed_s": 36.9
     },
     {
       "id": "A011",
@@ -142,9 +106,9 @@
       "description": "델타 상수 0xc3efe9db MSB flip",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 130.9
+      "matched_count": 1,
+      "total_violations": 35,
+      "elapsed_s": 36.9
     },
     {
       "id": "A012",
@@ -152,9 +116,9 @@
       "description": "델타 상수 0x44626b02 LSB flip",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 129.8
+      "matched_count": 1,
+      "total_violations": 35,
+      "elapsed_s": 36.7
     },
     {
       "id": "A013",
@@ -162,383 +126,9 @@
       "description": "델타 상수 0x44626b02 MSB flip",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.5
-    },
-    {
-      "id": "A014",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x79e27c8a LSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 127.5
-    },
-    {
-      "id": "A015",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x79e27c8a MSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 127.7
-    },
-    {
-      "id": "A016",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x78df30ec LSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.2
-    },
-    {
-      "id": "A017",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x78df30ec MSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.0
-    },
-    {
-      "id": "A018",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x715ea49e LSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.2
-    },
-    {
-      "id": "A019",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0x715ea49e MSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.2
-    },
-    {
-      "id": "A020",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xc785da0a LSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.2
-    },
-    {
-      "id": "A021",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xc785da0a MSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.3
-    },
-    {
-      "id": "A022",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xe04ef22a LSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 130.1
-    },
-    {
-      "id": "A023",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xe04ef22a MSB flip",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 4,
-      "total_violations": 208,
-      "elapsed_s": 128.8
-    },
-    {
-      "id": "A024",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xe7a12214 LSB flip",
-      "status": "SKIP",
-      "detected": false
-    },
-    {
-      "id": "A025",
-      "target_rule": "LEA-010",
-      "description": "델타 상수 0xe7a12214 MSB flip",
-      "status": "SKIP",
-      "detected": false
-    },
-    {
-      "id": "A026",
-      "target_rule": "LEA-034",
-      "description": "ROR 3 → 2",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 128.5
-    },
-    {
-      "id": "A027",
-      "target_rule": "LEA-034",
-      "description": "ROR 3 → 4",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 128.7
-    },
-    {
-      "id": "A028",
-      "target_rule": "LEA-034",
-      "description": "ROR 3 → 6",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 128.3
-    },
-    {
-      "id": "A029",
-      "target_rule": "LEA-034",
-      "description": "ROR 5 → 4",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 130.8
-    },
-    {
-      "id": "A030",
-      "target_rule": "LEA-034",
-      "description": "ROR 5 → 6",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 129.3
-    },
-    {
-      "id": "A031",
-      "target_rule": "LEA-034",
-      "description": "ROR 5 → 10",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 208,
-      "elapsed_s": 129.7
-    },
-    {
-      "id": "A032",
-      "target_rule": "LEA-040",
-      "description": "키 스케줄 ROL 1 → 0",
-      "status": "TP",
-      "detected": true,
       "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.3
-    },
-    {
-      "id": "A033",
-      "target_rule": "LEA-040",
-      "description": "키 스케줄 ROL 1 → 2",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.1
-    },
-    {
-      "id": "A034",
-      "target_rule": "LEA-040",
-      "description": "키 스케줄 ROL 1 → 3",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.3
-    },
-    {
-      "id": "A035",
-      "target_rule": "LEA-040",
-      "description": "키 스케줄 ROL 1 → 8",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 131.1
-    },
-    {
-      "id": "A036",
-      "target_rule": "COM-003",
-      "description": "AES 키 형태 하드코딩 in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 6,
-      "total_violations": 209,
-      "elapsed_s": 132.5
-    },
-    {
-      "id": "A037",
-      "target_rule": "COM-003",
-      "description": "AES 키 형태 하드코딩 in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 6,
-      "total_violations": 209,
-      "elapsed_s": 131.1
-    },
-    {
-      "id": "A038",
-      "target_rule": "COM-003",
-      "description": "#define 매크로 키 in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 5,
-      "total_violations": 208,
-      "elapsed_s": 132.2
-    },
-    {
-      "id": "A039",
-      "target_rule": "COM-003",
-      "description": "#define 매크로 키 in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 5,
-      "total_violations": 208,
-      "elapsed_s": 128.4
-    },
-    {
-      "id": "A040",
-      "target_rule": "COM-002",
-      "description": "random() 사용 in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 3,
-      "total_violations": 210,
-      "elapsed_s": 128.3
-    },
-    {
-      "id": "A041",
-      "target_rule": "COM-002",
-      "description": "random() 사용 in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 3,
-      "total_violations": 210,
-      "elapsed_s": 129.1
-    },
-    {
-      "id": "A042",
-      "target_rule": "COM-004",
-      "description": "시드 없는 rand() in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 209,
-      "elapsed_s": 130.9
-    },
-    {
-      "id": "A043",
-      "target_rule": "COM-004",
-      "description": "시드 없는 rand() in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 209,
-      "elapsed_s": 128.5
-    },
-    {
-      "id": "A044",
-      "target_rule": "ECB-002",
-      "description": "ECB 루프 변형 in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 3,
-      "total_violations": 208,
-      "elapsed_s": 128.6
-    },
-    {
-      "id": "A045",
-      "target_rule": "ECB-002",
-      "description": "ECB 루프 변형 in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 3,
-      "total_violations": 208,
-      "elapsed_s": 129.2
-    },
-    {
-      "id": "A046",
-      "target_rule": "CBC-001",
-      "description": "CBC no IV init in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 209,
-      "elapsed_s": 130.9
-    },
-    {
-      "id": "A047",
-      "target_rule": "CBC-001",
-      "description": "CBC no IV init in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 2,
-      "total_violations": 209,
-      "elapsed_s": 129.2
-    },
-    {
-      "id": "A048",
-      "target_rule": "CTR-002",
-      "description": "CTR counter wrap in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 209,
-      "elapsed_s": 128.5
-    },
-    {
-      "id": "A049",
-      "target_rule": "CTR-002",
-      "description": "CTR counter wrap in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 209,
-      "elapsed_s": 128.4
-    },
-    {
-      "id": "A050",
-      "target_rule": "GCM-001",
-      "description": "GCM no auth in lea_vs.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 128.0
-    },
-    {
-      "id": "A051",
-      "target_rule": "GCM-001",
-      "description": "GCM no auth in main.c",
-      "status": "TP",
-      "detected": true,
-      "matched_count": 1,
-      "total_violations": 208,
-      "elapsed_s": 127.4
+      "total_violations": 35,
+      "elapsed_s": 36.8
     }
   ]
 }

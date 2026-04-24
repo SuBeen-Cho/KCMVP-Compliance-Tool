@@ -744,12 +744,26 @@ def _apply_ast_rule(
         # (예: violations_cbc_struct.c 안에 ecb_enc 함수가 있어도 탐지 가능)
         # test/data/benchmark/wrapper 파일은 AST 체커에서도 제외 — 파싱 실패 시
         # parse_failed_items에 들어가 관련 없는 파일에 fallback FP 유발 방지.
+        # 단, 운영 모드 보안 규칙(CBC/CTR/GCM 등)은 test 파일에도 적용:
+        # 삽입된 위반 함수(CBC without IV, CTR without overflow check)가
+        # test 파일에 있어도 탐지해야 함 (mutation recall 보장).
+        _MODE_SECURITY_RULES = {
+            "CBC-001", "CBC-002", "CTR-001", "CTR-002", "CTR-005",
+            "GCM-001", "CCM-001", "ECB-002", "CMAC-001", "OFB-002", "CFB-002",
+        }
         _SKIP_FILE_TYPES = ("test", "data", "benchmark", "wrapper")
-        relevant_for_checker = [
-            item for item in file_cache
-            if (item.get("display") or "").lower().endswith(".c")
-            and item.get("file_type", "impl") not in _SKIP_FILE_TYPES
-        ] or list(file_cache)
+        if rule_id in _MODE_SECURITY_RULES:
+            # 모드 보안 규칙: test 파일 포함 모든 .c 파일 검사
+            relevant_for_checker = [
+                item for item in file_cache
+                if (item.get("display") or "").lower().endswith(".c")
+            ] or list(file_cache)
+        else:
+            relevant_for_checker = [
+                item for item in file_cache
+                if (item.get("display") or "").lower().endswith(".c")
+                and item.get("file_type", "impl") not in _SKIP_FILE_TYPES
+            ] or list(file_cache)
         for item in relevant_for_checker:
             content_str = item.get("content") or ""
             fname       = (item.get("display") or "").split("/")[-1]
@@ -1242,7 +1256,14 @@ def run_rule_engine(
                 continue  # 이 파일의 타입이 check_in 목록에 없으면 건너뜀
 
             # 파일 분류 기반 필터링: 테스트/데이터/벤치마크/wrapper 파일에는 구현 품질 규칙 미적용
-            if ft in ("test", "data", "benchmark", "wrapper"):
+            # 단, COM(보안 필수) 규칙은 test/demo 파일에도 적용
+            # — 하드코딩 키, 비표준 RNG, 제로화 누락은 파일 종류와 무관하게 위반
+            # 예외: KAT(Known-Answer Test) 벡터 파일(_0tv, _kat 포함)은 정당한 테스트 벡터 포함 → COM도 스킵
+            _rule_category = rule.get("category", "")
+            _fname_lower = (item.get("display") or "").lower()
+            _is_kat_file = any(kw in _fname_lower for kw in ("_0tv", "0tv_", "_kat", "kat_"))
+            _is_security_always = (_rule_category == "common") and not _is_kat_file
+            if ft in ("test", "data", "benchmark", "wrapper") and not _is_security_always:
                 # missing 규칙: 패턴 부재 = 위반인데, 비구현 파일에는 해당 없음
                 if pattern_type == "missing":
                     continue
