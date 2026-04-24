@@ -1,45 +1,45 @@
 {
-  "timestamp": "2026-04-24T12:18:08.082525",
+  "timestamp": "2026-04-24T17:33:37.717954",
   "phase": "Phase 3",
   "description": "KISA LEA v1.3 mutation 기반 블라인드 Recall 테스트",
   "use_l2": false,
   "total_mutations": 15,
   "applied": 15,
   "skipped": 0,
-  "TP": 8,
-  "FN": 7,
-  "mutation_recall": 0.5333333333333333,
-  "elapsed_s": 563.1,
+  "TP": 14,
+  "FN": 1,
+  "mutation_recall": 0.9333333333333333,
+  "elapsed_s": 337.2,
   "results": [
     {
       "id": "M01",
       "target_rule": "LEA-003",
       "description": "라운드 수 연산 변조 (+16 → +15)",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 40.2
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.4
     },
     {
       "id": "M02",
       "target_rule": "LEA-003",
       "description": "라운드 수 조건 변조 (> 24 → > 25)",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 36.8
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.6
     },
     {
       "id": "M03",
       "target_rule": "LEA-003",
       "description": "라운드 수 조건 변조 (> 28 → > 29)",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 36.9
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.8
     },
     {
       "id": "M04",
@@ -48,8 +48,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 40,
-      "elapsed_s": 37.3
+      "total_violations": 35,
+      "elapsed_s": 23.2
     },
     {
       "id": "M05",
@@ -57,9 +57,9 @@
       "description": "하드코딩 키 삽입",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 41,
-      "elapsed_s": 37.8
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.5
     },
     {
       "id": "M06",
@@ -68,8 +68,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 41,
-      "elapsed_s": 38.4
+      "total_violations": 36,
+      "elapsed_s": 22.4
     },
     {
       "id": "M07",
@@ -78,8 +78,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 40,
-      "elapsed_s": 37.3
+      "total_violations": 35,
+      "elapsed_s": 22.1
     },
     {
       "id": "M08",
@@ -88,8 +88,8 @@
       "status": "FN",
       "detected": false,
       "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 37.4
+      "total_violations": 35,
+      "elapsed_s": 22.2
     },
     {
       "id": "M09",
@@ -98,8 +98,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 41,
-      "elapsed_s": 37.1
+      "total_violations": 36,
+      "elapsed_s": 22.4
     },
     {
       "id": "M10",
@@ -108,8 +108,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 2,
-      "total_violations": 41,
-      "elapsed_s": 37.2
+      "total_violations": 36,
+      "elapsed_s": 22.1
     },
     {
       "id": "M11",
@@ -118,8 +118,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 40,
-      "elapsed_s": 37.2
+      "total_violations": 35,
+      "elapsed_s": 22.1
     },
     {
       "id": "M12",
@@ -128,38 +128,38 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 40,
-      "elapsed_s": 37.2
+      "total_violations": 35,
+      "elapsed_s": 22.5
     },
     {
       "id": "M13",
       "target_rule": "LEA-034",
       "description": "ROR 회전량 변조 (3 → 4)",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 37.3
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.3
     },
     {
       "id": "M14",
       "target_rule": "LEA-040",
       "description": "키 스케줄 ROL 회전량 변조 (1 → 2)",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 37.3
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.4
     },
     {
       "id": "M15",
       "target_rule": "GCM-001",
       "description": "GCM 인증 태그 검증 누락 패턴",
-      "status": "FN",
-      "detected": false,
-      "matched_count": 0,
-      "total_violations": 40,
-      "elapsed_s": 37.2
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 36,
+      "elapsed_s": 22.7
     }
   ]
 }

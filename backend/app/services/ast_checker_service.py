@@ -481,9 +481,86 @@ def _check_lea_003(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     ),
                 })
 
+    # ── 전략 7: 라운드 비교 조건 (if/while) 검사 — M02/M03 탐지 ──
+    # key->round > N, rounds >= N 등에서 N이 비표준이면 위반
+    _ROUND_CMP_OPS = frozenset({">", ">=", "<", "<=", "!=", "=="})
+    for fd in _collect(root, c_ast.FuncDef):
+        if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
+            continue
+        fname = _func_name(fd)
+        for bop in _collect(fd, c_ast.BinaryOp):
+            if bop.op not in _ROUND_CMP_OPS:
+                continue
+            for ref_side, val_side in [(bop.left, bop.right), (bop.right, bop.left)]:
+                field_name = ""
+                if isinstance(ref_side, c_ast.StructRef):
+                    fld = getattr(ref_side, "field", None)
+                    field_name = getattr(fld, "name", "") if fld else ""
+                elif isinstance(ref_side, c_ast.ID):
+                    field_name = getattr(ref_side, "name", "")
+                if not _ROUNDS_ASSIGN_NAMES.search(field_name):
+                    continue
+                val = _const_value(val_side)
+                if val is None or val in _LEA_ROUND_COUNTS:
+                    continue
+                if 16 <= val <= 40:
+                    line = _coord_line(bop, offset)
+                    violations.append({
+                        "line": line,
+                        "message": (
+                            f"함수 '{fname}': '{field_name} {bop.op} {val}' — "
+                            "LEA 유효 라운드 수 임계값: 24/28/32"
+                        ),
+                        "ast_evidence": (
+                            f"함수 '{fname}' 비교 조건: {field_name} {bop.op} {val}, "
+                            f"표준 임계값 = {{24, 28, 32}}. {val} ∉ {{24,28,32}} → 라운드 조건 변조"
+                        ),
+                    })
+
+    # ── 전략 8: 라운드 산술식 비표준 상수 — M01 탐지 ──
+    # key->round = (mk_len >> 1) + N 에서 N이 16이 아니면 위반
+    _LEA_ROUND_ADDEND = 16  # LEA 표준: (mk_len >> 1) + 16
+    for fd in _collect(root, c_ast.FuncDef):
+        if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
+            continue
+        fname = _func_name(fd)
+        for assign in _collect(fd, c_ast.Assignment):
+            if assign.op != "=":
+                continue
+            lhs = assign.lvalue
+            field_name = ""
+            if isinstance(lhs, c_ast.StructRef):
+                fld = getattr(lhs, "field", None)
+                field_name = getattr(fld, "name", "") if fld else ""
+            elif isinstance(lhs, c_ast.ID):
+                field_name = getattr(lhs, "name", "")
+            if not _ROUNDS_ASSIGN_NAMES.search(field_name):
+                continue
+            # 이미 Strategy 6에서 상수 리터럴 처리됨 → 산술식만 검사
+            if _const_value(assign.rvalue) is not None:
+                continue
+            for addop in _collect(assign.rvalue, c_ast.BinaryOp):
+                if addop.op != "+":
+                    continue
+                for side in [addop.left, addop.right]:
+                    val = _const_value(side)
+                    if val is not None and val != _LEA_ROUND_ADDEND and 12 <= val <= 20:
+                        line = _coord_line(assign, offset)
+                        violations.append({
+                            "line": line,
+                            "message": (
+                                f"함수 '{fname}': 라운드 수 산술식에 비표준 상수 {val} 사용 — "
+                                f"표준: (mk_len>>1) + 16"
+                            ),
+                            "ast_evidence": (
+                                f"Assignment: {field_name} = ... + {val}, "
+                                f"LEA 표준 가산값 = 16. {val} ≠ 16 → 라운드 수 공식 변조"
+                            ),
+                        })
+
     key_funcs = _funcs_matching(root, _KEY_KW)
     if not key_funcs:
-        return violations  # 키 스케줄 함수 없어도 직접 할당 위반은 반환
+        return violations  # 키 스케줄 함수 없어도 직접 할당/비교 위반은 반환
 
     for fd in key_funcs:
         if _is_benchmark_func(fd) or _is_thin_wrapper(fd):
@@ -3343,8 +3420,9 @@ def _lc_check_lea_003(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     """LEA-003: 키 스케줄 라운드 수 확인 (libclang)."""
     violations = []
     # 전체 함수에서 ->rounds = N 탐지
+    # thin_wrapper 필터 제거: 라운드 수 대입은 짧은 초기화 함수에서도 발생
     for fd in _lc_func_defs(tu):
-        if _lc_is_benchmark_func(fd) or _lc_is_thin_wrapper(fd):
+        if _lc_is_benchmark_func(fd):
             continue
         fname = _lc_func_name(fd)
         for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
@@ -3356,6 +3434,12 @@ def _lc_check_lea_003(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
             lv = kids[0]
             if lv.kind == _ci.CursorKind.MEMBER_REF_EXPR:
                 field = lv.spelling or ""
+                # spelling이 빈 경우 (타입 미해석) tokens에서 필드명 추출
+                if not field:
+                    toks = [t.spelling for t in lv.get_tokens()]
+                    # ['ctx', '->', 'rounds'] → 'rounds'
+                    if len(toks) >= 3 and toks[-2] == "->":
+                        field = toks[-1]
                 if _re.search(r'round', field, _re.IGNORECASE):
                     val = _lc_const_int(kids[-1])
                     if val is not None and val not in _LEA_ROUND_COUNTS and 16 <= val <= 40:
@@ -3364,6 +3448,91 @@ def _lc_check_lea_003(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
                             "message": (f"함수 '{fname}': '{field} = {val}' — "
                                         "LEA 유효 라운드 수: 128비트→24, 192비트→28, 256비트→32"),
                             "ast_evidence": f"BINARY_OPERATOR('=', MEMBER_REF_EXPR({field}), {val}). libclang.",
+                        })
+
+    # ── 전략 7 (libclang): 라운드 비교 조건 (if/while) 검사 ──
+    # key->round > N 등에서 N이 비표준이면 위반 (M02/M03 탐지)
+    _ROUND_CMP_OPS_LC = frozenset({">", ">=", "<", "<=", "!=", "=="})
+    for fd in _lc_func_defs(tu):
+        if _lc_is_benchmark_func(fd):
+            continue
+        fname = _lc_func_name(fd)
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            op = _lc_op_str(bop)
+            if op not in _ROUND_CMP_OPS_LC:
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            for ref_idx, val_idx in [(0, 1), (1, 0)]:
+                ref_node, val_node = kids[ref_idx], kids[val_idx]
+                field = ""
+                if ref_node.kind == _ci.CursorKind.MEMBER_REF_EXPR:
+                    field = ref_node.spelling or ""
+                    if not field:
+                        toks = [t.spelling for t in ref_node.get_tokens()]
+                        if len(toks) >= 3 and toks[-2] == "->":
+                            field = toks[-1]
+                elif ref_node.kind == _ci.CursorKind.DECL_REF_EXPR:
+                    field = ref_node.spelling or ""
+                if not _re.search(r'round', field, _re.IGNORECASE):
+                    continue
+                val = _lc_const_int(val_node)
+                if val is None or val in _LEA_ROUND_COUNTS:
+                    continue
+                if 16 <= val <= 40:
+                    violations.append({
+                        "line": _lc_line(bop),
+                        "message": (
+                            f"함수 '{fname}': '{field} {op} {val}' — "
+                            "LEA 유효 라운드 수 임계값: 24/28/32"
+                        ),
+                        "ast_evidence": (
+                            f"BINARY_OPERATOR('{op}', MEMBER_REF({field}), {val}). "
+                            f"{val} ∉ {{24,28,32}} → 라운드 조건 변조. libclang."
+                        ),
+                    })
+
+    # ── 전략 8 (libclang): 라운드 산술식 비표준 상수 ──
+    # key->round = (mk_len >> 1) + N 에서 N ≠ 16이면 위반 (M01 탐지)
+    _LEA_ROUND_ADDEND = 16
+    for fd in _lc_func_defs(tu):
+        if _lc_is_benchmark_func(fd) or _lc_is_thin_wrapper(fd):
+            continue
+        fname = _lc_func_name(fd)
+        for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
+            if _lc_op_str(bop) != "=":
+                continue
+            kids = list(bop.get_children())
+            if len(kids) < 2:
+                continue
+            lv = kids[0]
+            if lv.kind != _ci.CursorKind.MEMBER_REF_EXPR:
+                continue
+            field = lv.spelling or ""
+            if not _re.search(r'round', field, _re.IGNORECASE):
+                continue
+            # RHS가 상수 리터럴이면 전략 6에서 이미 처리 → 산술식만 검사
+            rhs = kids[-1]
+            if _lc_const_int(rhs) is not None:
+                continue
+            # RHS 내 + 연산자 탐색
+            for add_op in _lc_collect(rhs, _ci.CursorKind.BINARY_OPERATOR):
+                if _lc_op_str(add_op) != "+":
+                    continue
+                for child in add_op.get_children():
+                    val = _lc_const_int(child)
+                    if val is not None and val != _LEA_ROUND_ADDEND and 12 <= val <= 20:
+                        violations.append({
+                            "line": _lc_line(bop),
+                            "message": (
+                                f"함수 '{fname}': 라운드 수 산술식에 비표준 상수 {val} — "
+                                f"표준: (mk_len>>1) + 16"
+                            ),
+                            "ast_evidence": (
+                                f"Assignment: {field} = ... + {val}, "
+                                f"LEA 표준 가산값 = 16. {val} ≠ 16. libclang."
+                            ),
                         })
 
     key_funcs = [fd for fd in _lc_funcs_matching(tu, _KEY_KW)
@@ -3995,7 +4164,7 @@ _LC_CHECKERS = {
     # "LEA-057":  _lc_check_lea_057,  # 세트 4 FN 유발 → pycparser 사용
     "LEA-047":  _lc_check_lea_047,
     "CMAC-001": _lc_check_cmac_001,
-    # "LEA-003":  _lc_check_lea_003,  # 세트 2 FN 유발 → pycparser 사용
+    "LEA-003":  _lc_check_lea_003,  # 전략 7/8 추가로 세트 2 FN 해결 — libclang 활성화
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -4036,6 +4205,197 @@ _CHECKERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# LEA-003 regex fallback — AST 파싱 실패 시 토큰 기반 라운드 조건 탐지
+# lea.h 미포함으로 pycparser/libclang 모두 key->round 해석 불가 → regex 보완
+# ---------------------------------------------------------------------------
+import re as _re_mod
+
+# LEA 표준 라운드 수: 128bit→24, 192bit→28, 256bit→32
+_LEA_STANDARD_ROUNDS = {24, 28, 32}
+# 표준 라운드 오프셋: (mk_len >> 1) + 16
+_LEA_STANDARD_OFFSET = 16
+
+
+def _lea003_regex_scan(content: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    LEA-003 regex fallback: 라운드 조건 비표준값 탐지.
+
+    패턴 1: ->round > N / >= N / < N / <= N  (비교 조건)
+    패턴 2: ->round = ... + N                (라운드 수 산출)
+    """
+    violations: List[Dict[str, Any]] = []
+    lines = content.split("\n")
+
+    # 패턴 1: 라운드 비교 조건 (e.g., key->round > 25)
+    pat_cmp = _re_mod.compile(
+        r"->round\s*(>|>=|<|<=|==|!=)\s*(\d+)"
+    )
+    # 패턴 2: 라운드 산출 (e.g., round = (mk_len >> 1) + 15)
+    pat_assign = _re_mod.compile(
+        r"->round\s*=\s*.*?\+\s*(\d+)"
+    )
+
+    for i, line in enumerate(lines, 1):
+        # 주석 라인 건너뛰기
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+
+        for m in pat_cmp.finditer(line):
+            op, val_s = m.group(1), m.group(2)
+            val = int(val_s)
+            if 16 <= val <= 40 and val not in _LEA_STANDARD_ROUNDS:
+                violations.append({
+                    "line": i,
+                    "message": (
+                        f"LEA-003: 비표준 라운드 비교 조건 발견 — "
+                        f"'->round {op} {val}'. "
+                        f"KS X 3246 표준값: {{24, 28, 32}}."
+                    ),
+                    "ast_evidence": f"regex_fallback: round_cmp {op} {val}",
+                })
+
+        for m in pat_assign.finditer(line):
+            val = int(m.group(1))
+            if 12 <= val <= 20 and val != _LEA_STANDARD_OFFSET:
+                violations.append({
+                    "line": i,
+                    "message": (
+                        f"LEA-003: 비표준 라운드 수 오프셋 발견 — "
+                        f"'+ {val}'. 표준 오프셋: +16 "
+                        f"((mk_len >> 1) + 16)."
+                    ),
+                    "ast_evidence": f"regex_fallback: round_offset +{val}",
+                })
+
+    return violations if violations else None
+
+
+# ---------------------------------------------------------------------------
+# LEA-034/040 regex fallback — ROL/ROR 회전량 비표준값 탐지
+# KS X 3246 표준 회전량: {1, 3, 5, 6, 9, 11, 13, 17}
+# ---------------------------------------------------------------------------
+_LEA_STANDARD_ROTATIONS = frozenset({1, 3, 5, 6, 9, 11, 13, 17})
+
+
+def _lea_rotation_regex_scan(
+    content: str, rule_id: str
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    LEA-034/040 regex fallback: ROL/ROR 매크로의 비표준 회전량 탐지.
+
+    - LEA-034 (decrypt): ROR 비표준 회전량
+    - LEA-040 (key schedule): ROL 비표준 회전량
+    """
+    violations: List[Dict[str, Any]] = []
+    lines = content.split("\n")
+
+    # ROL/ROR 매크로: 마지막 인자(회전량)를 추출
+    # 중첩 괄호 대응: 라인에서 ROL/ROR 존재 확인 후, ", N)" 패턴으로 회전량 추출
+    pat_macro = _re_mod.compile(r"\b(ROL|ROR)\s*\(")
+    pat_rot = _re_mod.compile(r",\s*(\d+)\s*\)")
+
+    # rule_id에 따라 타겟 매크로 결정
+    if rule_id == "LEA-034":
+        target_macro = "ROR"
+    elif rule_id == "LEA-040":
+        target_macro = "ROL"
+    else:
+        return None
+
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+
+        # 먼저 타겟 매크로가 라인에 있는지 확인
+        macro_match = pat_macro.search(line)
+        if not macro_match or macro_match.group(1) != target_macro:
+            continue
+        for m in pat_rot.finditer(line):
+            rot_val = int(m.group(1))
+            if rot_val not in _LEA_STANDARD_ROTATIONS and 1 <= rot_val <= 20:
+                violations.append({
+                    "line": i,
+                    "message": (
+                        f"{rule_id}: 비표준 {target_macro} 회전량 발견 — "
+                        f"{target_macro}(..., {rot_val}). "
+                        f"KS X 3246 표준 회전량: {sorted(_LEA_STANDARD_ROTATIONS)}."
+                    ),
+                    "ast_evidence": f"regex_fallback: {target_macro} rotation {rot_val}",
+                })
+
+    return violations if violations else None
+
+
+# ---------------------------------------------------------------------------
+# GCM-001 regex fallback — GCM 복호화 함수에서 태그 검증 누락 탐지
+# ---------------------------------------------------------------------------
+
+def _gcm001_regex_scan(content: str) -> Optional[List[Dict[str, Any]]]:
+    """GCM-001 regex fallback: GCM decrypt 함수에서 tag 검증 누락 패턴 탐지."""
+    violations: List[Dict[str, Any]] = []
+    lines = content.split("\n")
+
+    # GCM decrypt 함수 정의 탐지 (함수명에 gcm+decrypt 포함)
+    pat_func = _re_mod.compile(
+        r"^\s*(?:int|void|unsigned|static\s+\w+)\s+"
+        r"(\w*gcm\w*decrypt\w*|\w*decrypt\w*gcm\w*)"
+        r"\s*\(",
+        _re_mod.IGNORECASE,
+    )
+    # 실제 태그 검증 코드 패턴 (주석/함수명의 "tag" 제외)
+    # memcmp 계열 호출, tag 변수 비교, 또는 인증 실패 리턴 패턴
+    pat_tag_verify = _re_mod.compile(
+        r"\bmemcmp\s*\(|"
+        r"\bCRYPTO_memcmp\s*\(|"
+        r"\btimingsafe_memcmp\s*\(|"
+        r"\bconsttime_memcmp\s*\(|"
+        r"\btag\s*(\[|==|!=)|"         # tag[...] or tag == / !=
+        r"(==|!=)\s*tag\b|"            # ... == tag
+        r"\bverify_tag\s*\(|"
+        r"\bcheck_tag\s*\(",
+    )
+
+    i = 0
+    while i < len(lines):
+        func_m = pat_func.match(lines[i])
+        if not func_m:
+            i += 1
+            continue
+        func_name = func_m.group(1)
+        func_start = i + 1  # 1-based
+        brace_depth = 0
+        found_body = False
+        has_tag_check = False
+        j = i
+        for j in range(i, min(i + 100, len(lines))):
+            line = lines[j]
+            # 주석 라인은 태그 검증으로 간주하지 않음
+            stripped = line.strip()
+            is_comment = stripped.startswith("//") or stripped.startswith("/*")
+            brace_depth += line.count("{") - line.count("}")
+            if "{" in line and not found_body:
+                found_body = True
+            if found_body and not is_comment and pat_tag_verify.search(line):
+                has_tag_check = True
+            if found_body and brace_depth <= 0:
+                break
+        if found_body and not has_tag_check:
+            violations.append({
+                "line": func_start,
+                "message": (
+                    f"GCM-001: 함수 '{func_name}'에서 인증 태그(tag) 검증 누락 — "
+                    "GCM 복호화 시 태그 미검증은 위조된 암호문 수용 위험"
+                ),
+                "ast_evidence": f"regex_fallback: GCM decrypt function '{func_name}' without tag verification",
+            })
+        i = j + 1 if found_body else i + 1
+
+    return violations if violations else None
+
+
 def check_rule(
     rule_id: str,
     content: str,
@@ -4056,6 +4416,15 @@ def check_rule(
       []    → 위반 없음 (규칙 준수 확인)
       [..] → 위반 목록 [{line, message}, ...]
     """
+    # ── regex pre-scan: AST 파싱 성공/실패와 무관하게 항상 실행 ──
+    # lea.h 미포함 등으로 AST가 불완전할 때 regex가 유일한 탐지 수단
+    _regex_pre: Optional[List[Dict[str, Any]]] = None
+    if rule_id == "LEA-003":
+        _regex_pre = _lea003_regex_scan(content)
+    elif rule_id in ("LEA-034", "LEA-040"):
+        _regex_pre = _lea_rotation_regex_scan(content, rule_id)
+    elif rule_id == "GCM-001":
+        _regex_pre = _gcm001_regex_scan(content)
     # libclang 백엔드 우선 시도 (KISA MAKE_FUNC 매크로 파싱 지원)
     # libclang 체커가 None 반환 시 → rule_engine 경로로 fallback (pycparser/fallback_pattern)
     lc_checker = _LC_CHECKERS.get(rule_id)
@@ -4063,9 +4432,23 @@ def check_rule(
         tu = _parse_c_libclang(content, filename, extra_includes)
         if tu is not None:
             try:
-                return lc_checker(tu, filename, symbol_graph or {})
+                lc_result = lc_checker(tu, filename, symbol_graph or {})
+                # regex pre-scan 결과와 병합
+                if _regex_pre:
+                    if lc_result:
+                        existing_lines = {v.get("line") for v in lc_result}
+                        for rv in _regex_pre:
+                            if rv.get("line") not in existing_lines:
+                                lc_result.append(rv)
+                        return lc_result
+                    return _regex_pre
+                return lc_result
             except Exception:
                 pass  # pycparser fallback
+
+    # regex pre-scan에서 이미 탐지된 위반이 있으면 반환
+    if _regex_pre:
+        return _regex_pre
 
     # pycparser fallback
     checker = _CHECKERS.get(rule_id)

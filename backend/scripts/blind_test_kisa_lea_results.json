@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-24T12:27:28.146799",
+  "timestamp": "2026-04-24T17:33:24.155576",
   "phase": "Phase 1 + Phase 2",
   "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
   "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
@@ -8,10 +8,11 @@
   "c_files": 20,
   "h_files": 21,
   "l1_fp_count": 35,
-  "l2_removed": 4,
-  "final_fp_count": 31,
-  "fp_per_kloc": 3.02,
+  "l2_removed": 0,
+  "final_fp_count": 35,
+  "fp_per_kloc": 3.41,
   "fp_by_rule": {
+    "LEA-025": 2,
     "COM-001": 1,
     "COM-002": 1,
     "LEA-008": 1,
@@ -23,6 +24,7 @@
     "LEA-030": 1,
     "LEA-032": 1,
     "LEA-035": 1,
+    "LEA-039": 1,
     "LEA-044": 1,
     "LEA-045": 1,
     "LEA-048": 1,
@@ -30,6 +32,7 @@
     "LEA-050": 1,
     "LEA-052": 1,
     "LEA-058": 1,
+    "LEA-059": 1,
     "LEA-060": 1,
     "LEA-062": 1,
     "GCM-005": 1,
@@ -46,20 +49,22 @@
   },
   "fp_by_file": {
     "lea_base.c": 17,
-    "lea_core.c": 10,
+    "lea_core.c": 11,
     "lea_t_generic.c": 2,
+    "benchmark.c": 2,
     "lea_t_fallback.c": 1,
+    "lea_core_xop.c": 1,
     "lea_gcm_generic.c": 1
   },
   "fp_by_severity": {
-    "high": 21,
-    "medium": 9,
+    "high": 24,
+    "medium": 10,
     "low": 1
   },
   "fp_by_pattern": {
     "missing": 18,
     "?": 1,
-    "ast": 12
+    "ast": 16
   },
   "fp_details": [
     {
@@ -127,6 +132,22 @@
       "message": "키 스케줄링 내 워드 간 인터리빙 부재 확인"
     },
     {
+      "rule_id": "LEA-025",
+      "file": "lea_core.c",
+      "line": 7,
+      "severity": "high",
+      "pattern_type": "ast",
+      "message": "암/복호화 키 스케줄 상수 동일성 확인"
+    },
+    {
+      "rule_id": "LEA-025",
+      "file": "lea_core_xop.c",
+      "line": 63,
+      "severity": "high",
+      "pattern_type": "ast",
+      "message": "암/복호화 키 스케줄 상수 동일성 확인"
+    },
+    {
       "rule_id": "LEA-030",
       "file": "lea_core.c",
       "line": null,
@@ -149,6 +170,14 @@
       "severity": "high",
       "pattern_type": "ast",
       "message": "복호화 라운드 역 워드 스왑(Xi+1[0] ← Xi[3])"
+    },
+    {
+      "rule_id": "LEA-039",
+      "file": "benchmark.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "ast",
+      "message": "양방향 암/복호화 정합성(라운드트립) 검증"
     },
     {
       "rule_id": "LEA-044",
@@ -205,6 +234,14 @@
       "severity": "high",
       "pattern_type": "missing",
       "message": "KAT용 REQUEST/RESPONSE 파일 명칭 준수"
+    },
+    {
+      "rule_id": "LEA-059",
+      "file": "benchmark.c",
+      "line": null,
+      "severity": "medium",
+      "pattern_type": "ast",
+      "message": "다중 블록 메시지 검사(MMT) 가변 블록 수 처리"
     },
     {
       "rule_id": "LEA-060",
@@ -312,9 +349,9 @@
     }
   ],
   "timing": {
-    "l1_s": 37.3,
-    "l2_s": 22.9,
-    "total_s": 60.3
+    "l1_s": 22.9,
+    "l2_s": 0.1,
+    "total_s": 23.1
   },
   "statistics": {
     "n": 105,
