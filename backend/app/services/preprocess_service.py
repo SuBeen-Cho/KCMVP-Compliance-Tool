@@ -3,12 +3,22 @@ PreprocessService: 전처리 및 AST 생성.
 - 파일 필터(.c, .h, .cpp 등) → AST 파싱 → 파일별 구조화 데이터 출력.
 - AST 스키마: { "language", "functions": [ { "name", "line", "end_line", "calls": [...] } ], "file_calls": [ { "name", "line" } ] }
 
-pycparser는 전처리된(preprocessed) C 코드만 파싱할 수 있으므로
-주석 제거, 전처리 지시어 치환, 헤더 타입 해석, 매크로 함수 선언을 수행한 뒤 파싱한다.
+libclang 설치 시: AST 파싱을 건너뛰고 파일 읽기 + 라인 분리만 수행.
+  (AST 분석은 ast_checker_service와 enhanced_symbol_graph_service가 libclang으로 직접 수행)
+libclang 미설치 시: pycparser로 AST 파싱 (symbol_graph fallback용).
 """
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
+
+# ── libclang 가용성 확인 ──
+# libclang이 있으면 AST 파싱은 downstream(ast_checker, symbol_graph)에서 직접 수행하므로
+# preprocess 단계에서는 파일 읽기만 하면 된다.
+try:
+    import clang.cindex as _ci  # noqa: F401
+    _HAS_LIBCLANG = True
+except ImportError:
+    _HAS_LIBCLANG = False
 
 SOURCE_EXTENSIONS = {".c", ".h", ".cpp", ".hpp", ".py"}
 
@@ -479,12 +489,19 @@ def build_ast_for_file(file_path: Path, job_root: Path, content: Optional[str] =
     ast_data: Dict[str, Any] = {}
     per_file_errors: List[str] = []
     if ext in (".c", ".h"):
-        ast_data = _parse_c_file(
-            raw_content, file_path.name,
-            job_root=job_root, file_path=file_path,
-        ) or {}
-        if not ast_data:
-            per_file_errors.append("c_parse_failed")
+        if _HAS_LIBCLANG:
+            # libclang 설치 시: pycparser AST 파싱 생략.
+            # AST 분석은 ast_checker_service(libclang)와
+            # enhanced_symbol_graph_service(libclang)가 직접 수행한다.
+            ast_data = {}
+        else:
+            # libclang 미설치 시: pycparser fallback (symbol_graph 등에서 필요)
+            ast_data = _parse_c_file(
+                raw_content, file_path.name,
+                job_root=job_root, file_path=file_path,
+            ) or {}
+            if not ast_data:
+                per_file_errors.append("c_parse_failed")
     elif ext == ".py":
         try:
             import ast as py_ast
