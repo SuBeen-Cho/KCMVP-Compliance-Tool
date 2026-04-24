@@ -88,6 +88,18 @@ _GENERIC_FUNC_NAMES: Set[str] = {
     "process", "run", "start", "stop", "handle",
 }
 
+# 테스트·벤치마크 함수 식별 suffix — TRC 검사에서 제외
+_TEST_FUNC_SUFFIXES: tuple = (
+    "_test", "_tests", "_benchmark", "_bench", "_perf",
+    "_demo", "_sample", "_example", "_main",
+)
+
+# 테스트·벤치마크 헤더 파일 패턴 — 이 파일의 함수는 인덱싱 제외
+_TEST_HEADER_PATTERNS: tuple = (
+    "benchmark", "bench", "perf", "_test", "test_", "_vs",
+    "demo", "sample", "example",
+)
+
 # 최소 커버리지 임계값 (TRC-003)
 _MIN_COVERAGE_RATIO = 0.5  # 헤더 함수의 50% 이상이 시험서에서 언급되어야 함
 
@@ -122,7 +134,10 @@ def build_code_index(preprocess_result: Dict[str, Any]) -> Dict[str, Any]:
         full_text = "\n".join(lines_list)
         ast = fi.get("ast") or {}
 
-        is_header = path.endswith(".h")
+        # 테스트·벤치마크 헤더 파일 제외 (public API가 아님)
+        path_lower = path.lower().replace("\\", "/")
+        is_test_header = any(pat in path_lower for pat in _TEST_HEADER_PATTERNS)
+        is_header = path.endswith(".h") and not is_test_header
 
         # ── 헤더 파일: AST 우선 추출 → regex fallback ──
         if is_header:
@@ -307,6 +322,9 @@ def _check_trc001(
         # 제너릭 단독 이름 제외 (모듈 접두어 없는 경우)
         if name.lower() in _GENERIC_FUNC_NAMES and "_" not in name:
             continue
+        # 테스트·벤치마크 함수 제외 (설계서 명세 대상 아님)
+        if key.endswith(_TEST_FUNC_SUFFIXES):
+            continue
         if _is_func_mentioned(name, key, mentioned):
             continue
         unmentioned.append(info)
@@ -318,6 +336,7 @@ def _check_trc001(
         1 for k, info in header_funcs.items()
         if not info["name"].startswith("_") and len(info["name"]) >= 5
         and not (info["name"].lower() in _GENERIC_FUNC_NAMES and "_" not in info["name"])
+        and not k.endswith(_TEST_FUNC_SUFFIXES)
     )
     uncovered_count = len(unmentioned)
 
@@ -454,6 +473,9 @@ def _check_trc003(
             continue
         if name.lower() in _GENERIC_FUNC_NAMES and "_" not in name:
             continue
+        # 테스트·벤치마크 함수 제외
+        if key.endswith(_TEST_FUNC_SUFFIXES):
+            continue
         if not _is_func_mentioned(name, key, mentioned):
             uncovered.append(info)
 
@@ -462,6 +484,7 @@ def _check_trc003(
         1 for key, info in header_funcs.items()
         if not info["name"].startswith("_") and len(info["name"]) >= 5
         and not (info["name"].lower() in _GENERIC_FUNC_NAMES and "_" not in info["name"])
+        and not key.endswith(_TEST_FUNC_SUFFIXES)
     )
     total = eligible if eligible > 0 else len(header_funcs)
     covered = total - len(uncovered)

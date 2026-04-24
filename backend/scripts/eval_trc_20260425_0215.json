@@ -1,0 +1,36 @@
+{
+  "c404e272-f6a3-449d-a32d-bed6477fee18": {
+    "job_id": "c404e272-f6a3-449d-a32d-bed6477fee18",
+    "design_sections": 52,
+    "test_sections": 0,
+    "header_funcs": 189,
+    "source_funcs": 79,
+    "error_codes": 0,
+    "total_violations": 9,
+    "by_rule": {
+      "TRC-001": 1,
+      "TRC-002": 6,
+      "TRC-004": 2
+    },
+    "by_type": {
+      "interface_match": 1,
+      "error_code_match": 6,
+      "api_mapping": 2
+    }
+  },
+  "f727dd28-78cf-4d3a-9000-2e33c4cc074f": {
+    "job_id": "f727dd28-78cf-4d3a-9000-2e33c4cc074f",
+    "design_sections": 52,
+    "test_sections": 0,
+    "header_funcs": 0,
+    "source_funcs": 11,
+    "error_codes": 0,
+    "total_violations": 6,
+    "by_rule": {
+      "TRC-002": 6
+    },
+    "by_type": {
+      "error_code_match": 6
+    }
+  }
+}
