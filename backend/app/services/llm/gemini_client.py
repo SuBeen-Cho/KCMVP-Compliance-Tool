@@ -161,7 +161,11 @@ def _call_gemini(
         if response_mime_type:
             config.response_mime_type = response_mime_type
 
-        client = genai.Client(api_key=GOOGLE_API_KEY)
+        from google.genai import types as _types_http
+        client = genai.Client(
+            api_key=GOOGLE_API_KEY,
+            http_options=_types_http.HttpOptions(timeout=60000),  # 60s timeout
+        )
         response = client.models.generate_content(
             model=GEMINI_L2_MODEL,
             contents=prompt,
