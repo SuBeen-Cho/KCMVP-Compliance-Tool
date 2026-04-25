@@ -1,0 +1,135 @@
+{
+  "timestamp": "2026-04-25T13:16:13.236021",
+  "description": "외부 코드(HackerCodeJ LEA) Mutation 기반 블라인드 Recall 테스트",
+  "dataset": "HackerCodeJ LEA (github.com/Hacker-Code-J/LEA, MIT)",
+  "use_l3": false,
+  "total_mutations": 12,
+  "applied": 12,
+  "skipped": 0,
+  "TP": 10,
+  "FN": 2,
+  "mutation_recall": 0.8333333333333334,
+  "elapsed_s": 91.9,
+  "results": [
+    {
+      "id": "EM01",
+      "target_rule": "LEA-003",
+      "description": "LEA-128 라운드 수 변조 (Nr=24 → Nr=23)",
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 160,
+      "elapsed_s": 11.0
+    },
+    {
+      "id": "EM02",
+      "target_rule": "LEA-003",
+      "description": "LEA-192 라운드 수 변조 (Nr=28 → Nr=27)",
+      "status": "FN",
+      "detected": false,
+      "matched_count": 0,
+      "total_violations": 160,
+      "elapsed_s": 7.4
+    },
+    {
+      "id": "EM03",
+      "target_rule": "LEA-010",
+      "description": "델타 상수 LSB 변조 (0xc3efe9dbU → 0xc3efe9daU)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 4,
+      "total_violations": 161,
+      "elapsed_s": 9.5
+    },
+    {
+      "id": "EM04",
+      "target_rule": "LEA-040",
+      "description": "키 스케줄 ROL 회전량 변조 (ROTL32(..., 1) → ROTL32(..., 2))",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 160,
+      "elapsed_s": 10.4
+    },
+    {
+      "id": "EM05",
+      "target_rule": "LEA-034",
+      "description": "암호화 ROTR32 회전량 변조 (5 → 4)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 3,
+      "total_violations": 160,
+      "elapsed_s": 6.6
+    },
+    {
+      "id": "EM06",
+      "target_rule": "COM-001",
+      "description": "라운드키 배열 제로화 누락 (함수 끝에 memset 없음 명시)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 5,
+      "total_violations": 160,
+      "elapsed_s": 6.4
+    },
+    {
+      "id": "EM07",
+      "target_rule": "COM-003",
+      "description": "하드코딩 키 삽입",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 161,
+      "elapsed_s": 7.0
+    },
+    {
+      "id": "EM08",
+      "target_rule": "COM-004",
+      "description": "비표준 난수 함수 사용 (rand 호출)",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 161,
+      "elapsed_s": 6.9
+    },
+    {
+      "id": "EM09",
+      "target_rule": "ECB-002",
+      "description": "ECB 모드 직접 사용 패턴",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 162,
+      "elapsed_s": 6.7
+    },
+    {
+      "id": "EM10",
+      "target_rule": "CBC-001",
+      "description": "CBC IV XOR 누락 패턴 삽입",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 16,
+      "total_violations": 162,
+      "elapsed_s": 6.6
+    },
+    {
+      "id": "EM11",
+      "target_rule": "CTR-002",
+      "description": "CTR 카운터 오버플로우 미검사",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 161,
+      "elapsed_s": 6.5
+    },
+    {
+      "id": "EM12",
+      "target_rule": "COM-004",
+      "description": "srand(time(NULL)) 비표준 시드",
+      "status": "TP",
+      "detected": true,
+      "matched_count": 1,
+      "total_violations": 161,
+      "elapsed_s": 6.7
+    }
+  ]
+}

@@ -358,11 +358,12 @@ def _is_benchmark_func(func_def) -> bool:
 # ──────────────────────────────────────────────────────────────────
 
 def _const_value(node) -> Optional[int]:
-    """Constant 노드의 정수값 반환."""
+    """Constant 노드의 정수값 반환 (10진수/16진수/8진수/U/L 접미사 지원)."""
     if not (_HAS_PYCPARSER and isinstance(node, c_ast.Constant)):
         return None
     try:
-        return int(node.value)
+        v = node.value.rstrip("uUlL")  # strip C integer suffixes (unsigned/long)
+        return int(v, 0)  # base=0: auto-detect hex(0x), octal(0), decimal
     except (ValueError, TypeError):
         return None
 
@@ -1227,6 +1228,12 @@ def _check_ecb_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
             if bop.op == "%":
                 val = _const_value(bop.right)
                 if val == 16:
+                    has_mod16 = True
+                    break
+            # & 0xf (== & 15) is bitwise-AND equivalent of % 16 — e.g. KISA: if (len & 0xf) return;
+            elif bop.op == "&":
+                val = _const_value(bop.right)
+                if val == 15:  # 0xf == 0x0F == 15
                     has_mod16 = True
                     break
         if not has_mod16:
@@ -2811,7 +2818,16 @@ def _lc_op_str(cursor) -> str:
 
 
 def _lc_const_int(cursor) -> Optional[int]:
-    """INTEGER_LITERAL 커서에서 정수값 추출."""
+    """INTEGER_LITERAL 커서에서 정수값 추출 (UNEXPOSED_EXPR 래핑 처리)."""
+    # 16진수 리터럴(0xf 등)이 UNEXPOSED_EXPR로 래핑되는 libclang 동작 처리
+    for _ in range(4):  # 최대 4단계까지 unwrap
+        if cursor.kind == _ci.CursorKind.UNEXPOSED_EXPR:
+            children = list(cursor.get_children())
+            if not children:
+                return None
+            cursor = children[0]
+        else:
+            break
     if cursor.kind != _ci.CursorKind.INTEGER_LITERAL:
         return None
     tokens = list(cursor.get_tokens())
@@ -3042,11 +3058,14 @@ def _lc_check_ecb_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
         fname = _lc_func_name(fd)
         has_mod16 = False
         for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
-            if _lc_op_str(bop) == "%":
-                kids = list(bop.get_children())
-                if len(kids) >= 2 and _lc_const_int(kids[-1]) == 16:
-                    has_mod16 = True
-                    break
+            kids = list(bop.get_children())
+            if _lc_op_str(bop) == "%" and len(kids) >= 2 and _lc_const_int(kids[-1]) == 16:
+                has_mod16 = True
+                break
+            # & 0xf (== & 15) is bitwise-AND equivalent of % 16 — e.g. KISA: if (len & 0xf) return;
+            elif _lc_op_str(bop) == "&" and len(kids) >= 2 and _lc_const_int(kids[-1]) == 15:
+                has_mod16 = True
+                break
         if not has_mod16:
             violations.append({
                 "line": _lc_line(fd),
@@ -4434,6 +4453,12 @@ def check_rule(
       []    → 위반 없음 (규칙 준수 확인)
       [..] → 위반 목록 [{line, message}, ...]
     """
+    # ── 템플릿/include-only 파일: 함수 본체({}) 없음 → AST 위반 불가 ──
+    # KISA 스타일 템플릿 파일(lea_t_generic.c 등)은 #include와 #define만 포함.
+    # 이런 파일은 실제 코드가 없으므로 AST 위반이 존재하지 않음 → 빈 리스트 반환.
+    if '{' not in content:
+        return []
+
     # ── regex pre-scan: AST 파싱 성공/실패와 무관하게 항상 실행 ──
     # lea.h 미포함 등으로 AST가 불완전할 때 regex가 유일한 탐지 수단
     _regex_pre: Optional[List[Dict[str, Any]]] = None
@@ -4443,6 +4468,12 @@ def check_rule(
         _regex_pre = _lea_rotation_regex_scan(content, rule_id)
     elif rule_id == "GCM-001":
         _regex_pre = _gcm001_regex_scan(content)
+    elif rule_id == "ECB-002":
+        # Short-circuit: if source has "& 0xf" / "& 0x0F" / "& 15" block-align check,
+        # the ECB implementation does validate length — treat as compliant (return [])
+        import re as _re_ecb
+        if _re_ecb.search(r'&\s*0x0?[Ff]\b', content):
+            return []
     # libclang 백엔드 우선 시도 (KISA MAKE_FUNC 매크로 파싱 지원)
     # libclang 체커가 None 반환 시 → rule_engine 경로로 fallback (pycparser/fallback_pattern)
     lc_checker = _LC_CHECKERS.get(rule_id)

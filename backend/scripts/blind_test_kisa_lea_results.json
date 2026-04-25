@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-04-25T02:01:23.908005",
+  "timestamp": "2026-04-25T12:51:32.448147",
   "phase": "Phase 1 + Phase 2",
   "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
   "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
-  "use_l3": false,
+  "use_l3": true,
   "loc": 10256,
   "c_files": 20,
   "h_files": 21,
-  "l1_fp_count": 35,
+  "l1_fp_count": 22,
   "l3_removed": 0,
-  "final_fp_count": 35,
-  "fp_per_kloc": 3.41,
+  "final_fp_count": 22,
+  "fp_per_kloc": 2.15,
   "fp_by_rule": {
     "LEA-025": 2,
     "COM-001": 1,
@@ -21,11 +21,7 @@
     "LEA-012": 1,
     "LEA-015": 1,
     "LEA-024": 1,
-    "LEA-030": 1,
-    "LEA-032": 1,
-    "LEA-035": 1,
     "LEA-039": 1,
-    "LEA-044": 1,
     "LEA-045": 1,
     "LEA-048": 1,
     "LEA-049": 1,
@@ -35,37 +31,25 @@
     "LEA-059": 1,
     "LEA-060": 1,
     "LEA-062": 1,
-    "GCM-005": 1,
     "CMAC-002": 1,
-    "CMAC-003": 1,
-    "ECB-002": 1,
-    "CTR-002": 1,
-    "CTR-003": 1,
-    "CTR-004": 1,
-    "CTR-LEA-006": 1,
-    "CBC-001": 1,
-    "CBC-002": 1,
-    "CBC-LEA-005": 1
+    "CTR-003": 1
   },
   "fp_by_file": {
-    "lea_base.c": 16,
-    "lea_core.c": 11,
-    "lea_t_generic.c": 2,
+    "lea_core.c": 17,
     "benchmark.c": 2,
     "lea_online.c": 1,
     "lea_t_fallback.c": 1,
-    "lea_core_xop.c": 1,
-    "lea_gcm_generic.c": 1
+    "lea_core_xop.c": 1
   },
   "fp_by_severity": {
-    "high": 24,
-    "medium": 10,
+    "high": 15,
+    "medium": 6,
     "low": 1
   },
   "fp_by_pattern": {
-    "missing": 18,
+    "missing": 14,
     "?": 1,
-    "ast": 16
+    "ast": 7
   },
   "fp_details": [
     {
@@ -86,7 +70,7 @@
     },
     {
       "rule_id": "LEA-008",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -94,7 +78,7 @@
     },
     {
       "rule_id": "LEA-009",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -110,7 +94,7 @@
     },
     {
       "rule_id": "LEA-012",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "low",
       "pattern_type": "missing",
@@ -149,30 +133,6 @@
       "message": "암/복호화 키 스케줄 상수 동일성 확인"
     },
     {
-      "rule_id": "LEA-030",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "암호화 라운드 워드 스왑(Xi+1[3] ← Xi[0])"
-    },
-    {
-      "rule_id": "LEA-032",
-      "file": "lea_t_generic.c",
-      "line": 8,
-      "severity": "medium",
-      "pattern_type": "ast",
-      "message": "마지막 라운드 함수 구조 동일성 확인"
-    },
-    {
-      "rule_id": "LEA-035",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "복호화 라운드 역 워드 스왑(Xi+1[0] ← Xi[3])"
-    },
-    {
       "rule_id": "LEA-039",
       "file": "benchmark.c",
       "line": null,
@@ -181,16 +141,8 @@
       "message": "양방향 암/복호화 정합성(라운드트립) 검증"
     },
     {
-      "rule_id": "LEA-044",
-      "file": "lea_base.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "missing",
-      "message": "중요 보안매개변수(비밀키) 메모리 제거"
-    },
-    {
       "rule_id": "LEA-045",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "medium",
       "pattern_type": "missing",
@@ -198,7 +150,7 @@
     },
     {
       "rule_id": "LEA-048",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -206,7 +158,7 @@
     },
     {
       "rule_id": "LEA-049",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -214,7 +166,7 @@
     },
     {
       "rule_id": "LEA-050",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -222,7 +174,7 @@
     },
     {
       "rule_id": "LEA-052",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -230,7 +182,7 @@
     },
     {
       "rule_id": "LEA-058",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -246,7 +198,7 @@
     },
     {
       "rule_id": "LEA-060",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
@@ -254,105 +206,33 @@
     },
     {
       "rule_id": "LEA-062",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
       "message": "기지 답안 검사(KAT) REQUEST/RESPONSE 파일 처리"
     },
     {
-      "rule_id": "GCM-005",
-      "file": "lea_gcm_generic.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "missing",
-      "message": "GCM SSP(Nonce/Key) 메모리 제로화"
-    },
-    {
       "rule_id": "CMAC-002",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
       "message": "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
     },
     {
-      "rule_id": "CMAC-003",
-      "file": "lea_base.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "missing",
-      "message": "CMAC 보조키(K1, K2) 사용 후 제로화"
-    },
-    {
-      "rule_id": "ECB-002",
-      "file": "lea_t_generic.c",
-      "line": 4,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "함수 'lea_ecb_enc_generic': ECB 모드 입력 길이의 16배수 검사(len%%16) 미발견"
-    },
-    {
-      "rule_id": "CTR-002",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "카운터 초기값의 유일성(Nonce) 보장"
-    },
-    {
       "rule_id": "CTR-003",
-      "file": "lea_base.c",
+      "file": "lea_core.c",
       "line": null,
       "severity": "high",
       "pattern_type": "missing",
       "message": "중요 보안매개변수(SSP)의 관리 및 랜덤성 확보"
-    },
-    {
-      "rule_id": "CTR-004",
-      "file": "lea_base.c",
-      "line": null,
-      "severity": "medium",
-      "pattern_type": "missing",
-      "message": "중요 보안매개변수(Counter/Key) 메모리 제거"
-    },
-    {
-      "rule_id": "CTR-LEA-006",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "MCT-CTR 카운터 갱신 및 키 갱신 수식 준수"
-    },
-    {
-      "rule_id": "CBC-001",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "CBC 암호화 연쇄(Chaining) 수식 준수"
-    },
-    {
-      "rule_id": "CBC-002",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "CBC 복호화 연쇄(Chaining) 수식 준수"
-    },
-    {
-      "rule_id": "CBC-LEA-005",
-      "file": "lea_core.c",
-      "line": null,
-      "severity": "high",
-      "pattern_type": "ast",
-      "message": "LEA 전용 MCT-CBC 키 갱신 수식 준수"
     }
   ],
   "timing": {
-    "l1_s": 27.7,
+    "l1_s": 17.6,
     "l3_s": 0.0,
-    "total_s": 27.7
+    "total_s": 17.6
   },
   "statistics": {
     "n": 105,

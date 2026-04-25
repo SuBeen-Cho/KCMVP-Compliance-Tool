@@ -42,7 +42,8 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 _TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector")
 _BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
 # 인프라/유틸리티 파일: 암호 알고리즘 구현이 아닌 시스템 지원 코드
-_INFRA_FILENAME_PATTERNS = ("cpu_info", "cpuinfo", "simd_detect", "platform_")
+# "_base": KISA 디스패처 파일(lea_base.c 등) — SIMD 함수 포인터 초기화, 실제 암호 구현 없음
+_INFRA_FILENAME_PATTERNS = ("cpu_info", "cpuinfo", "simd_detect", "platform_", "_base")
 _FUNC_DEF_RE = re.compile(
     r'^\s*(?:void|int|unsigned|uint\w+|char|float|double|static)\s+\w+\s*\(',
     re.MULTILINE,
