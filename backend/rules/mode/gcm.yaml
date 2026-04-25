@@ -58,7 +58,7 @@ rules:
     mode: GCM
     pattern_type: missing
     scope: project
-    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
+    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory|lea_memset"
     severity: medium
     description: "사용이 끝난 Nonce, 비밀키, LEA_GCM_CTX 구조체는 memset_s, SecureZeroMemory, explicit_bzero 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
     kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"

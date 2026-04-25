@@ -47,7 +47,7 @@ rules:
     name: "중요 보안매개변수(Counter/Key) 메모리 제거"
     pattern_type: missing
     scope: project
-    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory"
+    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory|lea_memset"
     severity: medium
     description: "사용이 종료된 카운터 값과 비밀키는 메모리 유출 방지를 위해 즉시 0화(Zeroization)해야 함"
     kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
