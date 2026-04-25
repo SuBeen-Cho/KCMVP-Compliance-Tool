@@ -28,6 +28,36 @@ from app.services.llm.prompt_builder import (
 )
 
 
+# ── 방안 4: 전제조건 기반 FP 사전 필터 ──────────────────────────────
+# 위반이 유효하려면 파일에 해당 기능이 구현되어 있어야 함.
+# 전제조건 불충족 시 LLM 호출 없이 FP 확정 → 비결정성 제거.
+_PRECONDITION_PATTERNS: Dict[str, re.Pattern] = {
+    # 키 스케줄 규칙: 파일에 키 스케줄 구현 필요
+    "LEA-010": re.compile(r"(key_schedule|roundkey|round_key|delta\s*\[|RK\s*\[)", re.IGNORECASE),
+    "LEA-024": re.compile(r"(key_schedule|roundkey|round_key|delta\s*\[|RK\s*\[)", re.IGNORECASE),
+    "LEA-025": re.compile(r"(key_schedule|roundkey|round_key|delta\s*\[|RK\s*\[)", re.IGNORECASE),
+    # MCT 규칙: 파일에 MCT 구현 필요
+    "LEA-047": re.compile(r"(mct|MCT|monte.?carlo|MonteCarloTest)", re.IGNORECASE),
+    "LEA-057": re.compile(r"(mct|MCT|monte.?carlo|MonteCarloTest)", re.IGNORECASE),
+}
+
+
+def _check_violation_precondition(
+    v: Dict[str, Any],
+    file_content: str,
+    file_path: str,
+) -> bool:
+    """위반 전제조건 확인. True=전제조건 충족(L3 진행), False=불충족(FP 확정)."""
+    rule_id = (v.get("rule_id") or "").upper()
+    pattern = _PRECONDITION_PATTERNS.get(rule_id)
+    if pattern is None:
+        return True  # 전제조건 정의 없음 → 보수적으로 L3 진행
+    if pattern.search(file_content):
+        return True  # 전제조건 충족
+    print(f"[L3][PC] 전제조건 불충족 → FP 확정: {rule_id} @ {file_path}")
+    return False
+
+
 _FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP 암호모듈 보안 시니어 감사관입니다.
 
 아래 위반 후보에 대해 1차 AI 판정이 "오탐(is_real_issue=false)"으로 결론 내렸습니다.
@@ -183,6 +213,15 @@ def run_l3_contextualizer(
             code_block = _get_code_context(content, line, pattern_type, violation=v, symbol_graph=symbol_graph)
             if not code_block:
                 print(f"[L3] 코드 컨텍스트 없음, 스킵: {v.get('rule_id')} @ {file_path}")
+                continue
+            # Phase 0: 전제조건 검증 (방안 4) — 파일에 해당 기능 미구현 시 FP 확정
+            if not _check_violation_precondition(v, content, file_path):
+                if _rejected_tracker is not None:
+                    _rejected_tracker.add((
+                        (v.get("file") or v.get("file_path") or "").strip(),
+                        (v.get("rule_id") or ""),
+                        v.get("line"),
+                    ))
                 continue
             # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
             structured_ev = _build_structured_evidence(v, symbol_graph)
