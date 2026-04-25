@@ -80,6 +80,94 @@
         "DOC-050": {
           "reason": "소프트웨어 개발환경/컴파일러/빌드도구 상세 정보 미기술",
           "confidence": "high"
+        },
+        "DOC-006": {
+          "reason": "동작모드 구조 및 실행/천이 방법 미기술 — 보안수준1 문서이나 절차 서술 누락",
+          "confidence": "medium"
+        },
+        "DOC-012": {
+          "reason": "표3.1은 인터페이스 유형 설명뿐, 서비스별 데이터 출력 항목 상세 미명세",
+          "confidence": "medium"
+        },
+        "DOC-013": {
+          "reason": "자가시험/오류/제로화 상태에서의 입출력 금지 구체적 메커니즘 미기술",
+          "confidence": "medium"
+        },
+        "DOC-016": {
+          "reason": "동시 운영자 지원 여부 및 동시 접근 관리 방법 미기술",
+          "confidence": "medium"
+        },
+        "DOC-022": {
+          "reason": "__sifr_mem_clear() API 명칭 있으나 제로화 동작 방법(volatile, overwrite 등) 미서술",
+          "confidence": "medium"
+        },
+        "DOC-023": {
+          "reason": "전원 종료/재부팅 시 이전 인증 소멸 방법 미기술",
+          "confidence": "medium"
+        },
+        "DOC-027": {
+          "reason": "HMAC 무결성 검증키가 내부에 하드코딩되나, 키 보호 방법(XOR 분산 등) 미기술",
+          "confidence": "medium"
+        },
+        "DOC-028": {
+          "reason": "무결성 검증 실패 시 오류 상태 천이 명세 및 임시 데이터 제로화 내용 없음",
+          "confidence": "medium"
+        },
+        "DOC-032": {
+          "reason": "가상 메모리 분리/ASLR/DEP 등 OS 메모리 보호 메커니즘 미기술",
+          "confidence": "medium"
+        },
+        "DOC-033": {
+          "reason": "추가 프로세스 생성 여부 및 소유권 제한 관련 서술 없음",
+          "confidence": "low"
+        },
+        "DOC-034": {
+          "reason": "섹션7에 '보호된다' 선언만 있고 구체적 보호 방법(OS 메모리 보호 등) 미기술",
+          "confidence": "medium"
+        },
+        "DOC-036": {
+          "reason": "entropy CSP 등재되나 잡음원 이름/최종 엔트로피/반복 횟수 등 평가 결과 미기술",
+          "confidence": "medium"
+        },
+        "DOC-037": {
+          "reason": "CSP 생성 ○ 표시만 있고, 검증대상 DRBG 이용 SSP 생성 방법 미기술",
+          "confidence": "medium"
+        },
+        "DOC-041": {
+          "reason": "자가시험 실패 시 오류 상태 명칭, 발생 조건, 해제 방법(재시작 등) 미기술",
+          "confidence": "medium"
+        },
+        "DOC-042": {
+          "reason": "자가시험 오류 해결 전까지 암호 서비스 제한/출력 금지 메커니즘 미기술",
+          "confidence": "medium"
+        },
+        "DOC-043": {
+          "reason": "무결성 시험 전 기반 기술(HMAC) KAT 선행 절차 명시 없음",
+          "confidence": "medium"
+        },
+        "DOC-044": {
+          "reason": "KAT 시험항목/참조표준/테스트벡터 출처 등 세부 사항 미기술",
+          "confidence": "medium"
+        },
+        "DOC-049": {
+          "reason": "단순 오류(잘못된 키 크기 등) 시 오류 코드 반환 후 정상 복구 절차 미기술",
+          "confidence": "medium"
+        },
+        "DOC-051": {
+          "reason": "벤더시험 내역 및 자동화 보안 진단 도구(Yasca 등) 사용 내역 미기술",
+          "confidence": "medium"
+        },
+        "DOC-052": {
+          "reason": "수명 종료 시 cipher /w, shred 등 안전 소거 절차 미기술",
+          "confidence": "medium"
+        },
+        "DOC-053": {
+          "reason": "관리자 안내서/비관리자 안내서 분리 제공 여부 미기술",
+          "confidence": "medium"
+        },
+        "DOC-054": {
+          "reason": "하드코딩된 HMAC 무결성 검증키 노출 방지(XOR 마스킹 등) 방법 미기술",
+          "confidence": "medium"
         }
       },
       "expected_passes": {
@@ -121,6 +209,66 @@
         },
         "DOC-047": {
           "reason": "섹션8 자가시험 표에 주기적 자가시험 항목 있음",
+          "confidence": "high"
+        },
+        "DOC-002": {
+          "reason": "표2.1에 구성요소(dll/so 파일명) 명세, '소프트웨어 모듈 (동적라이브러리)' 명시",
+          "confidence": "high"
+        },
+        "DOC-003": {
+          "reason": "그림1에 알고리즘 목록, 표7.1에 CSP/PSP 상세 명세",
+          "confidence": "high"
+        },
+        "DOC-008": {
+          "reason": "섹션2에 '비검증대상 암호알고리즘은 제공하지 않는다' 명시",
+          "confidence": "high"
+        },
+        "DOC-015": {
+          "reason": "섹션10에 버퍼 크기 매개변수 검증 및 취약 함수 재정의 구현 언급, API에 sz 파라미터 포함",
+          "confidence": "medium"
+        },
+        "DOC-017": {
+          "reason": "표4.1.1에 관리자/사용자 역할 권한 구분 명세",
+          "confidence": "high"
+        },
+        "DOC-024": {
+          "reason": "섹션4에 '보안수준1이기 때문에 자체적인 인증 메커니즘을 탑재하지 않고' 명시 — 인증 데이터 없음",
+          "confidence": "high"
+        },
+        "DOC-025": {
+          "reason": "섹션4에 '운영환경에서 제공하는 메커니즘을 활용한다'로 OS 인증 연계 명시",
+          "confidence": "high"
+        },
+        "DOC-029": {
+          "reason": "표4.2에 __sifr_self_check() API 있음, 표8에 '사용자의 요청이 있을 시' 온디맨드 무결성 시험 언급",
+          "confidence": "high"
+        },
+        "DOC-030": {
+          "reason": "표2.1 형상데이터 경로(국가정보원 홈페이지)를 통한 무결성 확인 절차 기술",
+          "confidence": "medium"
+        },
+        "DOC-031": {
+          "reason": "표6에 Windows 10 x64, Ubuntu 22.04 LTS 64bit 등 OS/버전/비트 상세 명세",
+          "confidence": "high"
+        },
+        "DOC-035": {
+          "reason": "표7.1에 CTR_DRBG의 entropy/내부상태(Key,V)/nonce를 CSP로 분류, 제로화 ○ 표시",
+          "confidence": "high"
+        },
+        "DOC-038": {
+          "reason": "표7.1에 모든 CSP의 주입/출력 × 표시 — 경계 넘는 SSP 없음 명시",
+          "confidence": "high"
+        },
+        "DOC-039": {
+          "reason": "표7.1에 저장 × 표시(비영구적), 섹션7에 CSP/PSP '변경 및 대체로부터 보호' 명시",
+          "confidence": "medium"
+        },
+        "DOC-046": {
+          "reason": "sifr.kit은 RSA/DH/ECC 등 공개키 알고리즘 미지원 — 키쌍 일치 시험 불필요",
+          "confidence": "high"
+        },
+        "DOC-055": {
+          "reason": "섹션10에 버퍼오버플로우 방지를 위해 버퍼 크기 입력 재정의 함수 사용 명시",
           "confidence": "high"
         }
       }
