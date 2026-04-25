@@ -15,6 +15,7 @@ from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
 _AST_TP_PROTECT = frozenset({
     "CBC-001", "CBC-002",   # CBC 체이닝 — L3 오판 빈번, KISA FP 아님
     "CTR-001", "CTR-002",   # CTR 모드 — 동일
+    "CTR-003", "CTR-004",   # CTR 카운터 오버플로우/유일성 — L3 오판 확인 (방안 2)
     "LEA-023",              # LEA 라운드 수식 — L3 오판으로 FN 발생 확인
 })
 from app.services.llm.candidate_selector import _select_l3_candidates
@@ -261,7 +262,7 @@ def run_l3_contextualizer(
                 _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
                 # ast fallback(후보) 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
                 # _AST_TP_PROTECT 규칙은 L3 오판 FN 확인+KISA FP 아님 → 90으로 보수적 처리
-                _fp_high = (90 if rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
+                _fp_high = (95 if rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
@@ -310,8 +311,8 @@ def run_l3_contextualizer(
                         _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
                         # ast fallback 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
                         _v_rule_id = v.get("rule_id") or ""
-                        # _AST_TP_PROTECT 규칙은 90으로 보수적 처리
-                        _fp_high = (90 if _v_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
+                        # _AST_TP_PROTECT 규칙은 95로 보수적 처리 (방안 2: 90→95)
+                        _fp_high = (95 if _v_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                         # is_real_issue=false + score ≥ _fp_high → 확신있는 FP → 제거
                         if obj.get("is_real_issue") or (
                             _fp_threshold < _score_int < _fp_high
@@ -341,8 +342,8 @@ def run_l3_contextualizer(
                 _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
                 # ast fallback(후보) 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
                 _batch_rule_id = v.get("rule_id") or ""
-                # _AST_TP_PROTECT 규칙은 90으로 보수적 처리
-                _fp_high = (90 if _batch_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
+                # _AST_TP_PROTECT 규칙은 95로 보수적 처리 (방안 2: 90→95)
+                _fp_high = (95 if _batch_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")

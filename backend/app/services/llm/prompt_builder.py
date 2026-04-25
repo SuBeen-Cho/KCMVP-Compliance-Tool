@@ -9,6 +9,64 @@ from app.services.llm.prompt_templates import PROMPT_TEMPLATES, _get_prompt_temp
 
 
 # ─────────────────────────────────────────────────────────────────
+# 방안 2: 파일명 기반 모드 힌트 (Micro-rubric file-mode awareness)
+# ─────────────────────────────────────────────────────────────────
+_MODE_KEYWORDS = {
+    "cbc": "CBC",
+    "ctr": "CTR",
+    "gcm": "GCM",
+    "ccm": "CCM",
+    "cfb": "CFB",
+    "ofb": "OFB",
+    "ecb": "ECB",
+    "cmac": "CMAC",
+}
+
+_ROLE_KEYWORDS = {
+    "key_schedule": "키 스케줄",
+    "keyschedule": "키 스케줄",
+    "key_gen": "키 생성",
+    "round": "라운드 함수",
+    "block": "블록 암호",
+    "encrypt": "암호화",
+    "decrypt": "복호화",
+    "mct": "MCT 테스트",
+    "kat": "KAT 테스트",
+    "test": "테스트",
+}
+
+
+def _detect_file_mode(file_path: str) -> str:
+    """파일명에서 운영 모드 및 역할 힌트를 추출하여 프롬프트 삽입용 문자열 반환."""
+    fname = file_path.split("/")[-1].lower() if file_path else ""
+    if not fname:
+        return ""
+
+    parts = []
+    # 운영 모드 감지
+    for kw, mode in _MODE_KEYWORDS.items():
+        if kw in fname:
+            parts.append(f"{mode} 모드 구현 파일")
+            break
+
+    # 역할 감지
+    for kw, role in _ROLE_KEYWORDS.items():
+        if kw in fname:
+            parts.append(f"{role} 관련 파일")
+            break
+
+    if not parts:
+        return ""
+
+    role_str = " / ".join(parts)
+    return (
+        f"\n🏷️ 파일 역할 힌트: {fname}은(는) [{role_str}]로 추정됩니다.\n"
+        f"  → 이 파일에서 해당 모드/역할 관련 규칙 위반은 실제 위반(TP)일 가능성이 높습니다.\n"
+        f"  → 오탐(FP)으로 판정하려면 코드에서 해당 구현이 완전히 정상임을 반드시 확인하십시오."
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
 # RAG 가이드라인 텍스트 로드
 # ─────────────────────────────────────────────────────────────────
 def _fetch_guideline_text(rule_id: str, max_chars: int = 800) -> str:
@@ -89,6 +147,9 @@ def _build_single_prompt(
         else ""
     )
 
+    # 방안 2: 파일명 기반 모드/역할 힌트
+    file_mode_hint = _detect_file_mode(file_path)
+
     if use_cot:
         reasoning_section = """
 판정 단계 (아래 순서로 분석 후 JSON 출력):
@@ -156,7 +217,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
 파일: {file_path}
 라인: {line}
 rule_id: {rule_id}
-판정 기준: {template}{ctx_line}{guideline_section}
+판정 기준: {template}{ctx_line}{guideline_section}{file_mode_hint}
 L1 탐지 메시지: {l1_msg}{ast_evidence_section}
 
 코드:
@@ -216,9 +277,12 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
     items_text = "\n\n".join(items_text_parts)
     n = len(batch)
 
+    # 방안 2: 파일명 기반 모드/역할 힌트
+    file_mode_hint = _detect_file_mode(file_path)
+
     return f"""당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다.
 
-파일: {file_path}
+파일: {file_path}{file_mode_hint}
 
 아래 {n}개의 위반 후보를 각각 독립적으로 판정하라.
 
