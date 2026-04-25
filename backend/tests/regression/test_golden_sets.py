@@ -12,7 +12,7 @@ import pytest
 # Golden: 4세트 Recall 회귀 테스트
 # ======================================================================
 
-# 2026-04-23 기준 L1 전용 성능 (evaluate_real_sets.py --no-l2 결과)
+# 2026-04-23 기준 L1 전용 성능 (evaluate_real_sets.py --no-l3 결과)
 GOLDEN = {
     "set1": {"gt": 28, "min_tp": 26, "known_fn_rules": {"COM-001"}},
     "set2": {"gt": 27, "min_tp": 22, "known_fn_rules": {"LEA-005", "LEA-011", "COM-001", "LEA-016", "LEA-017"}},

@@ -6,8 +6,8 @@ ground_truth_design.json 기반으로 rule-level Precision / Recall / F1 계산.
 Usage:
     cd backend
     source venv/bin/activate
-    python scripts/eval_doc_accuracy.py                          # L1+L2
-    python scripts/eval_doc_accuracy.py --no-l2                 # L1만
+    python scripts/eval_doc_accuracy.py                          # L1+L3
+    python scripts/eval_doc_accuracy.py --no-l3                 # L1만
     python scripts/eval_doc_accuracy.py --gt custom_gt.json     # 다른 GT 파일
 
 Output:
@@ -31,7 +31,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.services.preprocess_docs_service import run_doc_preprocess
 from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
-from app.services.llm.doc_judge import run_doc_l2_contextualizer
+from app.services.llm.doc_judge import run_doc_l3_contextualizer
 
 
 TESTDATA_DIR = BACKEND_ROOT / "testdata"
@@ -43,7 +43,7 @@ def load_ground_truth(gt_path: Path) -> dict:
         return json.load(f)
 
 
-def run_pdf(pdf_path: Path, doc_type: str, rules: list, use_l2: bool):
+def run_pdf(pdf_path: Path, doc_type: str, rules: list, use_l3: bool):
     """단일 PDF 평가 → (l1_violation_ids, final_violation_ids)"""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -53,8 +53,8 @@ def run_pdf(pdf_path: Path, doc_type: str, rules: list, use_l2: bool):
 
         preprocess = run_doc_preprocess(tmp)
         l1_viols = run_doc_rule_engine(preprocess, rules)
-        if use_l2 and l1_viols:
-            final = run_doc_l2_contextualizer(l1_viols, preprocess)
+        if use_l3 and l1_viols:
+            final = run_doc_l3_contextualizer(l1_viols, preprocess)
         else:
             final = l1_viols
 
@@ -63,12 +63,12 @@ def run_pdf(pdf_path: Path, doc_type: str, rules: list, use_l2: bool):
     return l1_ids, final_ids
 
 
-def evaluate(gt_path: Path = DEFAULT_GT, use_l2: bool = True):
+def evaluate(gt_path: Path = DEFAULT_GT, use_l3: bool = True):
     gt = load_ground_truth(gt_path)
     rules = load_doc_rules(BACKEND_ROOT / "rules")
     print(f"\n{'='*70}")
     print(f"DOC Rule-Level Accuracy Evaluation")
-    print(f"GT: {gt_path.name}  |  L2: {'on' if use_l2 else 'off'}")
+    print(f"GT: {gt_path.name}  |  L3: {'on' if use_l3 else 'off'}")
     print(f"규칙: {len(rules)}개  |  평가 문서: {len(gt['documents'])}개")
     print(f"{'='*70}")
 
@@ -91,7 +91,7 @@ def evaluate(gt_path: Path = DEFAULT_GT, use_l2: bool = True):
         print(f"\n[{doc['confidence'].upper()}] {filename}")
         print(f"  {doc['description']}")
 
-        l1_ids, final_ids = run_pdf(pdf_path, doc_type, rules, use_l2)
+        l1_ids, final_ids = run_pdf(pdf_path, doc_type, rules, use_l3)
 
         expected_viol_ids = set(doc.get("expected_violations", {}).keys())
         expected_pass_ids = set(doc.get("expected_passes", {}).keys())
@@ -132,9 +132,9 @@ def evaluate(gt_path: Path = DEFAULT_GT, use_l2: bool = True):
         if extra:
             print(f"  [미주석 탐지]:       {sorted(extra)} (GT에 없음 — 수동 검토 필요)")
 
-        l2_filtered = l1_ids - final_ids
-        if l2_filtered:
-            print(f"  [L2 필터 제거]:      {sorted(l2_filtered)}")
+        l3_filtered = l1_ids - final_ids
+        if l3_filtered:
+            print(f"  [L3 필터 제거]:      {sorted(l3_filtered)}")
 
         doc_results.append({
             "filename": filename,
@@ -184,7 +184,7 @@ def evaluate(gt_path: Path = DEFAULT_GT, use_l2: bool = True):
 
     return {
         "timestamp": datetime.now().isoformat(),
-        "l2_enabled": use_l2,
+        "l3_enabled": use_l3,
         "rule_tp": rule_tp, "rule_fp": rule_fp, "rule_fn": rule_fn,
         "precision": round(precision, 1),
         "recall": round(recall, 1),
@@ -197,11 +197,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DOC rule-level accuracy evaluation")
     parser.add_argument("--gt", type=Path, default=DEFAULT_GT,
                         help="Ground truth JSON path")
-    parser.add_argument("--no-l2", action="store_true",
-                        help="Skip L2 Gemini re-judgment")
+    parser.add_argument("--no-l3", action="store_true",
+                        help="Skip L3 Gemini re-judgment")
     args = parser.parse_args()
 
-    result = evaluate(gt_path=args.gt, use_l2=not args.no_l2)
+    result = evaluate(gt_path=args.gt, use_l3=not args.no_l3)
 
     # Save result JSON next to this script
     out_path = BACKEND_ROOT / "scripts" / f"eval_result_{datetime.now().strftime('%Y%m%d_%H%M')}.json"

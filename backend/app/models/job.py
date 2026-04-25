@@ -18,7 +18,7 @@ class JobStatus(str, Enum):
 # job_id: str
 # status: JobStatus
 # progress: int  # 0..100
-# current_step: str  # upload | preprocess | l1 | l2 | l3 | patch | report
+# current_step: str  # upload | preprocess | l1 | l3 | l3 | patch | report
 # source_type: str  # github | upload
 # source_ref: str   # URL or file path
 # algorithm: Optional[str]

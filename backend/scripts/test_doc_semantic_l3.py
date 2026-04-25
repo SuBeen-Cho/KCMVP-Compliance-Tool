@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-DOC semantic 규칙 → L2 항상 전달 수정 검증 스크립트
+DOC semantic 규칙 → L3 항상 전달 수정 검증 스크립트
 =====================================================
 fake_design_doc.pdf 기준으로:
   1. doc_rule_service: semantic 규칙 항상 발동 여부
   2. keyword_found 필드 존재 여부
-  3. L2 contextualizer: needs_ai_review 위반 수신 여부
-  4. (API 키 있을 시) 실제 L2 AI 판정 결과
+  3. L3 contextualizer: needs_ai_review 위반 수신 여부
+  4. (API 키 있을 시) 실제 L3 AI 판정 결과
 
 알려진 의도적 위반 5개: DOC-003, DOC-012, DOC-022, DOC-040, DOC-048
 """
@@ -37,7 +37,7 @@ def record(label, ok, detail=""):
     print(f"  {sym} {label}" + (f"  — {detail}" if detail else ""))
 
 print("=" * 65)
-print("  DOC semantic → L2 수정 검증 (fake_design_doc.pdf)")
+print("  DOC semantic → L3 수정 검증 (fake_design_doc.pdf)")
 print("=" * 65)
 
 # ── 1. 전처리 결과 로드 ───────────────────────────────────────────
@@ -117,41 +117,41 @@ kw_false = [v for v in semantic_viols if v.get("keyword_found") is False]
 print(f"  keyword_found=True (키워드 있지만 맥락 부적절): {len(kw_true)}건")
 print(f"  keyword_found=False (키워드 아예 없음):         {len(kw_false)}건")
 
-# ── 4. L2 필터 검증 (API 호출 없이) ─────────────────────────────
-print("\n[4] L2 필터 로직 검증 (API 호출 없음)")
+# ── 4. L3 필터 검증 (API 호출 없이) ─────────────────────────────
+print("\n[4] L3 필터 로직 검증 (API 호출 없음)")
 ai_candidates = [v for v in violations_l1 if v.get("needs_ai_review") is True]
-record("needs_ai_review=True 위반이 L2 후보로 선정됨", len(ai_candidates) > 0,
+record("needs_ai_review=True 위반이 L3 후보로 선정됨", len(ai_candidates) > 0,
        f"{len(ai_candidates)}건")
 
 # DOC-003/012/022가 AI 후보에 포함되는지
 for rid in ["DOC-003", "DOC-012", "DOC-022"]:
     in_candidates = any(v.get("rule_id") == rid for v in ai_candidates)
-    record(f"L2 후보에 {rid} 포함", in_candidates)
+    record(f"L3 후보에 {rid} 포함", in_candidates)
 
-# ── 5. 실제 L2 AI 판정 ───────────────────────────────────────────
-print("\n[5] 실제 L2 AI 판정 (Gemini API)")
+# ── 5. 실제 L3 AI 판정 ───────────────────────────────────────────
+print("\n[5] 실제 L3 AI 판정 (Gemini API)")
 api_key = os.environ.get("GOOGLE_API_KEY", "")
 if not api_key or api_key in ("your_key_here", ""):
-    print(f"  {INFO} GOOGLE_API_KEY 없음 → L2 실행 생략")
-    record("L2 실행 (API 키 없어 스킵)", True, "스킵됨")
+    print(f"  {INFO} GOOGLE_API_KEY 없음 → L3 실행 생략")
+    record("L3 실행 (API 키 없어 스킵)", True, "스킵됨")
 else:
     try:
-        from app.services.llm_service import run_doc_l2_contextualizer
-        print(f"  L2 전송 전 위반 수: {len(violations_l1)}건")
-        violations_l2 = run_doc_l2_contextualizer(violations_l1, doc_preprocess)
-        print(f"  L2 처리 후 위반 수: {len(violations_l2)}건")
+        from app.services.llm_service import run_doc_l3_contextualizer
+        print(f"  L3 전송 전 위반 수: {len(violations_l1)}건")
+        violations_l3 = run_doc_l3_contextualizer(violations_l1, doc_preprocess)
+        print(f"  L3 처리 후 위반 수: {len(violations_l3)}건")
 
-        removed = len(violations_l1) - len(violations_l2)
-        record("L2 실행 완료", True, f"제거된 FP={removed}건")
+        removed = len(violations_l1) - len(violations_l3)
+        record("L3 실행 완료", True, f"제거된 FP={removed}건")
 
-        print("\n  [타깃 5개 L2 최종 결과]")
+        print("\n  [타깃 5개 L3 최종 결과]")
         for rid in sorted(TARGET_RULES):
-            remaining = [v for v in violations_l2 if v.get("rule_id") == rid]
+            remaining = [v for v in violations_l3 if v.get("rule_id") == rid]
             conf = remaining[0].get("confidence", "미판정") if remaining else "-"
-            record(f"L2 최종: {rid}", len(remaining) > 0, f"confidence={conf}")
+            record(f"L3 최종: {rid}", len(remaining) > 0, f"confidence={conf}")
 
     except Exception as e:
-        record("L2 실행 실패", False, str(e)[:100])
+        record("L3 실행 실패", False, str(e)[:100])
 
 # ── 결과 요약 ────────────────────────────────────────────────────
 print("\n" + "=" * 65)

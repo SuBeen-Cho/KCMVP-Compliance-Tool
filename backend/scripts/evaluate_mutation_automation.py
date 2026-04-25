@@ -17,7 +17,7 @@ Phase 3의 15건 mutation을 자동 변형(파라메트릭 변이)하여
 
 Usage:
     cd backend
-    python scripts/evaluate_mutation_automation.py [--no-l2] [--max N]
+    python scripts/evaluate_mutation_automation.py [--no-l3] [--max N]
 """
 
 import sys, os, re, time, json, tempfile, shutil, math
@@ -29,7 +29,7 @@ from itertools import combinations
 BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 
 # --max 인자 처리
 MAX_MUTATIONS = 100
@@ -42,14 +42,14 @@ KISA_LEA_SRC = BACKEND_ROOT.parent / "블록암호_LEA_소스코드(v1.3)" / "LE
 from app.services.rule_engine_service import run_rule_engine
 
 try:
-    from app.services.llm_service import run_l2_contextualizer
+    from app.services.llm_service import run_l3_contextualizer
     from app.services.report_service import post_process_violations
-    L2_AVAILABLE = True
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
+    L3_AVAILABLE = False
 
-if not L2_AVAILABLE:
-    USE_L2 = False
+if not L3_AVAILABLE:
+    USE_L3 = False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -264,7 +264,7 @@ def apply_mutation(src_dir, mutation):
 
 
 def run_pipeline_on_dir(src_dir):
-    """L1(+L2) 파이프라인 실행."""
+    """L1(+L3) 파이프라인 실행."""
     c_files = sorted(src_dir.rglob("*.c"))
     file_entries = []
     for f in c_files:
@@ -281,12 +281,12 @@ def run_pipeline_on_dir(src_dir):
     l1 = run_rule_engine(preprocess_result=preprocess_result,
                          rules_dir=rules_dir, job_root=src_dir.parent)
 
-    if USE_L2 and L2_AVAILABLE and l1:
-        l2_rejected = set()
+    if USE_L3 and L3_AVAILABLE and l1:
+        l3_rejected = set()
         try:
-            l2 = run_l2_contextualizer(preprocess_result=preprocess_result,
-                                       l1_violations=l1, _rejected_tracker=l2_rejected)
-            return post_process_violations(l1=l1, l2=l2, l2_rejected_keys=l2_rejected)
+            l3 = run_l3_contextualizer(preprocess_result=preprocess_result,
+                                       l1_violations=l1, _rejected_tracker=l3_rejected)
+            return post_process_violations(l1=l1, l3=l3, l3_rejected_keys=l3_rejected)
         except:
             return l1
     return l1
@@ -295,7 +295,7 @@ def run_pipeline_on_dir(src_dir):
 def main():
     print("=" * 65)
     print("Phase 6: Mutation 자동화 — GT 확대")
-    print(f"L2: {'활성화' if USE_L2 else '비활성화'}")
+    print(f"L3: {'활성화' if USE_L3 else '비활성화'}")
     print(f"최대 mutation: {MAX_MUTATIONS}건")
     print("=" * 65)
 
@@ -443,7 +443,7 @@ def main():
         "timestamp": datetime.now().isoformat(),
         "phase": "Phase 6",
         "description": "Mutation 자동화 — 파라메트릭 변형 기반 GT 확대",
-        "use_l2": USE_L2,
+        "use_l3": USE_L3,
         "total_generated": len(mutations),
         "applied": total_applied,
         "skipped": skip,

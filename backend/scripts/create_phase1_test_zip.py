@@ -34,7 +34,7 @@ ZIP_PASS = OUT_DIR / "phase1_pass.zip"
 # FAIL 케이스 소스 파일 (일반 str, ZIP 저장 시 UTF-8 인코딩)
 # ─────────────────────────────────────────────────────────────────
 
-# COM-003: 하드코딩 키처럼 보이는 16바이트 배열 (L1 regex 탐지 -> L2 판정 대상)
+# COM-003: 하드코딩 키처럼 보이는 16바이트 배열 (L1 regex 탐지 -> L3 판정 대상)
 HARDCODED_KEY_C = """\
 #include <stdint.h>
 #include "lea.h"
@@ -52,7 +52,7 @@ void encrypt_data(const uint8_t *plain, uint8_t *cipher) {
 }
 """
 
-# COM-003 false positive: S-box table (L1 detects -> L2 should filter out)
+# COM-003 false positive: S-box table (L1 detects -> L3 should filter out)
 SBOX_TABLE_C = """\
 #include <stdint.h>
 

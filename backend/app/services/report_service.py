@@ -57,21 +57,21 @@ def _confidence(v: Dict[str, Any]) -> str:
     """위반 딕셔너리에서 confidence 값 추출.
 
     - confidence 필드가 있으면 그대로 사용
-    - l2_confirmed=True  → "확정" (L2 검증 통과)
+    - l3_confirmed=True  → "확정" (L3 검증 통과)
     - needs_ai_review=True → "후보"
     - pattern_type=missing  → "확정" (부재 여부는 이진 판정)
-    - 나머지 regex/semantic/ast without L2 → "후보" (L1 단독 판정, 미검토)
+    - 나머지 regex/semantic/ast without L3 → "후보" (L1 단독 판정, 미검토)
     """
     if "confidence" in v:
         return v["confidence"]
-    if v.get("l2_confirmed"):
+    if v.get("l3_confirmed"):
         return "확정"
     if v.get("needs_ai_review"):
         return "후보"
     pt = (v.get("pattern_type") or "").lower()
     if pt == "missing":
-        return "확정"   # missing 룰은 이진 판정 — L2 불필요
-    return "후보"       # regex/semantic/ast 는 L2 미검토 상태 → 후보
+        return "확정"   # missing 룰은 이진 판정 — L3 불필요
+    return "후보"       # regex/semantic/ast 는 L3 미검토 상태 → 후보
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -80,16 +80,16 @@ def _confidence(v: Dict[str, Any]) -> str:
 
 def post_process_violations(
     l1: List[Dict[str, Any]],
-    l2: List[Dict[str, Any]],
-    l2_rejected_keys: Optional[set] = None,
+    l3: List[Dict[str, Any]],
+    l3_rejected_keys: Optional[set] = None,
 ) -> List[Dict[str, Any]]:
     """
-    L1 + L2 원시 결과를 받아 최종 위반 리스트로 통합.
+    L1 + L3 원시 결과를 받아 최종 위반 리스트로 통합.
 
     - L1 결과를 (file, line, rule_id) 기준으로 dedup
-    - l2_rejected_keys에 있는 항목은 L2가 오탐으로 판정 → 제거
-    - L2 확인 결과가 매칭되면 병합 후 confidence → "확정"
-    - 매칭 안 된 L2 항목은 독립 위반으로 유지
+    - l3_rejected_keys에 있는 항목은 L3가 오탐으로 판정 → 제거
+    - L3 확인 결과가 매칭되면 병합 후 confidence → "확정"
+    - 매칭 안 된 L3 항목은 독립 위반으로 유지
     """
     # ── L1 dedup ──
     seen_l1: set = set()
@@ -105,8 +105,8 @@ def post_process_violations(
         seen_l1.add(key)
         deduped_l1.append(dict(v))
 
-    # ── L2 오탐 제거: L2가 is_real_issue=False 로 판정한 L1 항목 제거 ──
-    if l2_rejected_keys:
+    # ── L3 오탐 제거: L3가 is_real_issue=False 로 판정한 L1 항목 제거 ──
+    if l3_rejected_keys:
         before = len(deduped_l1)
         deduped_l1 = [
             v for v in deduped_l1
@@ -114,51 +114,51 @@ def post_process_violations(
                 (v.get("file") or "").strip(),
                 (v.get("rule_id") or "").strip(),
                 v.get("line"),
-            ) not in l2_rejected_keys
+            ) not in l3_rejected_keys
         ]
         removed = before - len(deduped_l1)
         if removed:
-            print(f"[Report] L2 오탐 제거 후처리: {removed}건 삭제 (L2 rejected)")
+            print(f"[Report] L3 오탐 제거 후처리: {removed}건 삭제 (L3 rejected)")
 
-    # ── L2 인덱스 ──
+    # ── L3 인덱스 ──
     def _original_rule_id(rid: str) -> str:
-        return rid[3:] if rid.startswith("L2-") else rid
+        return rid[3:] if rid.startswith("L3-") else rid
 
-    l2_index: Dict[Tuple, Dict[str, Any]] = {}
-    for v in l2:
+    l3_index: Dict[Tuple, Dict[str, Any]] = {}
+    for v in l3:
         file_ = (v.get("file") or "").strip()
         original = _original_rule_id((v.get("rule_id") or "").strip())
         key = (file_, original, v.get("line"))
-        l2_index[key] = v
+        l3_index[key] = v
 
-    # ── L1에 L2 병합 ──
-    matched_l2_keys: set = set()
+    # ── L1에 L3 병합 ──
+    matched_l3_keys: set = set()
     result: List[Dict[str, Any]] = []
     for v in deduped_l1:
         file_ = (v.get("file") or "").strip()
         rid   = (v.get("rule_id") or "").strip()
         key   = (file_, rid, v.get("line"))
-        l2_match = l2_index.get(key)
-        if l2_match:
+        l3_match = l3_index.get(key)
+        if l3_match:
             merged = dict(v)
-            merged["source"]       = "L1+L2"
-            merged["l2_confirmed"] = True
-            merged["l2_message"]   = l2_match.get("message", "")
-            merged["suggestion"]   = l2_match.get("suggestion", v.get("suggestion", ""))
+            merged["source"]       = "L1+L3"
+            merged["l3_confirmed"] = True
+            merged["l3_message"]   = l3_match.get("message", "")
+            merged["suggestion"]   = l3_match.get("suggestion", v.get("suggestion", ""))
             merged["confidence"]   = "확정"
             result.append(merged)
-            matched_l2_keys.add(key)
+            matched_l3_keys.add(key)
         else:
             if "confidence" not in v:
                 v["confidence"] = _confidence(v)
             result.append(v)
 
-    # ── 매칭 안 된 L2 항목 ──
-    for v in l2:
+    # ── 매칭 안 된 L3 항목 ──
+    for v in l3:
         file_ = (v.get("file") or "").strip()
         original = _original_rule_id((v.get("rule_id") or "").strip())
         key = (file_, original, v.get("line"))
-        if key not in matched_l2_keys:
+        if key not in matched_l3_keys:
             item = dict(v)
             if "confidence" not in item:
                 item["confidence"] = _confidence(item)

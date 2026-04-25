@@ -453,8 +453,8 @@ def attach_evidence(
             continue
 
         rule_id = (item.get("rule_id") or "").strip()
-        # L2 rule_id는 "L2-COM-001" 형식 → 원본 rule_id 추출
-        if rule_id.startswith("L2-"):
+        # L3 rule_id는 "L3-COM-001" 형식 → 원본 rule_id 추출
+        if rule_id.startswith("L3-"):
             rule_id = rule_id[3:]
 
         msg = item.get("message") or ""
@@ -468,6 +468,43 @@ def attach_evidence(
             item["evidence"] = evidence
         result.append(item)
     return result
+
+
+def run_l2_rag_context(violations: list, max_chars: int = 800) -> list:
+    """L2: RAG 기반 맥락 형성 — rule_id별 가이드라인 텍스트를 각 위반 객체에 주입.
+
+    L1 위반 리스트를 받아 각 항목에 'rag_guideline_text' 필드를 추가한 뒤 반환.
+    L3(LLM 판정)은 이 필드를 프롬프트에 직접 주입하여 가이드라인 문맥을 활용한다.
+    """
+    guideline_cache: dict = {}
+    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in violations}
+    for rid in unique_rule_ids:
+        try:
+            chunks = search_evidence(rid, top_k=2)
+            if chunks:
+                parts, total = [], 0
+                for c in chunks:
+                    title = c.get("title", "")
+                    content = c.get("content", "")
+                    piece = f"[{title}]\n{content}" if title else content
+                    parts.append(piece)
+                    total += len(piece)
+                    if total >= max_chars:
+                        break
+                guideline_cache[rid] = "\n\n".join(parts)[:max_chars]
+            else:
+                guideline_cache[rid] = ""
+        except Exception as e:
+            print(f"[L2][RAG] 가이드라인 fetch 실패 ({rid}): {e}")
+            guideline_cache[rid] = ""
+
+    loaded = sum(1 for g in guideline_cache.values() if g)
+    print(f"[L2][RAG] 가이드라인 로드: {loaded}건 (/{len(guideline_cache)})")
+
+    for v in violations:
+        rid = v.get("rule_id") or "UNKNOWN"
+        v["rag_guideline_text"] = guideline_cache.get(rid, "")
+    return violations
 
 
 def build_or_get_index(docs_dir: Path, persist_dir: str) -> None:

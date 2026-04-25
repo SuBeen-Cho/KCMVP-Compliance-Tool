@@ -4,17 +4,17 @@ Phase 1 통합 테스트 스크립트.
 검증 항목:
   [T1] L1 탐지: FAIL ZIP에서 COM-001~005 위반이 정상 탐지되는지
   [T2] L1 탐지: PASS ZIP에서 COM-003/004는 미탐지되는지
-  [T3] L2 후보 선정: _select_l2_candidates 로직 (unit test)
+  [T3] L3 후보 선정: _select_l3_candidates 로직 (unit test)
   [T4] 코드 절삭: _get_code_context pattern_type별 범위 (unit test)
   [T5] 배치 프롬프트 빌드: _build_batch_prompt 형식 확인
   [T6] JSON 추출: _extract_json_array_from_text 정상 파싱
   [T7] 캐시: 동일 코드 블록 재호출 시 캐시 히트
-  [T8] L2 실제 호출: GOOGLE_API_KEY 있으면 FAIL ZIP 전체 파이프라인 실행
+  [T8] L3 실제 호출: GOOGLE_API_KEY 있으면 FAIL ZIP 전체 파이프라인 실행
 
 실행:
   cd backend
   python scripts/test_phase1.py          # 전체 테스트
-  python scripts/test_phase1.py --l2     # L2 실제 Gemini 호출 포함
+  python scripts/test_phase1.py --l3     # L3 실제 Gemini 호출 포함
   python scripts/test_phase1.py --case fail   # FAIL 케이스만
 """
 
@@ -37,13 +37,13 @@ from app.services.preprocess_service import run_preprocess
 from app.services.rule_engine_service import run_rule_engine
 from app.services.symbol_graph_service import build_symbol_graph
 from app.services.llm_service import (
-    _select_l2_candidates,
+    _select_l3_candidates,
     _get_code_context,
     _build_batch_prompt,
     _extract_json_array_from_text,
-    _l2_cache_key,
-    _l2_cache,
-    run_l2_contextualizer,
+    _l3_cache_key,
+    _l3_cache,
+    run_l3_contextualizer,
     PROMPT_TEMPLATES,
 )
 
@@ -156,10 +156,10 @@ def test_t2_pass_l1(tr: TestResult):
 
 
 # ─────────────────────────────────────────────────────────────────
-# T3: _select_l2_candidates unit test
+# T3: _select_l3_candidates unit test
 # ─────────────────────────────────────────────────────────────────
 def test_t3_candidate_selection(tr: TestResult):
-    print("\n[T3] L2 후보 선정 로직 검증")
+    print("\n[T3] L3 후보 선정 로직 검증")
 
     mock_violations = [
         # COM-003: regex, high → 반드시 포함
@@ -182,7 +182,7 @@ def test_t3_candidate_selection(tr: TestResult):
          "file": "e.c", "line": 50},
     ]
 
-    candidates = _select_l2_candidates(mock_violations)
+    candidates = _select_l3_candidates(mock_violations)
     candidate_ids = {v.get("rule_id") for v in candidates}
 
     print(f"  입력 {len(mock_violations)}건 → 후보 선정 {len(candidates)}건")
@@ -190,7 +190,7 @@ def test_t3_candidate_selection(tr: TestResult):
 
     # COM-001(missing)는 제외되어야 함
     if "COM-001" in candidate_ids:
-        tr.ng("T3-exclude-missing", "COM-001(missing)이 L2 후보에 포함됨 — 제외되어야 함")
+        tr.ng("T3-exclude-missing", "COM-001(missing)이 L3 후보에 포함됨 — 제외되어야 함")
     else:
         tr.ok("T3-exclude-missing", "COM-001(missing) 올바르게 제외")
 
@@ -369,81 +369,81 @@ def test_t6_json_array_parsing(tr: TestResult):
 # T7: 캐시 동작 검증
 # ─────────────────────────────────────────────────────────────────
 def test_t7_cache(tr: TestResult):
-    print("\n[T7] L2 결과 캐시 검증")
+    print("\n[T7] L3 결과 캐시 검증")
 
     rule_id = "COM-003"
     code_block = "static const uint8_t key[16] = {0x2b, 0x7e, 0x15, 0x16};"
-    key = _l2_cache_key(rule_id, code_block)
+    key = _l3_cache_key(rule_id, code_block)
 
     # 캐시에 직접 주입
-    _l2_cache[key] = {"is_real_issue": True, "description": "캐시 테스트", "suggestion": "교체"}
+    _l3_cache[key] = {"is_real_issue": True, "description": "캐시 테스트", "suggestion": "교체"}
 
     # 동일 코드로 키 생성 → 캐시 히트 확인
-    key2 = _l2_cache_key(rule_id, code_block)
-    if key == key2 and key in _l2_cache:
+    key2 = _l3_cache_key(rule_id, code_block)
+    if key == key2 and key in _l3_cache:
         tr.ok("T7-cache-key", f"동일 코드 → 동일 캐시 키: {key}")
     else:
         tr.ng("T7-cache-key", "캐시 키 불일치")
 
     # 다른 rule_id → 다른 키
-    key3 = _l2_cache_key("COM-001", code_block)
+    key3 = _l3_cache_key("COM-001", code_block)
     if key != key3:
         tr.ok("T7-cache-isolation", "rule_id 다르면 다른 캐시 키")
     else:
         tr.ng("T7-cache-isolation", "rule_id 달라도 같은 캐시 키 — 오류")
 
     # 다른 코드 → 다른 키
-    key4 = _l2_cache_key(rule_id, code_block + " // 변경됨")
+    key4 = _l3_cache_key(rule_id, code_block + " // 변경됨")
     if key != key4:
         tr.ok("T7-cache-content", "코드 다르면 다른 캐시 키")
     else:
         tr.ng("T7-cache-content", "코드 달라도 같은 캐시 키 — 오류")
 
     # 캐시 정리
-    del _l2_cache[key]
+    del _l3_cache[key]
 
 
 # ─────────────────────────────────────────────────────────────────
-# T8: 전체 파이프라인 (L1 + L2 실제 호출)
+# T8: 전체 파이프라인 (L1 + L3 실제 호출)
 # ─────────────────────────────────────────────────────────────────
-def test_t8_full_pipeline(tr: TestResult, run_l2: bool):
-    print("\n[T8] 전체 파이프라인 (L1 + L2)")
+def test_t8_full_pipeline(tr: TestResult, run_l3: bool):
+    print("\n[T8] 전체 파이프라인 (L1 + L3)")
 
     violations_l1, preprocess_result = _run_l1(ZIP_FAIL)
     found_ids_l1 = _get_rule_ids(violations_l1)
     print(f"  L1 위반: {len(violations_l1)}건 — rule_ids: {sorted(found_ids_l1)}")
 
-    # L2 후보 선정
-    from app.services.llm_service import _select_l2_candidates
-    candidates = _select_l2_candidates(violations_l1)
-    print(f"  L2 후보: {len(candidates)}건")
+    # L3 후보 선정
+    from app.services.llm_service import _select_l3_candidates
+    candidates = _select_l3_candidates(violations_l1)
+    print(f"  L3 후보: {len(candidates)}건")
 
-    if not run_l2:
-        print("  (--l2 플래그 없음 → Gemini 실제 호출 생략)")
+    if not run_l3:
+        print("  (--l3 플래그 없음 → Gemini 실제 호출 생략)")
         if candidates:
-            tr.ok("T8-pipeline-l1", f"L1 → L2 후보 선정 성공: {len(candidates)}건")
+            tr.ok("T8-pipeline-l1", f"L1 → L3 후보 선정 성공: {len(candidates)}건")
         else:
-            tr.ng("T8-pipeline-l1", "L2 후보가 0건 — L1 위반 탐지 또는 선정 로직 확인 필요")
+            tr.ng("T8-pipeline-l1", "L3 후보가 0건 — L1 위반 탐지 또는 선정 로직 확인 필요")
         return
 
-    # 실제 L2 호출
+    # 실제 L3 호출
     import os
     if not os.environ.get("GOOGLE_API_KEY") and not (BACKEND / ".env").exists():
-        print("  ⚠️  GOOGLE_API_KEY 없음 → L2 호출 생략")
+        print("  ⚠️  GOOGLE_API_KEY 없음 → L3 호출 생략")
         tr.ok("T8-pipeline-skip", "GOOGLE_API_KEY 없어서 생략 (정상)")
         return
 
-    print("  Gemini L2 호출 중...")
-    violations_l2 = run_l2_contextualizer(preprocess_result, violations_l1)
-    print(f"  L2 확정 위반: {len(violations_l2)}건")
+    print("  Gemini L3 호출 중...")
+    violations_l3 = run_l3_contextualizer(preprocess_result, violations_l1)
+    print(f"  L3 확정 위반: {len(violations_l3)}건")
 
-    for v in violations_l2:
+    for v in violations_l3:
         print(f"    {v.get('rule_id')} @ {v.get('file')}:{v.get('line')} — {v.get('message')[:60]}")
 
-    if len(violations_l2) >= 0:  # 결과가 나오면 성공 (0건도 정상 가능)
-        tr.ok("T8-l2-call", f"L2 호출 성공: {len(violations_l2)}건 확정")
+    if len(violations_l3) >= 0:  # 결과가 나오면 성공 (0건도 정상 가능)
+        tr.ok("T8-l3-call", f"L3 호출 성공: {len(violations_l3)}건 확정")
     else:
-        tr.ng("T8-l2-call", "L2 호출 실패")
+        tr.ng("T8-l3-call", "L3 호출 실패")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -451,7 +451,7 @@ def test_t8_full_pipeline(tr: TestResult, run_l2: bool):
 # ─────────────────────────────────────────────────────────────────
 def main() -> int:
     ap = argparse.ArgumentParser(description="Phase 1 통합 테스트")
-    ap.add_argument("--l2", action="store_true", help="Gemini L2 실제 호출 포함")
+    ap.add_argument("--l3", action="store_true", help="Gemini L3 실제 호출 포함")
     ap.add_argument(
         "--case", choices=["fail", "pass", "unit", "all"], default="all",
         help="실행할 테스트 케이스"
@@ -483,7 +483,7 @@ def main() -> int:
 
     if run_fail:
         test_t1_fail_l1(tr)
-        test_t8_full_pipeline(tr, run_l2=args.l2)
+        test_t8_full_pipeline(tr, run_l3=args.l3)
 
     if run_pass:
         test_t2_pass_l1(tr)

@@ -29,13 +29,13 @@ def _fetch_guideline_text(rule_id: str, max_chars: int = 800) -> str:
                 break
         return "\n\n".join(parts)[:max_chars]
     except Exception as e:
-        print(f"[L2][RAG] guideline fetch 실패 ({rule_id}): {e}")
+        print(f"[L3][RAG] guideline fetch 실패 ({rule_id}): {e}")
         return ""
 
 
 # ─────────────────────────────────────────────────────────────────
 # pattern_type별 코드 절삭 범위 (라인 수)
-# missing은 위치 정보가 없으므로 절삭 불필요 → L2 호출 자체를 스킵
+# missing은 위치 정보가 없으므로 절삭 불필요 → L3 호출 자체를 스킵
 # ─────────────────────────────────────────────────────────────────
 _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
     "regex": 30,
@@ -45,23 +45,12 @@ _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
 }
 
 # ─────────────────────────────────────────────────────────────────
-# L2 결과 캐시 (스니펫 해시 기반, in-memory)
+# L3 결과 캐시 (스니펫 해시 기반, in-memory)
 # ─────────────────────────────────────────────────────────────────
-_l2_cache: Dict[str, Dict[str, Any]] = {}
+_l3_cache: Dict[str, Dict[str, Any]] = {}
 
 
-def _l2_cache_key(rule_id: str, code_block: str) -> str:
-    return hashlib.sha256(f"{rule_id}:{code_block}".encode()).hexdigest()[:16]
-
-
-
-# ─────────────────────────────────────────────────────────────────
-# L2 결과 캐시 (스니펫 해시 기반, in-memory)
-# ─────────────────────────────────────────────────────────────────
-_l2_cache: Dict[str, Dict[str, Any]] = {}
-
-
-def _l2_cache_key(rule_id: str, code_block: str) -> str:
+def _l3_cache_key(rule_id: str, code_block: str) -> str:
     return hashlib.sha256(f"{rule_id}:{code_block}".encode()).hexdigest()[:16]
 
 
@@ -84,7 +73,7 @@ def _build_single_prompt(
 
     C&A 2단계 판정 (ISSTA 2025 "Beyond Static Pattern Matching"):
     - pattern_type == "ast": AST 구조 증거를 별도 섹션으로 명시.
-      L2는 AST가 확인한 구조적 사실을 검증하는 역할 (재확인 아닌 영향도 판단).
+      L3는 AST가 확인한 구조적 사실을 검증하는 역할 (재확인 아닌 영향도 판단).
     - ast_evidence 필드가 있으면 해당 근거를 우선 제시.
     """
     rule_id = v.get("rule_id") or "UNKNOWN"
@@ -145,7 +134,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
   ● confidence ≥ 75"""
 
     # C&A Phase 1: AST 구조 증거 섹션 — pattern_type이 "ast"인 위반에 대해
-    # AST 체커가 이미 확인한 구조적 사실을 별도 섹션으로 명시하여 L2가
+    # AST 체커가 이미 확인한 구조적 사실을 별도 섹션으로 명시하여 L3가
     # "위반인가?" 대신 "이 AST 발견이 실제 보안 문제인가?"에 집중하도록 유도
     pattern_type_val = v.get("pattern_type", "")
     ast_evidence_val = v.get("ast_evidence", "")  # 체커가 직접 설정한 구조 증거 (선택)
@@ -156,7 +145,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
             f"\n【C&A Phase 1: AST 구조 분석 결과 (검증된 사실)】\n"
             f"  정적 AST 분석이 다음 구조적 사실을 확인했습니다:\n"
             f"  → {ast_fact}\n"
-            f"  ※ 위 사실은 AST 파싱으로 확인된 것입니다. L2 판정 목표:\n"
+            f"  ※ 위 사실은 AST 파싱으로 확인된 것입니다. L3 판정 목표:\n"
             f"  ※ '이 구조적 사실이 실제 보안 취약점인가?' (구조 재확인 불필요)"
         )
     else:
@@ -298,13 +287,13 @@ rule_id: {rule_id}
 # ─────────────────────────────────────────────────────────────────
 # 결과 변환
 # ─────────────────────────────────────────────────────────────────
-def _make_l2_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
+def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
     """
-    L2 판정 결과를 표준 위반 형식으로 변환.
+    L3 판정 결과를 표준 위반 형식으로 변환.
 
     - confidence_score(0~100): Gemini 확신도. 70 이상이면 "확정", 미만이면 "후보"
     - rule_id는 원본 그대로 유지
-    - l2_confirmed=True 로 L2 판정 통과 표시
+    - l3_confirmed=True 로 L3 판정 통과 표시
     """
     raw_score = obj.get("confidence")
     try:
@@ -317,16 +306,16 @@ def _make_l2_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
     confidence_label = "확정" if score >= 70 else "후보"
 
     result = {
-        "source": "L2",
+        "source": "L3",
         "file": v.get("file") or v.get("file_path") or "",
         "line": v.get("line"),
         "rule_id": v.get("rule_id") or "UNKNOWN",
-        "message": obj.get("description") or "[L2] 의미적 위반",
+        "message": obj.get("description") or "[L3] 의미적 위반",
         "severity": v.get("severity", "medium"),
         "suggestion": obj.get("suggestion") or "",
         "confidence": confidence_label,
         "confidence_score": score,
-        "l2_confirmed": True,
+        "l3_confirmed": True,
         "pattern_type": v.get("pattern_type", ""),
     }
     # insufficient_context: 코드 절삭 부족 피드백 전달
@@ -359,7 +348,7 @@ def _build_global_flow_summary(
 ) -> str:
     """symbol_graph에서 전체 코드베이스 흐름 요약 생성 (Global Code Flow Summary, GCFS).
 
-    모든 L2 프롬프트 앞에 prepend하여 AI가 코드 전체 구조를 이해한 상태에서 판정하도록 함.
+    모든 L3 프롬프트 앞에 prepend하여 AI가 코드 전체 구조를 이해한 상태에서 판정하도록 함.
     max_lines: 요약 최대 줄 수 (토큰 절약, 503 오류 방지를 위해 20줄로 제한)
     """
     if not symbol_graph:
@@ -608,7 +597,7 @@ def _build_flow_context(
     max_macros: int = 15,
     max_callers: int = 5,
 ) -> str:
-    """Flow-sensitive context for L2 LLM judgment.
+    """Flow-sensitive context for L3 LLM judgment.
 
     Addresses Cause B (pycparser MAKE_FUNC failure): when pycparser cannot parse
     MAKE_FUNC-style macros, it returns None and the fallback fires.  This function

@@ -1,28 +1,28 @@
-"""메인 L2 실행 — run_l2_contextualizer."""
+"""메인 L3 실행 — run_l3_contextualizer."""
 
 import re
 from typing import Any, Dict, List, Optional
 
 from app.services.llm.gemini_client import (
-    GOOGLE_API_KEY, L2_PROVIDER,
+    GOOGLE_API_KEY, L3_PROVIDER,
     _call_gemini_with_retry, _call_gemini_batch_with_retry,
 )
 from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
 
-# 테스트 세트에서 L2가 오탐 제거로 FN을 유발하는 것이 확인된 ast 규칙들.
+# 테스트 세트에서 L3가 오탐 제거로 FN을 유발하는 것이 확인된 ast 규칙들.
 # KISA blind test에서 이 규칙들은 FP가 아니므로 FP 제거 임계값을 높여 Recall 보호.
-# (threshold 80 → 90: L2가 is_real_issue=False+confidence 80~89를 반환해도 제거하지 않음)
+# (threshold 80 → 90: L3가 is_real_issue=False+confidence 80~89를 반환해도 제거하지 않음)
 _AST_TP_PROTECT = frozenset({
-    "CBC-001", "CBC-002",   # CBC 체이닝 — L2 오판 빈번, KISA FP 아님
+    "CBC-001", "CBC-002",   # CBC 체이닝 — L3 오판 빈번, KISA FP 아님
     "CTR-001", "CTR-002",   # CTR 모드 — 동일
-    "LEA-023",              # LEA 라운드 수식 — L2 오판으로 FN 발생 확인
+    "LEA-023",              # LEA 라운드 수식 — L3 오판으로 FN 발생 확인
 })
-from app.services.llm.candidate_selector import _select_l2_candidates
+from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
 from app.services.llm.prompt_builder import (
-    _fetch_guideline_text, _l2_cache, _l2_cache_key,
+    _l3_cache, _l3_cache_key,
     _build_single_prompt, _build_batch_prompt, _build_rejudge_prompt,
-    _make_l2_result, _build_structured_evidence, _build_global_flow_summary,
+    _make_l3_result, _build_structured_evidence, _build_global_flow_summary,
     _build_flow_context,
 )
 
@@ -72,16 +72,16 @@ def _verify_fp_removal(
     verify_obj = _call_gemini_with_retry(prompt)
     if not verify_obj:
         # API 실패 → 보수적으로 유지 (제거 안 함)
-        print(f"[L2][FP검증] API 실패 → 보수적 유지: {rule_id} @ {file_path}:{v.get('line')}")
+        print(f"[L3][FP검증] API 실패 → 보수적 유지: {rule_id} @ {file_path}:{v.get('line')}")
         return False
     if verify_obj.get("is_real_issue"):
-        print(f"[L2][FP검증] 재검증 결과 위반 확정 (제거 취소): {rule_id} @ {file_path}:{v.get('line')}")
+        print(f"[L3][FP검증] 재검증 결과 위반 확정 (제거 취소): {rule_id} @ {file_path}:{v.get('line')}")
         return False
-    print(f"[L2][FP검증] 재검증 동의 → 오탐 제거 확정: {rule_id} @ {file_path}:{v.get('line')}")
+    print(f"[L3][FP검증] 재검증 동의 → 오탐 제거 확정: {rule_id} @ {file_path}:{v.get('line')}")
     return True
 
 
-def run_l2_contextualizer(
+def run_l3_contextualizer(
     preprocess_result: Dict[str, Any],
     l1_violations: List[Dict[str, Any]],
     rules_meta: Optional[Dict[str, Any]] = None,
@@ -89,24 +89,24 @@ def run_l2_contextualizer(
     symbol_graph: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    L2: 의미적(맥락 기반) 위반 재판정.
+    L3: 의미적(맥락 기반) 위반 재판정.
 
     Parameters
     ----------
     preprocess_result  : 전처리 결과 (run_preprocess 출력)
     l1_violations      : L1 룰 엔진에서 생성된 위반 리스트
     rules_meta         : (선택) 룰 메타데이터
-    _rejected_tracker  : (선택) L2가 오탐으로 판정한 항목의 (file, rule_id, line) 튜플을
+    _rejected_tracker  : (선택) L3가 오탐으로 판정한 항목의 (file, rule_id, line) 튜플을
                          채워 넣을 set. analyze.py에서 post_process_violations 연동용.
     symbol_graph       : (선택) build_symbol_graph 출력 — array_inits/type_aliases 활용.
                          Structured Evidence Injection (Phase 1)에 사용.
 
     Returns
     -------
-    list[dict] : L2가 실제 위반으로 확정한 항목 리스트
+    list[dict] : L3가 실제 위반으로 확정한 항목 리스트
     """
     # gemini 프로바이더는 API 키 필수; local은 키 불필요
-    if L2_PROVIDER == "gemini" and not GOOGLE_API_KEY:
+    if L3_PROVIDER == "gemini" and not GOOGLE_API_KEY:
         return []
 
     results: List[Dict[str, Any]] = []
@@ -143,25 +143,20 @@ def run_l2_contextualizer(
                     return None
         return None
 
-    # L2 대상 선정
-    candidates = _select_l2_candidates(l1_violations)
+    # L3 대상 선정
+    candidates = _select_l3_candidates(l1_violations)
     if not candidates:
-        print("[L2] L2 판정 대상 없음")
+        print("[L3] L3 판정 대상 없음")
         return []
 
-    print(f"[L2] 판정 대상 {len(candidates)}건 선정 (전체 L1 위반: {len(l1_violations)}건)")
+    print(f"[L3] 판정 대상 {len(candidates)}건 선정 (전체 L1 위반: {len(l1_violations)}건)")
 
-    # Direction 1: rule_id별 가이드라인 사전 로드 (중복 호출 방지)
-    guideline_cache: Dict[str, str] = {}
-    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in candidates}
-    for rid in unique_rule_ids:
-        guideline_cache[rid] = _fetch_guideline_text(rid)
-    print(f"[L2][RAG] 가이드라인 로드: {sum(1 for g in guideline_cache.values() if g)}건 (/{len(guideline_cache)})")
+    # L2 단계에서 각 위반 객체에 'rag_guideline_text'가 이미 주입됨 — 별도 로드 불필요
 
     # Phase 2: Global Code Flow Summary — 코드베이스 전체 구조 요약 (GCFS)
     gcfs_prefix = _build_global_flow_summary(symbol_graph, preprocess_result)
     if gcfs_prefix:
-        print(f"[L2][GCFS] 전체 코드 흐름 요약 생성됨 ({len(gcfs_prefix.splitlines())}줄)")
+        print(f"[L3][GCFS] 전체 코드 흐름 요약 생성됨 ({len(gcfs_prefix.splitlines())}줄)")
 
     # 파일별로 묶어서 배치 처리
     by_file: Dict[str, List[Dict[str, Any]]] = {}
@@ -174,7 +169,7 @@ def run_l2_contextualizer(
     for file_path, violations in by_file.items():
         content = get_file_content(file_path)
         if not content:
-            print(f"[L2] 파일 읽기 실패: {file_path}")
+            print(f"[L3] 파일 읽기 실패: {file_path}")
             continue
 
         # 캐시 확인 + 항목 준비
@@ -186,13 +181,13 @@ def run_l2_contextualizer(
             pattern_type = v.get("pattern_type") or "regex"
             code_block = _get_code_context(content, line, pattern_type, violation=v, symbol_graph=symbol_graph)
             if not code_block:
-                print(f"[L2] 코드 컨텍스트 없음, 스킵: {v.get('rule_id')} @ {file_path}")
+                print(f"[L3] 코드 컨텍스트 없음, 스킵: {v.get('rule_id')} @ {file_path}")
                 continue
             # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
             structured_ev = _build_structured_evidence(v, symbol_graph)
             if structured_ev:
                 code_block = structured_ev + code_block
-                print(f"[L2][SE] 구조화 증거 추가: {v.get('rule_id')} @ {file_path}:{line}")
+                print(f"[L3][SE] 구조화 증거 추가: {v.get('rule_id')} @ {file_path}:{line}")
             # Phase 1-B: 키 생명주기 분석 결과 prepend (COM-001 전용)
             if v.get("rule_id") == "COM-001" and v.get("key_lifecycle"):
                 lifecycle_block = (
@@ -201,26 +196,26 @@ def run_l2_contextualizer(
                     + "\n" + "=" * 50 + "\n\n"
                 )
                 code_block = lifecycle_block + code_block
-                print(f"[L2][KL] 키 생명주기 분석 추가: COM-001 @ {file_path}")
+                print(f"[L3][KL] 키 생명주기 분석 추가: COM-001 @ {file_path}")
             # Phase 2: GCFS — 전체 코드 흐름 요약을 code_block 맨 앞에 prepend
             # DOC 규칙(DOC-xxx)은 설계서 판정이므로 코드 흐름 요약 주입 제외
             _is_doc_rule = (v.get("rule_id") or "").startswith("DOC")
             if gcfs_prefix and not _is_doc_rule:
                 code_block = gcfs_prefix + code_block
             rule_id = v.get("rule_id") or "UNKNOWN"
-            cache_key = _l2_cache_key(rule_id, code_block)
+            cache_key = _l3_cache_key(rule_id, code_block)
 
-            if cache_key in _l2_cache:
-                print(f"[L2] 캐시 히트: {rule_id} @ {file_path}:{line}")
-                obj = _l2_cache[cache_key]
+            if cache_key in _l3_cache:
+                print(f"[L3] 캐시 히트: {rule_id} @ {file_path}:{line}")
+                obj = _l3_cache[cache_key]
                 if obj.get("is_real_issue"):
-                    results.append(_make_l2_result(v, obj))
+                    results.append(_make_l3_result(v, obj))
             else:
                 entry = {
                     "violation": v,
                     "code_block": code_block,
                     "cache_key": cache_key,
-                    "guideline_text": guideline_cache.get(rule_id, ""),
+                    "guideline_text": v.get("rag_guideline_text", ""),
                 }
                 if rule_id in _HIGH_ISOLATION_RULES:
                     isolated_items.append(entry)
@@ -232,7 +227,7 @@ def run_l2_contextualizer(
             v = entry["violation"]
             rule_id = v.get("rule_id") or ""
             guideline_text = entry.get("guideline_text", "")
-            print(f"[L2] 격리 판정 (CoT+RAG): {rule_id} @ {file_path}:{v.get('line')}")
+            print(f"[L3] 격리 판정 (CoT+RAG): {rule_id} @ {file_path}:{v.get('line')}")
             obj = _call_gemini_with_retry(
                 _build_single_prompt(
                     file_path, v, entry["code_block"],
@@ -241,7 +236,7 @@ def run_l2_contextualizer(
                 )
             )
             if obj:
-                _l2_cache[entry["cache_key"]] = obj
+                _l3_cache[entry["cache_key"]] = obj
                 score = obj.get("confidence", 80)
                 try:
                     score = int(score)
@@ -250,30 +245,30 @@ def run_l2_contextualizer(
 
                 # Direction 4: 신뢰도 65-74 구간 재판정
                 if obj.get("is_real_issue") and 65 <= score <= 74:
-                    print(f"[L2] 재판정 요청 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    print(f"[L3] 재판정 요청 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                     rejudge_prompt = _build_rejudge_prompt(
                         file_path, v, entry["code_block"], obj, guideline_text
                     )
                     rejudge_obj = _call_gemini_with_retry(rejudge_prompt)
                     if rejudge_obj:
                         obj = rejudge_obj
-                        _l2_cache[entry["cache_key"]] = obj
+                        _l3_cache[entry["cache_key"]] = obj
                         score = obj.get("confidence", score)
-                        print(f"[L2] 재판정 완료 (score={score}): {rule_id}")
+                        print(f"[L3] 재판정 완료 (score={score}): {rule_id}")
 
                 _score_int = int(obj.get("confidence", 50))
                 _pat_type = v.get("pattern_type", "")
                 _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
                 # ast fallback(후보) 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
-                # _AST_TP_PROTECT 규칙은 L2 오판 FN 확인+KISA FP 아님 → 90으로 보수적 처리
+                # _AST_TP_PROTECT 규칙은 L3 오판 FN 확인+KISA FP 아님 → 90으로 보수적 처리
                 _fp_high = (90 if rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                 if obj.get("is_real_issue"):
-                    results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
                     # FP 제거 전 비대칭 재검증
                     if _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                        print(f"[L2] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                        print(f"[L3] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                         if _rejected_tracker is not None:
                             _rejected_tracker.add((
                                 (v.get("file") or v.get("file_path") or "").strip(),
@@ -281,11 +276,11 @@ def run_l2_contextualizer(
                                 v.get("line"),
                             ))
                     else:
-                        results.append(_make_l2_result(v, obj))
-                        print(f"[L2] FP재검증 실패→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                        results.append(_make_l3_result(v, obj))
+                        print(f"[L3] FP재검증 실패→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 else:
-                    results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 불확실 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
 
         if not batch_items:
             continue
@@ -294,12 +289,12 @@ def run_l2_contextualizer(
         _BATCH_CHUNK = 8
         for chunk_start in range(0, len(batch_items), _BATCH_CHUNK):
             chunk = batch_items[chunk_start: chunk_start + _BATCH_CHUNK]
-            print(f"[L2] 배치 판정: {file_path} ({len(chunk)}건, {chunk_start+1}~{chunk_start+len(chunk)})")
+            print(f"[L3] 배치 판정: {file_path} ({len(chunk)}건, {chunk_start+1}~{chunk_start+len(chunk)})")
             prompt = _build_batch_prompt(file_path, chunk)
             arr = _call_gemini_batch_with_retry(prompt)
 
             if arr is None:
-                print(f"[L2] 배치 응답 실패 → 개별 처리로 전환: {file_path}")
+                print(f"[L3] 배치 응답 실패 → 개별 처리로 전환: {file_path}")
                 for entry in chunk:
                     v = entry["violation"]
                     obj = _call_gemini_with_retry(
@@ -309,7 +304,7 @@ def run_l2_contextualizer(
                         )
                     )
                     if obj:
-                        _l2_cache[entry["cache_key"]] = obj
+                        _l3_cache[entry["cache_key"]] = obj
                         _score_int = int(obj.get("confidence", 50))
                         _pat_type = v.get("pattern_type", "")
                         _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
@@ -321,7 +316,7 @@ def run_l2_contextualizer(
                         if obj.get("is_real_issue") or (
                             _fp_threshold < _score_int < _fp_high
                         ):
-                            results.append(_make_l2_result(v, obj))
+                            results.append(_make_l3_result(v, obj))
                 continue
 
             # 청크 결과 처리
@@ -336,10 +331,10 @@ def run_l2_contextualizer(
                     obj = arr[i]
 
                 if not isinstance(obj, dict):
-                    print(f"[L2] 배치 결과 파싱 실패: idx={i + 1}, {file_path}")
+                    print(f"[L3] 배치 결과 파싱 실패: idx={i + 1}, {file_path}")
                     continue
 
-                _l2_cache[entry["cache_key"]] = obj
+                _l3_cache[entry["cache_key"]] = obj
                 score = obj.get("confidence", 80)
                 _score_int = int(score)
                 _pat_type = v.get("pattern_type", "")
@@ -349,12 +344,12 @@ def run_l2_contextualizer(
                 # _AST_TP_PROTECT 규칙은 90으로 보수적 처리
                 _fp_high = (90 if _batch_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                 if obj.get("is_real_issue"):
-                    results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
                     # FP 제거 전 비대칭 재검증
                     if _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                        print(f"[L2] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                        print(f"[L3] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                         if _rejected_tracker is not None:
                             _rejected_tracker.add((
                                 (v.get("file") or v.get("file_path") or "").strip(),
@@ -362,12 +357,12 @@ def run_l2_contextualizer(
                                 v.get("line"),
                             ))
                     else:
-                        results.append(_make_l2_result(v, obj))
-                        print(f"[L2] FP재검증 실패→유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                        results.append(_make_l3_result(v, obj))
+                        print(f"[L3] FP재검증 실패→유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
                 else:
-                    results.append(_make_l2_result(v, obj))
-                    print(f"[L2] 불확실 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 불확실 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
 
     rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0
-    print(f"[L2] 최종 L2 확정 위반: {len(results)}건, 오탐 제거: {rejected_count}건")
+    print(f"[L3] 최종 L3 확정 위반: {len(results)}건, 오탐 제거: {rejected_count}건")
     return results

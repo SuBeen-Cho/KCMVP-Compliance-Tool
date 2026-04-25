@@ -13,13 +13,13 @@ except ImportError:
 
 from app.config import settings
 
-GEMINI_L2_MODEL = settings.GEMINI_L2_MODEL
+GEMINI_L3_MODEL = settings.GEMINI_L3_MODEL
 GOOGLE_API_KEY = settings.GOOGLE_API_KEY
-L2_PROVIDER = settings.L2_PROVIDER  # "gemini" | "openai" | "local"
+L3_PROVIDER = settings.L3_PROVIDER  # "gemini" | "openai" | "local"
 
 # OpenAI provider (Phase 3)
 OPENAI_API_KEY = settings.OPENAI_API_KEY
-OPENAI_L2_MODEL = settings.LLM_MODEL_L2      # default: "gpt-4o"
+OPENAI_L3_MODEL = settings.LLM_MODEL_L3      # default: "gpt-4o"
 OPENAI_PATCH_MODEL = settings.LLM_MODEL_PATCH # default: "gpt-4o"
 
 
@@ -92,14 +92,14 @@ def _call_openai(prompt: str, model: Optional[str] = None) -> Optional[str]:
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY)
         resp = client.chat.completions.create(
-            model=model or OPENAI_L2_MODEL,
+            model=model or OPENAI_L3_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
         )
         text = resp.choices[0].message.content if resp.choices else None
         return text if isinstance(text, str) else None
     except Exception as e:
-        print(f"[L2][OpenAI] 호출 실패: {e}")
+        print(f"[L3][OpenAI] 호출 실패: {e}")
         return None
 
 
@@ -109,19 +109,19 @@ def _call_llm(
     response_mime_type: Optional[str] = None,
 ) -> Optional[str]:
     """
-    L2_PROVIDER 설정에 따라 LLM 호출.
-    - L2_PROVIDER=gemini (기본): Gemini API
-    - L2_PROVIDER=openai: OpenAI ChatCompletion
-    - L2_PROVIDER=local: local_llm_service.call_local()
+    L3_PROVIDER 설정에 따라 LLM 호출.
+    - L3_PROVIDER=gemini (기본): Gemini API
+    - L3_PROVIDER=openai: OpenAI ChatCompletion
+    - L3_PROVIDER=local: local_llm_service.call_local()
     """
-    if L2_PROVIDER == "local":
+    if L3_PROVIDER == "local":
         try:
             from app.services.local_llm_service import call_local
             return call_local(prompt)
         except Exception as e:
             print(f"[LLM] local 호출 실패, gemini로 fallback: {e}")
             return _call_gemini(prompt, response_mime_type=response_mime_type)
-    if L2_PROVIDER == "openai":
+    if L3_PROVIDER == "openai":
         result = _call_openai(prompt, model=model)
         if result is not None:
             return result
@@ -167,7 +167,7 @@ def _call_gemini(
             http_options=_types_http.HttpOptions(timeout=60000),  # 60s timeout
         )
         response = client.models.generate_content(
-            model=GEMINI_L2_MODEL,
+            model=GEMINI_L3_MODEL,
             contents=prompt,
             config=config,
         )
@@ -183,14 +183,14 @@ def _call_gemini(
                     pt = getattr(parts[0], "text", None)
                     if pt and isinstance(pt, str):
                         return pt
-        print("[L2][Gemini] 응답에 텍스트가 없습니다.")
+        print("[L3][Gemini] 응답에 텍스트가 없습니다.")
         return None
     except Exception as e:
         err_str = str(e)
         if "503" in err_str or "UNAVAILABLE" in err_str:
-            print(f"[L2][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
+            print(f"[L3][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
             raise _Gemini503Error(err_str)
-        print(f"[L2][Gemini] 호출 실패: {e}")
+        print(f"[L3][Gemini] 호출 실패: {e}")
         return None
 
 
@@ -210,7 +210,7 @@ def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
-                print("[L2] 503 → GCFS 제거 후 재시도")
+                print("[L3] 503 → GCFS 제거 후 재시도")
                 try:
                     raw = _call_llm(stripped, response_mime_type=_mime)
                 except _Gemini503Error:
@@ -241,7 +241,7 @@ def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
-                print("[L2] 503 → GCFS 제거 후 배치 재시도")
+                print("[L3] 503 → GCFS 제거 후 배치 재시도")
                 try:
                     raw = _call_llm(stripped, response_mime_type=_mime)
                 except _Gemini503Error:

@@ -4,7 +4,7 @@ Phase 4: 4-Fold Leave-One-Out Cross-Validation
 기존 4세트에서 LOO를 수행하여 overfitting 여부를 검증.
 
 각 fold에서:
-- 3세트의 결과를 관찰 (L2 confidence 임계값 최적화)
+- 3세트의 결과를 관찰 (L3 confidence 임계값 최적화)
 - 나머지 1세트에서 해당 임계값으로 평가
 - train recall vs test recall 비교
 
@@ -48,7 +48,7 @@ def main():
             "tp": r["TP"],
             "fn": r["FN"],
             "fp_extra": r["FP_extra"],
-            "l2_rejected": r.get("l2_rejected", 0),
+            "l3_rejected": r.get("l3_rejected", 0),
             "l3_correct": r.get("l3_correct_removals", 0),
             "l3_wrong": r.get("l3_wrong_removals", 0),
             "recall": r["recall"],
@@ -58,7 +58,7 @@ def main():
     print(f"\n[기존 결과 확인]")
     for s in sets:
         print(f"  {s['name']}: Recall={s['recall']:.1%} ({s['tp']}/{s['gt']}), "
-              f"FP={s['fp_extra']}, L2제거={s['l2_rejected']}")
+              f"FP={s['fp_extra']}, L3제거={s['l3_rejected']}")
 
     # LOO Cross-Validation
     print(f"\n{'═' * 65}")

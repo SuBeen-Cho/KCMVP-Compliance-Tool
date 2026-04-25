@@ -1,11 +1,11 @@
 """
-DOC 정확도 평가 스크립트 (L1 doc_rule_engine + L2 doc_l2_contextualizer)
+DOC 정확도 평가 스크립트 (L1 doc_rule_engine + L3 doc_l3_contextualizer)
 
 각 PDF를 독립적으로 평가 (실제 제출 시나리오: 문서 타입별 1개 제출).
 
 Usage:
     python scripts/run_doc_accuracy.py [zip_path]
-    python scripts/run_doc_accuracy.py testdata/doc_accuracy_test_v1.zip --no-l2
+    python scripts/run_doc_accuracy.py testdata/doc_accuracy_test_v1.zip --no-l3
 
 Ground Truth 형식 (GROUND_TRUTH.md):
   파일명 | P/N | 위반규칙(comma) | 설명
@@ -27,7 +27,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.services.preprocess_docs_service import run_doc_preprocess
 from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
-from app.services.llm_service import run_doc_l2_contextualizer
+from app.services.llm_service import run_doc_l3_contextualizer
 
 
 def parse_ground_truth(text: str):
@@ -55,7 +55,7 @@ def parse_ground_truth(text: str):
 
 
 def _eval_single_pdf(pdf_path: Path, doc_type: str,
-                     rules, use_l2: bool) -> tuple[list, list]:
+                     rules, use_l3: bool) -> tuple[list, list]:
     """단일 PDF를 독립적으로 평가 → (l1_violations, final_violations)"""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -66,17 +66,17 @@ def _eval_single_pdf(pdf_path: Path, doc_type: str,
 
         preprocess = run_doc_preprocess(tmp)
         l1_viols = run_doc_rule_engine(preprocess, rules)
-        if use_l2 and l1_viols:
-            final = run_doc_l2_contextualizer(l1_viols, preprocess)
+        if use_l3 and l1_viols:
+            final = run_doc_l3_contextualizer(l1_viols, preprocess)
         else:
             final = l1_viols
     return l1_viols, final
 
 
-def run_doc_eval(zip_path: str, use_l2: bool = True):
+def run_doc_eval(zip_path: str, use_l3: bool = True):
     print(f"\n{'='*65}")
     print(f"DOC 정확도 평가: {zip_path}")
-    print(f"L2 사용: {'예 (Gemini)' if use_l2 else '아니오 (L1만)'}")
+    print(f"L3 사용: {'예 (Gemini)' if use_l3 else '아니오 (L1만)'}")
     print(f"{'='*65}")
 
     rules_dir = BACKEND_ROOT / "rules"
@@ -108,7 +108,7 @@ def run_doc_eval(zip_path: str, use_l2: bool = True):
             parts = Path(filename).parts
             doc_type = parts[0] if len(parts) >= 2 else "design"
 
-            l1_viols, final_viols = _eval_single_pdf(pdf_path, doc_type, doc_rules, use_l2)
+            l1_viols, final_viols = _eval_single_pdf(pdf_path, doc_type, doc_rules, use_l3)
             l1_ids = {v.get("rule_id") for v in l1_viols}
             final_ids = {v.get("rule_id") for v in final_viols}
 
@@ -117,7 +117,7 @@ def run_doc_eval(zip_path: str, use_l2: bool = True):
             print(f"  {status_icon} [{label}] {filename}")
             if l1_ids != final_ids:
                 print(f"       L1: {sorted(l1_ids)}")
-                print(f"       L2후: {sorted(final_ids)}")
+                print(f"       L3후: {sorted(final_ids)}")
             else:
                 print(f"       탐지: {sorted(final_ids) if final_ids else '없음'}")
 
@@ -171,7 +171,7 @@ def run_doc_eval(zip_path: str, use_l2: bool = True):
             final_ids = results.get(filename, {}).get("final", set())
             l1_ids = results.get(filename, {}).get("l1", set())
             print(f"\n  {filename} ({desc})")
-            print(f"  {'규칙ID':<12} {'기대':<6} {'L1탐지':<8} {'L2최종':<8}")
+            print(f"  {'규칙ID':<12} {'기대':<6} {'L1탐지':<8} {'L3최종':<8}")
             print(f"  {'-'*40}")
             all_rids = sorted(set(expected_rids) | l1_ids | final_ids)
             for rid in all_rids:
@@ -188,5 +188,5 @@ def run_doc_eval(zip_path: str, use_l2: bool = True):
 
 if __name__ == "__main__":
     zip_path = sys.argv[1] if len(sys.argv) > 1 else "testdata/doc_accuracy_test_v1.zip"
-    use_l2 = "--no-l2" not in sys.argv
-    run_doc_eval(zip_path, use_l2=use_l2)
+    use_l3 = "--no-l3" not in sys.argv
+    run_doc_eval(zip_path, use_l3=use_l3)

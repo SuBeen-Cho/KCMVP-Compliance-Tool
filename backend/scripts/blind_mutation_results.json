@@ -1,15 +1,15 @@
 {
-  "timestamp": "2026-04-24T17:33:37.717954",
+  "timestamp": "2026-04-25T02:05:29.598768",
   "phase": "Phase 3",
   "description": "KISA LEA v1.3 mutation 기반 블라인드 Recall 테스트",
-  "use_l2": false,
+  "use_l3": false,
   "total_mutations": 15,
   "applied": 15,
   "skipped": 0,
   "TP": 14,
   "FN": 1,
   "mutation_recall": 0.9333333333333333,
-  "elapsed_s": 337.2,
+  "elapsed_s": 397.1,
   "results": [
     {
       "id": "M01",
@@ -19,7 +19,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.4
+      "elapsed_s": 26.7
     },
     {
       "id": "M02",
@@ -29,7 +29,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.6
+      "elapsed_s": 26.8
     },
     {
       "id": "M03",
@@ -39,7 +39,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.8
+      "elapsed_s": 26.6
     },
     {
       "id": "M04",
@@ -49,7 +49,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 35,
-      "elapsed_s": 23.2
+      "elapsed_s": 26.1
     },
     {
       "id": "M05",
@@ -59,7 +59,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.5
+      "elapsed_s": 26.8
     },
     {
       "id": "M06",
@@ -69,7 +69,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.4
+      "elapsed_s": 26.7
     },
     {
       "id": "M07",
@@ -79,7 +79,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 35,
-      "elapsed_s": 22.1
+      "elapsed_s": 24.9
     },
     {
       "id": "M08",
@@ -89,7 +89,7 @@
       "detected": false,
       "matched_count": 0,
       "total_violations": 35,
-      "elapsed_s": 22.2
+      "elapsed_s": 25.5
     },
     {
       "id": "M09",
@@ -99,7 +99,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.4
+      "elapsed_s": 24.7
     },
     {
       "id": "M10",
@@ -109,7 +109,7 @@
       "detected": true,
       "matched_count": 2,
       "total_violations": 36,
-      "elapsed_s": 22.1
+      "elapsed_s": 25.4
     },
     {
       "id": "M11",
@@ -119,7 +119,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 35,
-      "elapsed_s": 22.1
+      "elapsed_s": 25.1
     },
     {
       "id": "M12",
@@ -129,7 +129,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 35,
-      "elapsed_s": 22.5
+      "elapsed_s": 24.9
     },
     {
       "id": "M13",
@@ -139,7 +139,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.3
+      "elapsed_s": 24.8
     },
     {
       "id": "M14",
@@ -149,7 +149,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.4
+      "elapsed_s": 26.3
     },
     {
       "id": "M15",
@@ -159,7 +159,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 36,
-      "elapsed_s": 22.7
+      "elapsed_s": 35.4
     }
   ]
 }

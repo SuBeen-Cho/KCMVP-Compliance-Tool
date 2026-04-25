@@ -12,7 +12,7 @@ KISA 배포 LEA C 소스코드(v1.3)를 "정상 코드"로 간주하고,
 
 Usage:
     cd backend
-    python scripts/evaluate_blind_kisa_lea.py [--no-l2]
+    python scripts/evaluate_blind_kisa_lea.py [--no-l3]
 """
 
 import sys, os, time, json, zipfile, tempfile, shutil
@@ -23,7 +23,7 @@ from datetime import datetime
 BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 
 # KISA LEA 소스 경로
 KISA_LEA_SRC = BACKEND_ROOT.parent / "블록암호_LEA_소스코드(v1.3)" / "LEA_C_Standalone_src"
@@ -31,14 +31,14 @@ KISA_LEA_SRC = BACKEND_ROOT.parent / "블록암호_LEA_소스코드(v1.3)" / "LE
 from app.services.rule_engine_service import run_rule_engine
 
 try:
-    from app.services.llm_service import run_l2_contextualizer
+    from app.services.llm_service import run_l3_contextualizer
     from app.services.report_service import post_process_violations
-    L2_AVAILABLE = True
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
+    L3_AVAILABLE = False
 
-if not L2_AVAILABLE:
-    USE_L2 = False
+if not L3_AVAILABLE:
+    USE_L3 = False
 
 
 def count_loc(src_dir: Path) -> int:
@@ -57,7 +57,7 @@ def run_blind_test():
     print("=" * 65)
     print("Phase 1: KISA LEA 공식 레퍼런스 블라인드 테스트")
     print(f"소스 경로: {KISA_LEA_SRC}")
-    print(f"L2 (Gemini): {'활성화' if USE_L2 else '비활성화'}")
+    print(f"L3 (Gemini): {'활성화' if USE_L3 else '비활성화'}")
     print("=" * 65)
 
     if not KISA_LEA_SRC.exists():
@@ -105,30 +105,30 @@ def run_blind_test():
     t_l1 = time.time() - t0
     print(f"  L1 완료: {len(l1_violations)}건 탐지, {t_l1:.1f}s")
 
-    # 4. L2 필터링 (선택)
-    l2_rejected_keys = set()
-    if USE_L2 and L2_AVAILABLE and l1_violations:
-        print(f"\n[L2] Gemini 재판정 중...")
+    # 4. L3 필터링 (선택)
+    l3_rejected_keys = set()
+    if USE_L3 and L3_AVAILABLE and l1_violations:
+        print(f"\n[L3] Gemini 재판정 중...")
         t1 = time.time()
         try:
-            l2_violations = run_l2_contextualizer(
+            l3_violations = run_l3_contextualizer(
                 preprocess_result=preprocess_result,
                 l1_violations=l1_violations,
-                _rejected_tracker=l2_rejected_keys,
+                _rejected_tracker=l3_rejected_keys,
             )
             final_violations = post_process_violations(
-                l1=l1_violations, l2=l2_violations,
-                l2_rejected_keys=l2_rejected_keys,
+                l1=l1_violations, l3=l3_violations,
+                l3_rejected_keys=l3_rejected_keys,
             )
         except Exception as e:
-            print(f"  [WARN] L2 실패: {e}")
+            print(f"  [WARN] L3 실패: {e}")
             final_violations = l1_violations
-        t_l2 = time.time() - t1
-        print(f"  L2 완료: {len(final_violations)}건 최종, "
-              f"{len(l2_rejected_keys)}건 제거, {t_l2:.1f}s")
+        t_l3 = time.time() - t1
+        print(f"  L3 완료: {len(final_violations)}건 최종, "
+              f"{len(l3_rejected_keys)}건 제거, {t_l3:.1f}s")
     else:
         final_violations = l1_violations
-        t_l2 = 0.0
+        t_l3 = 0.0
 
     # 5. FP 분석 (정상 코드이므로 모든 탐지 = FP)
     print(f"\n{'═' * 65}")
@@ -183,12 +183,12 @@ def run_blind_test():
 
     # L1 vs 최종 비교
     l1_total_fp = len(l1_violations)
-    l2_removed = len(l2_rejected_keys)
-    l2_fp_remove_rate = l2_removed / l1_total_fp if l1_total_fp > 0 else 0.0
+    l3_removed = len(l3_rejected_keys)
+    l3_fp_remove_rate = l3_removed / l1_total_fp if l1_total_fp > 0 else 0.0
 
-    print(f"\n  [L2 FP 제거 효과]")
+    print(f"\n  [L3 FP 제거 효과]")
     print(f"    L1 FP: {l1_total_fp}건")
-    print(f"    L2 제거: {l2_removed}건 ({l2_fp_remove_rate:.1%})")
+    print(f"    L3 제거: {l3_removed}건 ({l3_fp_remove_rate:.1%})")
     print(f"    최종 FP: {total_fp}건")
     print(f"{'═' * 65}")
 
@@ -266,12 +266,12 @@ def run_blind_test():
         "phase": "Phase 1 + Phase 2",
         "description": "KISA LEA v1.3 공식 레퍼런스 블라인드 FP 테스트 + 통계 분석",
         "source": "블록암호_LEA_소스코드(v1.3)/LEA_C_Standalone_src",
-        "use_l2": USE_L2,
+        "use_l3": USE_L3,
         "loc": total_loc,
         "c_files": len(c_files),
         "h_files": len(h_files),
         "l1_fp_count": l1_total_fp,
-        "l2_removed": l2_removed,
+        "l3_removed": l3_removed,
         "final_fp_count": total_fp,
         "fp_per_kloc": round(fp_per_kloc, 2),
         "fp_by_rule": dict(fp_by_rule.most_common()),
@@ -281,8 +281,8 @@ def run_blind_test():
         "fp_details": fp_details,
         "timing": {
             "l1_s": round(t_l1, 1),
-            "l2_s": round(t_l2, 1),
-            "total_s": round(t_l1 + t_l2, 1),
+            "l3_s": round(t_l3, 1),
+            "total_s": round(t_l1 + t_l3, 1),
         },
         "statistics": stats_result,
     }

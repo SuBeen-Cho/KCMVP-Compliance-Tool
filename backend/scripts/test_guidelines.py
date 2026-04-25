@@ -11,7 +11,7 @@ KCMVP 가이드라인 MD 파일 + Gemini 연결 통합 테스트.
   [G7]  TRC-traceability.md — TRC-001/002/003 모두 포함 확인
   [G8]  submission-document-guide.md — 제출 문서 주요 섹션 포함 확인
   [G9]  Gemini API 연결 상태 확인
-  [G10] L2_PROVIDER 설정 확인
+  [G10] L3_PROVIDER 설정 확인
 
 실행:
   cd backend
@@ -280,7 +280,7 @@ def test_gemini_status() -> None:
             fail("G9", "GOOGLE_API_KEY 미설정")
             return
 
-        ok("G9-key", f"GOOGLE_API_KEY 설정됨 (모델: {settings.GEMINI_L2_MODEL})")
+        ok("G9-key", f"GOOGLE_API_KEY 설정됨 (모델: {settings.GEMINI_L3_MODEL})")
 
         # 실제 호출 테스트 (실패해도 설정은 확인됨)
         try:
@@ -303,20 +303,20 @@ def test_gemini_status() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────
-# G10: L2_PROVIDER 설정 확인
+# G10: L3_PROVIDER 설정 확인
 # ─────────────────────────────────────────────────────────────────
-def test_l2_provider() -> None:
-    section("G10: L2_PROVIDER 설정 확인")
+def test_l3_provider() -> None:
+    section("G10: L3_PROVIDER 설정 확인")
     try:
         from app.config import settings
-        provider = settings.L2_PROVIDER
-        ok("G10", f"L2_PROVIDER = '{provider}'")
+        provider = settings.L3_PROVIDER
+        ok("G10", f"L3_PROVIDER = '{provider}'")
 
         if provider == "gemini":
             if settings.GOOGLE_API_KEY:
                 ok("G10-gemini", "GOOGLE_API_KEY 설정됨")
             else:
-                fail("G10-gemini", "L2_PROVIDER=gemini인데 GOOGLE_API_KEY 없음")
+                fail("G10-gemini", "L3_PROVIDER=gemini인데 GOOGLE_API_KEY 없음")
         elif provider == "local":
             ok("G10-local", f"로컬 LLM 사용 (base_url={settings.LOCAL_LLM_BASE_URL})")
         else:
@@ -355,7 +355,7 @@ def main() -> int:
         test_trc_traceability,
         test_submission_guide,
         test_gemini_status,
-        test_l2_provider,
+        test_l3_provider,
     ]:
         try:
             fn()

@@ -3,7 +3,7 @@
 v3 GPTScan 체크리스트 프롬프트 효과 실측
 ===========================================
 BEFORE: v2 AFTER (GCFS=True + key_lifecycle=True + 구 서술형 프롬프트)
-        → l2_ba_checkpoint.json 의 after 결과 재사용
+        → l3_ba_checkpoint.json 의 after 결과 재사용
 AFTER:  v3 (GCFS=True + key_lifecycle=True + GPTScan 체크리스트 프롬프트)
         → LEA-031, LEA-034, OFB-002, CFB-002 재실행
 
@@ -23,9 +23,9 @@ for line in open('.env').readlines():
 # GPTScan으로 프롬프트가 변경된 4개 규칙
 CHECKLIST_RULES = {"LEA-031", "LEA-034", "OFB-002", "CFB-002"}
 
-V3_CHECKPOINT = ROOT / 'scripts' / 'l2_v3_checkpoint.json'
-V3_RESULT_FILE = ROOT / 'scripts' / 'l2_v3_result.json'
-V2_CHECKPOINT  = ROOT / 'scripts' / 'l2_ba_checkpoint.json'
+V3_CHECKPOINT = ROOT / 'scripts' / 'l3_v3_checkpoint.json'
+V3_RESULT_FILE = ROOT / 'scripts' / 'l3_v3_result.json'
+V2_CHECKPOINT  = ROOT / 'scripts' / 'l3_ba_checkpoint.json'
 
 print("=" * 70)
 print("  v3 GPTScan 체크리스트 효과 실측")
@@ -34,7 +34,7 @@ print("=" * 70)
 
 # ── 1. v2 AFTER 결과 로드 (BEFORE로 사용) ─────────────────────────────
 if not V2_CHECKPOINT.exists():
-    print("❌ v2 체크포인트 없음 — test_l2_before_after.py 먼저 실행 필요")
+    print("❌ v2 체크포인트 없음 — test_l3_before_after.py 먼저 실행 필요")
     sys.exit(1)
 
 v2_data   = json.loads(V2_CHECKPOINT.read_text())
@@ -59,7 +59,7 @@ for r in sorted(CHECKLIST_RULES):
 # ── 2. 서비스 로드 ────────────────────────────────────────────────────
 import app.services.llm_service as llm_svc
 from app.services.llm_service import (
-    _select_l2_candidates, _build_global_flow_summary,
+    _select_l3_candidates, _build_global_flow_summary,
     _build_structured_evidence, _get_code_context,
     _build_single_prompt, _call_gemini_with_retry,
     _fetch_guideline_text, _HIGH_ISOLATION_RULES,
@@ -92,11 +92,11 @@ if not target_job:
 vdata      = json.loads((target_job / 'violations.json').read_text())
 sg         = json.loads((target_job / 'symbol_graph.json').read_text())
 pre_result = json.loads((target_job / 'preprocess_result.json').read_text())
-candidates = _select_l2_candidates(vdata)
+candidates = _select_l3_candidates(vdata)
 gcfs       = _build_global_flow_summary(sg, pre_result)
 
 print(f"\n  Job: {target_job.name[:24]}...")
-print(f"  violations={len(vdata)}, L2 후보={len(candidates)}건")
+print(f"  violations={len(vdata)}, L3 후보={len(candidates)}건")
 print(f"  GCFS: {len(gcfs.splitlines())}줄")
 
 # ── 4. 파일 컨텐츠 캐시 ──────────────────────────────────────────────
@@ -195,7 +195,7 @@ remaining      = [(i, v) for i, v in target_indices if i not in done_indices]
 
 print(f"\n[v3 AFTER] 체크리스트 대상: {len(target_indices)}건, 미완료: {len(remaining)}건")
 if len(target_indices) == 0:
-    print("  ※ L2 후보에 4개 규칙 없음 — 현재 job에 해당 위반 미발생 가능")
+    print("  ※ L3 후보에 4개 규칙 없음 — 현재 job에 해당 위반 미발생 가능")
 
 for i, v in remaining:
     rid = v.get('rule_id', '?')
@@ -353,5 +353,5 @@ print(f"  전체 판정 번복: {len(flips)}건 ({len(flips)/N*100:.1f}%)")
 print(f"    True→False: {len(flip_T2F)}건  /  False→True: {len(flip_F2T)}건")
 if conf_changes:
     print(f"  confidence(T→T 체크리스트): BEFORE {avg_b:.1f} → AFTER {avg_a:.1f} ({avg_a-avg_b:+.1f}점)")
-print(f"  결과: scripts/l2_v3_result.json")
+print(f"  결과: scripts/l3_v3_result.json")
 print("=" * 70)

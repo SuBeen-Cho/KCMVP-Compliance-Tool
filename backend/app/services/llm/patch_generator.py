@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.services.llm.gemini_client import (
     GOOGLE_API_KEY, OPENAI_API_KEY, OPENAI_PATCH_MODEL,
-    L2_PROVIDER, _call_llm,
+    L3_PROVIDER, _call_llm,
 )
 from app.services.llm.prompt_builder import _fetch_guideline_text
 
@@ -64,9 +64,9 @@ def generate_patch_for_violation(
 
     GOOGLE_API_KEY 및 OPENAI_API_KEY 없으면 stub 마크다운 반환.
     """
-    no_key = (L2_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
-             (L2_PROVIDER == "openai" and not OPENAI_API_KEY)
-    if no_key and L2_PROVIDER not in ("local",):
+    no_key = (L3_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
+             (L3_PROVIDER == "openai" and not OPENAI_API_KEY)
+    if no_key and L3_PROVIDER not in ("local",):
         return (
             f"## {file_path}:{line}\n\n"
             f"**위반**: {violation_message}\n\n"
@@ -79,7 +79,7 @@ def generate_patch_for_violation(
         evidence = _fetch_guideline_text(rule_id, max_chars=600)
 
     # OpenAI는 패치 전용 모델 사용
-    _model = OPENAI_PATCH_MODEL if L2_PROVIDER == "openai" else None
+    _model = OPENAI_PATCH_MODEL if L3_PROVIDER == "openai" else None
     prompt = _build_patch_prompt(file_path, line, snippet, violation_message, evidence)
     raw = _call_llm(prompt, model=_model)
 
@@ -118,8 +118,8 @@ def generate_doc_patch_for_violation(
 
     evidence_section = f"\n📖 KCMVP 가이드라인 근거:\n{evidence}\n" if evidence else ""
 
-    no_key = (L2_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
-             (L2_PROVIDER == "openai" and not OPENAI_API_KEY)
+    no_key = (L3_PROVIDER == "gemini" and not GOOGLE_API_KEY) or \
+             (L3_PROVIDER == "openai" and not OPENAI_API_KEY)
     stub_md = (
         f"## {rule_id} — {violation_message}\n\n"
         f"**문서 유형**: {doc_type_label}\n\n"
@@ -128,7 +128,7 @@ def generate_doc_patch_for_violation(
         f"_(API 키 미설정 — 자동 작성 예시 생성 불가)_"
     )
 
-    if no_key and L2_PROVIDER not in ("local",):
+    if no_key and L3_PROVIDER not in ("local",):
         return stub_md
 
     prompt = f"""당신은 KCMVP 암호모듈 검증 전문가입니다.

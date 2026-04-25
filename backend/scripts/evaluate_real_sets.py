@@ -11,7 +11,7 @@ KCMVP 실제 코드-설계서 세트 성능 평가 스크립트
 
 Usage:
     cd backend
-    python scripts/evaluate_real_sets.py [--no-l2]
+    python scripts/evaluate_real_sets.py [--no-l3]
 """
 
 import sys, os, re, time, json, zipfile, tempfile, shutil
@@ -23,7 +23,7 @@ from typing import Dict, List, Set, Tuple, Optional
 BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 
 KCMVP_ROOT = BACKEND_ROOT.parent.parent  # KCMVP/
 SET_BASE = KCMVP_ROOT / "스크립트" / "코드 - 설계서 세트"
@@ -33,14 +33,14 @@ from app.services.preprocess_docs_service import run_doc_preprocess
 from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
 
 try:
-    from app.services.llm_service import run_l2_contextualizer, run_doc_l2_contextualizer
+    from app.services.llm_service import run_l3_contextualizer, run_doc_l3_contextualizer
     from app.services.report_service import post_process_violations
-    L2_AVAILABLE = True
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
+    L3_AVAILABLE = False
 
-if not L2_AVAILABLE:
-    USE_L2 = False
+if not L3_AVAILABLE:
+    USE_L3 = False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -167,33 +167,33 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         t_l1 = time.time() - t0
         print(f"  L1: {len(l1_violations)}건, {t_l1:.1f}s")
 
-        # L3 (L2)
+        # L3 (L3)
         t1 = time.time()
-        l2_rejected_keys = set()
+        l3_rejected_keys = set()
         l3_rejected_detail = []  # (fname, rule_id) 목록
-        if USE_L2 and L2_AVAILABLE:
+        if USE_L3 and L3_AVAILABLE:
             try:
-                l2_violations = run_l2_contextualizer(
+                l3_violations = run_l3_contextualizer(
                     preprocess_result=preprocess_result,
                     l1_violations=l1_violations,
-                    _rejected_tracker=l2_rejected_keys,
+                    _rejected_tracker=l3_rejected_keys,
                 )
                 final_violations = post_process_violations(
-                    l1=l1_violations, l2=l2_violations,
-                    l2_rejected_keys=l2_rejected_keys,
+                    l1=l1_violations, l3=l3_violations,
+                    l3_rejected_keys=l3_rejected_keys,
                 )
             except Exception as e:
                 print(f"  [WARN] L3 실패: {e}")
                 final_violations = l1_violations
         else:
             final_violations = l1_violations
-        t_l2 = time.time() - t1
-        print(f"  L3: 최종 {len(final_violations)}건, 제거 {len(l2_rejected_keys)}건, {t_l2:.1f}s")
+        t_l3 = time.time() - t1
+        print(f"  L3: 최종 {len(final_violations)}건, 제거 {len(l3_rejected_keys)}건, {t_l3:.1f}s")
 
         # L3 필터링 정확도 계산
         l3_correct = 0  # GT 외 오탐 → 정확 제거
         l3_wrong = 0    # GT 내 → 오판 (FN 유발)
-        for (rej_file, rej_rid, rej_line) in l2_rejected_keys:
+        for (rej_file, rej_rid, rej_line) in l3_rejected_keys:
             fname = Path(rej_file).name
             if (fname, rej_rid) in gt_rules:
                 l3_wrong += 1
@@ -241,8 +241,8 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
 
     print(f"  → GT={total_gt}, TP={TP}, FN={FN}, 추가탐지={FP_extra}")
     print(f"  → Recall={recall:.1%}, Precision={precision:.1%}, F1={f1:.1%}")
-    if l2_rejected_keys:
-        l3_total = len(l2_rejected_keys)
+    if l3_rejected_keys:
+        l3_total = len(l3_rejected_keys)
         print(f"  → L3 제거 {l3_total}건: 정확={l3_correct}건({l3_correct/l3_total:.1%}), 오판={l3_wrong}건({l3_wrong/l3_total:.1%})")
 
     return {
@@ -252,14 +252,14 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         "TP": TP, "FN": FN, "FP_extra": FP_extra,
         "precision": precision, "recall": recall, "f1": f1,
         "l1_count": len(l1_violations),
-        "l2_rejected": len(l2_rejected_keys),
+        "l3_rejected": len(l3_rejected_keys),
         "l3_correct_removals": l3_correct,
         "l3_wrong_removals": l3_wrong,
         "l3_rejected_detail": l3_rejected_detail,
         "final_count": len(final_violations),
         "tp_list": tp_list, "fn_list": fn_list, "fp_list": fp_list,
-        "timing": {"l1_s": round(t_l1, 1), "l2_s": round(t_l2, 1),
-                    "total_s": round(t_l1 + t_l2, 1)},
+        "timing": {"l1_s": round(t_l1, 1), "l3_s": round(t_l3, 1),
+                    "total_s": round(t_l1 + t_l3, 1)},
         "detected": {k: str(v) for k, v in detected.items()},
     }
 
@@ -279,7 +279,7 @@ def evaluate_design_set(pdf_path: Path, set_name: str,
                 "gt_rules": [], "gt_count": 0, "TP_doc": 0, "FN_doc": 0,
                 "FP_doc": 0, "recall_doc": 0.0, "matched": [], "undetected": [],
                 "extra": [], "design_gt_details": [],
-                "timing": {"prep_s": 0, "l1_s": 0, "l2_s": 0, "total_s": 0}}
+                "timing": {"prep_s": 0, "l1_s": 0, "l3_s": 0, "total_s": 0}}
 
     rules_dir = BACKEND_ROOT / "rules"
     doc_rules = load_doc_rules(rules_dir)
@@ -300,7 +300,7 @@ def evaluate_design_set(pdf_path: Path, set_name: str,
                     "gt_rules": [], "gt_count": 0, "TP_doc": 0, "FN_doc": 0,
                     "FP_doc": 0, "recall_doc": 0.0, "matched": [], "undetected": [],
                     "extra": [], "design_gt_details": design_gt,
-                    "timing": {"prep_s": 0, "l1_s": 0, "l2_s": 0, "total_s": 0}}
+                    "timing": {"prep_s": 0, "l1_s": 0, "l3_s": 0, "total_s": 0}}
         t_prep = time.time() - t0
         sections = preprocess.get("sections", [])
         print(f"  DOC 전처리: {len(sections)}개 섹션, {t_prep:.1f}s")
@@ -311,18 +311,18 @@ def evaluate_design_set(pdf_path: Path, set_name: str,
         print(f"  DOC L1: {len(l1_doc)}건, {t_l1:.1f}s")
 
         t2 = time.time()
-        if USE_L2 and L2_AVAILABLE and l1_doc:
+        if USE_L3 and L3_AVAILABLE and l1_doc:
             try:
-                final_doc = run_doc_l2_contextualizer(l1_doc, preprocess)
+                final_doc = run_doc_l3_contextualizer(l1_doc, preprocess)
             except Exception as e:
                 print(f"  [WARN] DOC L3 실패: {e}")
                 final_doc = l1_doc
         else:
             final_doc = l1_doc
-        t_l2 = time.time() - t2
+        t_l3 = time.time() - t2
 
         detected_rule_ids = {v.get("rule_id") for v in final_doc}
-        print(f"  DOC L3 최종: {len(final_doc)}건, {t_l2:.1f}s")
+        print(f"  DOC L3 최종: {len(final_doc)}건, {t_l3:.1f}s")
         print(f"  탐지된 규칙: {sorted(detected_rule_ids)}")
 
     # GT 대비 평가
@@ -366,7 +366,7 @@ def evaluate_design_set(pdf_path: Path, set_name: str,
         "extra": sorted(extra),
         "design_gt_details": design_gt,
         "timing": {"prep_s": round(t_prep, 1), "l1_s": round(t_l1, 1),
-                    "l2_s": round(t_l2, 1), "total_s": round(t_prep + t_l1 + t_l2, 1)},
+                    "l3_s": round(t_l3, 1), "total_s": round(t_prep + t_l1 + t_l3, 1)},
     }
 
 
@@ -385,7 +385,7 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
     code_recall    = total_code_tp / total_code_gt if total_code_gt else 0.0
 
     # ── L3 필터링 집계 ──
-    total_l3_removed  = sum(r.get("l2_rejected", 0)         for r in all_code_results)
+    total_l3_removed  = sum(r.get("l3_rejected", 0)         for r in all_code_results)
     total_l3_correct  = sum(r.get("l3_correct_removals", 0) for r in all_code_results)
     total_l3_wrong    = sum(r.get("l3_wrong_removals", 0)   for r in all_code_results)
     l3_correct_rate   = total_l3_correct / total_l3_removed if total_l3_removed else 0.0
@@ -418,7 +418,7 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
     print(f"  탐지율 (Recall)                  : {combined_recall:.1%}")
     print(f"  GT 외 추가 탐지 건               : {total_fp_extra}건")
     print("─" * 65)
-    if USE_L2:
+    if USE_L3:
         print(f"  L3 필터링 — 제거 건수            : {total_l3_removed}건"
               f"  ({l3_remove_rate:.1%})")
         if total_l3_removed:
@@ -427,7 +427,7 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
             print(f"  L3 필터링 — 오판 (FN 유발)       : {total_l3_wrong}건"
                   f"  ({l3_wrong_rate:.1%})")
     else:
-        print("  L3 필터링                        : 비활성화 (--no-l2)")
+        print("  L3 필터링                        : 비활성화 (--no-l3)")
     print("─" * 65)
     print(f"  문서 구조 누락 탐지              : 평균 {doc_avg:.1f}건/세트")
     print("═" * 65)
@@ -437,7 +437,7 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
     for r in all_code_results:
         gt  = r.get("gt_count", 0)
         tp  = r.get("TP", 0)
-        rej = r.get("l2_rejected", 0)
+        rej = r.get("l3_rejected", 0)
         fn  = r.get("FN", 0)
         rc  = tp / gt if gt else 0
         print(f"    {r['set_name']}: {tp}/{gt} = {rc:.1%}  "
@@ -468,7 +468,7 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
 def main():
     print("=" * 65)
     print("KCMVP 실제 코드-설계서 세트 성능 평가")
-    print(f"L3 Gemini: {'활성화' if USE_L2 else '비활성화'}")
+    print(f"L3 Gemini: {'활성화' if USE_L3 else '비활성화'}")
     print(f"세트 경로: {SET_BASE}")
     print("=" * 65)
 
@@ -506,7 +506,7 @@ def main():
     # JSON 결과 저장
     results = {
         "timestamp": datetime.now().isoformat(),
-        "use_l2": USE_L2,
+        "use_l3": USE_L3,
         "total_elapsed_s": round(total_elapsed, 1),
         "code_results": all_code_results,
         "doc_results": all_doc_results,

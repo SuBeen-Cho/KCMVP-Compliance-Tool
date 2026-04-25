@@ -6,7 +6,7 @@ v9(82 cases) + 6 new CTR-001 cases:
   P44 violations_ctr001_encdec.c CTR-001  ctr_encrypt도 lea_decrypt 호출
   N41 safe_ctr001_enc.c          CTR-001  ctr_encrypt/decrypt 모두 lea_encrypt 사용 → 정상
   N42 safe_ctr001_sym.c          CTR-001  대칭 CTR 구조 (암=복호화 동일 함수) → 정상
-  N43 safe_ctr001_noctr.c        CTR-001  CTR 함수 없음 → None(L2) → 정상 취급
+  N43 safe_ctr001_noctr.c        CTR-001  CTR 함수 없음 → None(L3) → 정상 취급
   N44 safe_ctr001_xor.c          CTR-001  XOR만으로 구현 (ENC 함수 명시 없음) → 정상
 """
 import zipfile
@@ -113,7 +113,7 @@ void lea_ctr(uint8_t *key, uint8_t *ctr, uint8_t *in, uint8_t *out, int len) {
 }
 """
 
-# ── N43: CTR 함수 없음 → checker returns None → L2 판단 ──────────────
+# ── N43: CTR 함수 없음 → checker returns None → L3 판단 ──────────────
 SAFE_CTR001_NOCTR = """\
 /* N43: CTR-001 — CTR 관련 함수 없음, checker는 None 반환 → 정상 취급 */
 #include <stdint.h>

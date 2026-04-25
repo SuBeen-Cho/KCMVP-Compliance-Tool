@@ -7,7 +7,7 @@
   G1 – GCFS: 전체 코드 흐름 요약 생성 (모듈 구조 + API 시그니처 + 호출 흐름)
   G2 – 키 생명주기 분석 (_build_key_lifecycle): 선언→초기화→사용→제거 흐름 추적
   G3 – TRC-004: symbol_graph 기반 API 매핑 (함수 포인터 typedef vs 설계서)
-  G4 – L2 통합: GCFS + 키 lifecycle이 실제 code_block에 prepend 되는지
+  G4 – L3 통합: GCFS + 키 lifecycle이 실제 code_block에 prepend 되는지
   G5 – (통합) lea_cbc_only.zip 기반 실제 파이프라인 검증
 """
 import sys
@@ -181,8 +181,8 @@ record("G3-B 설계서 완전 커버 → 위반 없음", len(viols_none) == 0,
 viols_no_sg = _check_trc004(design_partial, {}, TRC004_RULE)
 record("G3-C symbol_graph=None → 빈 리스트", len(viols_no_sg) == 0)
 
-# ── G4: L2 통합 검증 ─────────────────────────────────────────────
-print("\n[G4] L2 code_block GCFS + 키 lifecycle prepend 통합")
+# ── G4: L3 통합 검증 ─────────────────────────────────────────────
+print("\n[G4] L3 code_block GCFS + 키 lifecycle prepend 통합")
 
 from app.services.llm_service import (
     _build_global_flow_summary, _build_structured_evidence,
@@ -204,7 +204,7 @@ record("G4-B key_lifecycle에 제거 미발견 포함",
 
 # GCFS가 실제로 생성되는지
 gcfs_real = _build_global_flow_summary(FAKE_SG)
-record("G4-C GCFS 생성 후 L2 prepend 준비됨", len(gcfs_real) > 50)
+record("G4-C GCFS 생성 후 L3 prepend 준비됨", len(gcfs_real) > 50)
 
 # ── G5: 실제 zip 파이프라인 통합 ────────────────────────────────
 print("\n[G5] 실제 파이프라인 통합 (lea_cbc_only.zip)")

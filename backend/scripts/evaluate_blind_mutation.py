@@ -8,7 +8,7 @@ Phase 3: KISA LEA 레퍼런스 Mutation 기반 블라인드 Recall 테스트
 
 Usage:
     cd backend
-    python scripts/evaluate_blind_mutation.py [--no-l2]
+    python scripts/evaluate_blind_mutation.py [--no-l3]
 """
 
 import sys, os, re, time, json, zipfile, tempfile, shutil, copy
@@ -19,21 +19,21 @@ from datetime import datetime
 BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 
 KISA_LEA_SRC = BACKEND_ROOT.parent / "블록암호_LEA_소스코드(v1.3)" / "LEA_C_Standalone_src"
 
 from app.services.rule_engine_service import run_rule_engine
 
 try:
-    from app.services.llm_service import run_l2_contextualizer
+    from app.services.llm_service import run_l3_contextualizer
     from app.services.report_service import post_process_violations
-    L2_AVAILABLE = True
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
+    L3_AVAILABLE = False
 
-if not L2_AVAILABLE:
-    USE_L2 = False
+if not L3_AVAILABLE:
+    USE_L3 = False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -260,7 +260,7 @@ def apply_mutation(src_dir: Path, mutation: dict) -> bool:
 
 
 def run_pipeline_on_dir(src_dir: Path) -> list:
-    """주어진 소스 디렉터리에 L1(+L2) 파이프라인 실행."""
+    """주어진 소스 디렉터리에 L1(+L3) 파이프라인 실행."""
     c_files = sorted(src_dir.rglob("*.c"))
     file_entries = []
     for f in c_files:
@@ -281,17 +281,17 @@ def run_pipeline_on_dir(src_dir: Path) -> list:
         job_root=src_dir.parent,
     )
 
-    if USE_L2 and L2_AVAILABLE and l1_violations:
-        l2_rejected = set()
+    if USE_L3 and L3_AVAILABLE and l1_violations:
+        l3_rejected = set()
         try:
-            l2_violations = run_l2_contextualizer(
+            l3_violations = run_l3_contextualizer(
                 preprocess_result=preprocess_result,
                 l1_violations=l1_violations,
-                _rejected_tracker=l2_rejected,
+                _rejected_tracker=l3_rejected,
             )
             final = post_process_violations(
-                l1=l1_violations, l2=l2_violations,
-                l2_rejected_keys=l2_rejected,
+                l1=l1_violations, l3=l3_violations,
+                l3_rejected_keys=l3_rejected,
             )
         except:
             final = l1_violations
@@ -312,7 +312,7 @@ def check_detection(violations: list, target_rule: str) -> bool:
 def main():
     print("=" * 65)
     print("Phase 3: KISA LEA Mutation 기반 블라인드 Recall 테스트")
-    print(f"L2: {'활성화' if USE_L2 else '비활성화'}")
+    print(f"L3: {'활성화' if USE_L3 else '비활성화'}")
     print(f"Mutation 수: {len(MUTATIONS)}건")
     print("=" * 65)
 
@@ -402,7 +402,7 @@ def main():
         "timestamp": datetime.now().isoformat(),
         "phase": "Phase 3",
         "description": "KISA LEA v1.3 mutation 기반 블라인드 Recall 테스트",
-        "use_l2": USE_L2,
+        "use_l3": USE_L3,
         "total_mutations": len(MUTATIONS),
         "applied": total_applied,
         "skipped": skip,

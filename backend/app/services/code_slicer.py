@@ -5,7 +5,7 @@ CodeSlicer: pattern_type별 코드 절삭 모듈.
   - regex   : ±30라인 윈도우
   - semantic : 해당 라인을 포함하는 함수 전체 (Pure Python 중괄호 카운팅)
   - ast      : 함수 전체 + 전역 스켈레톤 (타입·함수 선언부 요약)
-  - missing  : None (위치 정보 없음 → L2 호출 스킵)
+  - missing  : None (위치 정보 없음 → L3 호출 스킵)
 
 Tree-sitter 미설치 환경 대응:
   Tier1 = 순수 Python 중괄호 카운팅으로 함수 경계 탐지

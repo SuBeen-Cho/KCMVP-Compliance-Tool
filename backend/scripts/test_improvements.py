@@ -3,13 +3,13 @@
 개선 항목 종합 성능 측정 스크립트
 =================================
 검증 항목:
-  P1   – L2 프롬프트 도메인 수치 보강 (정적 확인)
+  P1   – L3 프롬프트 도메인 수치 보강 (정적 확인)
   P2a  – 패치 생성 병렬화 (코드 존재 확인)
   P2b  – 스캔본 PDF OCR 임계값 30자 (단위 테스트)
   P3-A – TRC AST 기반 함수 추출 + regex MULTILINE (단위 테스트)
   P3-B – AST fallback 5개 규칙 완전 구현 (단위 테스트 — 준수/위반 케이스)
   P4-A – RAG 인덱스 사전 로딩 (import + 함수 시그니처 확인)
-  P4-B – L2 candidate cap 동적화 (단위 테스트)
+  P4-B – L3 candidate cap 동적화 (단위 테스트)
   P4-C – 진행률 추적 세분화 (단위 테스트)
 """
 
@@ -54,9 +54,9 @@ def record(item: str, ok, detail: str = ""):
 
 
 # ══════════════════════════════════════════════════════════════════
-# P1 – L2 프롬프트 도메인 수치 보강
+# P1 – L3 프롬프트 도메인 수치 보강
 # ══════════════════════════════════════════════════════════════════
-print("\n[P1] L2 프롬프트 도메인 수치 보강")
+print("\n[P1] L3 프롬프트 도메인 수치 보강")
 
 try:
     # 소스 직접 읽기 (google.genai 의존 없이)
@@ -66,7 +66,7 @@ try:
         "LEA-003 템플릿": ("LEA-003" in src and "192" in src),
         "LEA-010 템플릿": "LEA-010" in src,
         "few-shot 예시 존재": "위반" in src and ("VIOLATION" in src.upper() or "준수" in src),
-        "_select_l2_candidates 존재": "_select_l2_candidates" in src,
+        "_select_l3_candidates 존재": "_select_l3_candidates" in src,
         "KS X 3246 수치 포함 (델타 상수)": "0xc3efe9db" in src or "0x9908b0df" in src or "delta" in src.lower(),
         "LEA-031 도메인 수치": "LEA-031" in src,
         "LEA-034 도메인 수치": "LEA-034" in src,
@@ -381,14 +381,14 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# P4-B – L2 candidate cap 동적화
+# P4-B – L3 candidate cap 동적화
 # ══════════════════════════════════════════════════════════════════
-print("\n[P4-B] L2 candidate cap 동적화")
+print("\n[P4-B] L3 candidate cap 동적화")
 
 try:
     # google.genai mock으로 llm_service import
     from app.services import llm_service
-    _select_l2_candidates = llm_service._select_l2_candidates
+    _select_l3_candidates = llm_service._select_l3_candidates
 
     def _make_violations(n: int, pattern_type: str = "regex", severity: str = "medium") -> list:
         return [{"rule_id": f"LEA-{i % 30:03d}", "pattern_type": pattern_type,
@@ -397,34 +397,34 @@ try:
 
     # N=15 → 전체 심사 (total_cap = 15)
     v15 = _make_violations(15)
-    c15 = _select_l2_candidates(v15)
+    c15 = _select_l3_candidates(v15)
     record("P4-B N=15 → 전체 심사", len(c15) <= 15, f"선택 {len(c15)}/15")
 
     # N=50 → cap=60이지만 실제 50개만 있음
     v50 = _make_violations(50)
-    c50 = _select_l2_candidates(v50)
+    c50 = _select_l3_candidates(v50)
     record("P4-B N=50 → cap 적용", len(c50) <= 60, f"선택 {len(c50)}/50")
 
     # N=100 → cap=min(100,50)=50
     v100 = _make_violations(100)
-    c100 = _select_l2_candidates(v100)
+    c100 = _select_l3_candidates(v100)
     record("P4-B N=100 → cap=50", len(c100) <= 50, f"선택 {len(c100)}/100")
 
     # N=200 → cap=min(100,100)=100
     v200 = _make_violations(200)
-    c200 = _select_l2_candidates(v200)
+    c200 = _select_l3_candidates(v200)
     record("P4-B N=200 → cap=100", len(c200) <= 100, f"선택 {len(c200)}/200")
 
     # severity=high는 우선 선택
     v_mix = _make_violations(20, severity="medium") + _make_violations(10, pattern_type="semantic", severity="high")
-    c_mix = _select_l2_candidates(v_mix)
+    c_mix = _select_l3_candidates(v_mix)
     high_selected = sum(1 for v in c_mix if v["severity"] == "high")
     record("P4-B high severity 우선 선택", high_selected >= 5, f"high {high_selected}건 선택")
 
     # missing 타입 제외
     v_missing = _make_violations(10, pattern_type="missing")
-    c_missing = _select_l2_candidates(v_missing)
-    record("P4-B missing 타입 L2 미전송",
+    c_missing = _select_l3_candidates(v_missing)
+    record("P4-B missing 타입 L3 미전송",
            all(v["pattern_type"] != "missing" for v in c_missing),
            f"선택 {len(c_missing)}건")
 
@@ -457,7 +457,7 @@ try:
         # 여러 단계 진행
         steps = [
             ("preprocess", 15), ("symbol_graph", 30), ("rule_engine", 45),
-            ("l2_llm", 60), ("patches", 72), ("doc_preprocess", 82),
+            ("l3_llm", 60), ("patches", 72), ("doc_preprocess", 82),
             ("trc", 92),
         ]
         for step, prog in steps:

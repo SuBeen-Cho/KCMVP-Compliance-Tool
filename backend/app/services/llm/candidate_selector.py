@@ -1,4 +1,4 @@
-"""L2 대상 선정 — 타입별 버킷 방식 + L1.5 이름 기반 사전 필터."""
+"""L3 대상 선정 — 타입별 버킷 방식 + L1.5 이름 기반 사전 필터."""
 
 import re
 from typing import Any, Dict, List, Optional
@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 # ─────────────────────────────────────────────────────────────────
 
-# 변수명·함수명에 이 키워드가 포함되면 → FP 가능성 높음 → L2 스킵
+# 변수명·함수명에 이 키워드가 포함되면 → FP 가능성 높음 → L3 스킵
 _L15_FP_NAMES = frozenset({
     "sbox", "s_box", "delta", "lookup", "lut", "table",
     "test", "kat", "vector", "sample", "example",
@@ -14,7 +14,7 @@ _L15_FP_NAMES = frozenset({
     "rand_index", "rand_count", "rand_loop", "random_index",
 })
 
-# 변수명·함수명에 이 키워드가 포함되면 → TP 가능성 높음 → L2 강제 포함
+# 변수명·함수명에 이 키워드가 포함되면 → TP 가능성 높음 → L3 강제 포함
 _L15_TP_NAMES = frozenset({
     "key", "iv", "nonce", "secret", "priv", "master",
     "session_key", "encrypt_key", "aes_key", "des_key", "lea_key",
@@ -25,8 +25,8 @@ def _l15_name_filter(violation: Dict[str, Any]) -> Optional[bool]:
     """
     L1.5 이름 기반 필터.
     반환값:
-      True  → TP 확실 → L2 강제 포함
-      False → FP 확실 → L2 제외
+      True  → TP 확실 → L3 강제 포함
+      False → FP 확실 → L3 제외
       None  → 판단 불가 → 기존 로직대로
     """
     snippet = (violation.get("snippet") or "").lower()
@@ -49,13 +49,13 @@ def _l15_name_filter(violation: Dict[str, Any]) -> Optional[bool]:
 
 
 # ─────────────────────────────────────────────────────────────────
-# L2 대상 선정
+# L3 대상 선정
 # ─────────────────────────────────────────────────────────────────
-def _select_l2_candidates(
+def _select_l3_candidates(
     l1_violations: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """
-    L2 판정 대상 선정 — 타입별 버킷 방식 + 위반 수에 따른 동적 cap.
+    L3 판정 대상 선정 — 타입별 버킷 방식 + 위반 수에 따른 동적 cap.
 
     위반 총 수(N)에 따른 전체 상한:
       N ≤ 30  → 전체 심사 (cap = N)
@@ -78,7 +78,7 @@ def _select_l2_candidates(
     b1_cap = max(8,  int(total_cap * 0.50))  # Phase 2: ast 비중 0.42 → 0.50
     b2_cap = max(8,  int(total_cap * 0.35))  # Phase 2: high 비중 0.42 → 0.35
     b3_cap = max(4,  total_cap - b1_cap - b2_cap)
-    needs_l2 = {"ast", "regex", "semantic"}
+    needs_l3 = {"ast", "regex", "semantic"}
     # L1.5: 이름 기반 사전 필터 적용
     forced_in: List[Dict[str, Any]] = []
     forced_out_ids: set = set()
@@ -90,12 +90,12 @@ def _select_l2_candidates(
             forced_out_ids.add(id(v))
     forced_in_ids = {id(v) for v in forced_in}
 
-    # Strategy F: needs_ai_review=True인 위반을 L2 대상에 포함
-    # 단, missing 타입은 L2를 거치지 않고 직접 위반 확정 (L2 비결정성 방지)
+    # Strategy F: needs_ai_review=True인 위반을 L3 대상에 포함
+    # 단, missing 타입은 L3를 거치지 않고 직접 위반 확정 (L3 비결정성 방지)
     # missing 규칙은 패턴 부재 = 즉시 위반 확정이므로 AI 재판정 불필요
     eligible = [
         v for v in l1_violations
-        if (v.get("pattern_type") in needs_l2
+        if (v.get("pattern_type") in needs_l3
             or (v.get("needs_ai_review") and v.get("pattern_type") != "missing"))
         and id(v) not in forced_out_ids
     ]
@@ -138,7 +138,7 @@ def _select_l2_candidates(
     )
     selected_keys = {id(v) for v in bucket_ast}
 
-    # 버킷 2: high severity regex/semantic (missing 제외 — missing은 L2 미전송)
+    # 버킷 2: high severity regex/semantic (missing 제외 — missing은 L3 미전송)
     high_pool = [
         v for v in eligible
         if id(v) not in selected_keys
@@ -155,7 +155,7 @@ def _select_l2_candidates(
     result = bucket_ast + bucket_high + bucket_other
     ast_fb_in_bucket = sum(1 for v in bucket_ast if v.get("confidence") == "후보")
     print(
-        f"[L2] 대상 선정: N={n_total}, cap={total_cap}, "
+        f"[L3] 대상 선정: N={n_total}, cap={total_cap}, "
         f"ast={len(bucket_ast)}(fallback={ast_fb_in_bucket}/{ast_fallback_count}), "
         f"high={len(bucket_high)}, other={len(bucket_other)}, 합계={len(result)}건"
     )

@@ -26,8 +26,8 @@ from app.services.preprocess_docs_service import run_doc_preprocess
 from app.services.symbol_graph_service import build_symbol_graph
 from app.services.rule_engine_service import run_rule_engine
 from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
-from app.services.llm_service import run_l2_contextualizer, generate_patch_for_violation, generate_doc_patch_for_violation, generate_ai_summary
-from app.services.rag_service import attach_evidence
+from app.services.llm_service import run_l3_contextualizer, generate_patch_for_violation, generate_doc_patch_for_violation, generate_ai_summary
+from app.services.rag_service import attach_evidence, run_l2_rag_context
 from app.services.report_service import (
     post_process_violations, save_patch, build_summary,
     write_report_markdown, write_report_pdf,
@@ -167,7 +167,7 @@ def _write_status(root: Path, step: str, progress: int) -> None:
 def _run_pipeline_sync(root: Path, algorithm: Optional[str], mode: Optional[str]) -> dict:
     """동기 분석 파이프라인 — asyncio.to_thread() 안에서 실행."""
     from collections import defaultdict as _defaultdict
-    from app.services.llm_service import run_doc_l2_contextualizer
+    from app.services.llm_service import run_doc_l3_contextualizer
 
     # 3) 코드 전처리
     _write_status(root, "preprocess", 15)
@@ -196,18 +196,22 @@ def _run_pipeline_sync(root: Path, algorithm: Optional[str], mode: Optional[str]
         symbol_graph=symbol_graph,
     )
 
-    # 6) L2 LLM
-    _write_status(root, "l2_llm", 60)
-    l2_rejected_keys: set = set()
-    violations_l2 = run_l2_contextualizer(
+    # 6) L2 RAG 맥락 프롬프트 형성
+    _write_status(root, "l2_rag", 52)
+    violations_l1 = run_l2_rag_context(violations_l1)
+
+    # 7) L3 LLM 최종 오판 판정
+    _write_status(root, "l3_llm", 60)
+    l3_rejected_keys: set = set()
+    violations_l3 = run_l3_contextualizer(
         preprocess_result=preprocess_result,
         l1_violations=violations_l1,
         rules_meta={"algorithm": algorithm, "mode": mode},
-        _rejected_tracker=l2_rejected_keys,
+        _rejected_tracker=l3_rejected_keys,
         symbol_graph=symbol_graph,  # Phase 1: Structured Evidence
     )
     merged_violations = post_process_violations(
-        violations_l1, violations_l2, l2_rejected_keys=l2_rejected_keys
+        violations_l1, violations_l3, l3_rejected_keys=l3_rejected_keys
     )
     final_violations = attach_evidence(merged_violations, top_k=2)
 
@@ -274,7 +278,7 @@ def _run_pipeline_sync(root: Path, algorithm: Optional[str], mode: Optional[str]
                 patch_md = f"## {_file}:{_line}\n\n_(패치 생성 실패)_"
             save_patch(root, _rule_id, _file, _line, patch_md)
 
-    # 7) 문서 전처리 + DOC 룰
+    # 8) 문서 전처리 + DOC 룰
     _write_status(root, "doc_preprocess", 82)
     doc_preprocess = run_doc_preprocess(root)
     (root / "doc_preprocess_result.json").write_text(
@@ -283,7 +287,7 @@ def _run_pipeline_sync(root: Path, algorithm: Optional[str], mode: Optional[str]
     )
     doc_rules = load_doc_rules(RULES_DIR)
     violations_doc = run_doc_rule_engine(doc_preprocess, doc_rules)
-    violations_doc = run_doc_l2_contextualizer(violations_doc, doc_preprocess)
+    violations_doc = run_doc_l3_contextualizer(violations_doc, doc_preprocess)
     violations_doc = attach_evidence(violations_doc, top_k=2)
 
     # 문서 패치 생성 (병렬)

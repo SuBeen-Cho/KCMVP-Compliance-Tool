@@ -2,16 +2,16 @@
 Phase 4 통합 테스트.
 
 검증 항목:
-  [T1] config: L2_PROVIDER, LOCAL_LLM_BASE_URL 등 설정 로드
+  [T1] config: L3_PROVIDER, LOCAL_LLM_BASE_URL 등 설정 로드
   [T2] local_llm_service: is_available() 호출 (서버 없으면 False여야 함)
   [T3] local_llm_service: get_provider_info() 구조 검증
-  [T4] llm_service: L2_PROVIDER=local 시 _call_llm → local_llm_service 위임
-  [T5] llm_service: L2_PROVIDER=gemini 시 기존 _call_gemini 경로 유지
-  [T6] llm_service: run_l2_contextualizer — local 프로바이더에서도 빈 list 반환 (서버 없음)
+  [T4] llm_service: L3_PROVIDER=local 시 _call_llm → local_llm_service 위임
+  [T5] llm_service: L3_PROVIDER=gemini 시 기존 _call_gemini 경로 유지
+  [T6] llm_service: run_l3_contextualizer — local 프로바이더에서도 빈 list 반환 (서버 없음)
   [T7] gen_training_data: generate_samples() 실행 (샘플 0개 이상, 오류 없음)
   [T8] gen_training_data: 샘플 구조 검증 (instruction/input/output 키 포함)
   [T9] gen_training_data: 중복 제거 검증 (같은 file:line:rule_id 중복 없음)
-  [T10] llm_service: API 키 없고 L2_PROVIDER=gemini → run_l2_contextualizer 빈 리스트
+  [T10] llm_service: API 키 없고 L3_PROVIDER=gemini → run_l3_contextualizer 빈 리스트
 
 실행:
   cd backend
@@ -52,10 +52,10 @@ def test_config_and_local() -> None:
 
     # T1: 설정 로드
     from app.config import settings
-    if hasattr(settings, "L2_PROVIDER") and hasattr(settings, "LOCAL_LLM_BASE_URL"):
-        ok("T1", f"L2_PROVIDER={settings.L2_PROVIDER!r}, LOCAL_LLM_BASE_URL={settings.LOCAL_LLM_BASE_URL!r}")
+    if hasattr(settings, "L3_PROVIDER") and hasattr(settings, "LOCAL_LLM_BASE_URL"):
+        ok("T1", f"L3_PROVIDER={settings.L3_PROVIDER!r}, LOCAL_LLM_BASE_URL={settings.LOCAL_LLM_BASE_URL!r}")
     else:
-        fail("T1", "L2_PROVIDER 또는 LOCAL_LLM_BASE_URL 설정 없음")
+        fail("T1", "L3_PROVIDER 또는 LOCAL_LLM_BASE_URL 설정 없음")
         return
 
     # T2: is_available() — 서버 없으면 False
@@ -82,10 +82,10 @@ def test_llm_provider_dispatch() -> None:
     section("T4~T6: llm_service provider 분기")
 
     import app.services.llm_service as llm_mod
-    original_provider = llm_mod.L2_PROVIDER
+    original_provider = llm_mod.L3_PROVIDER
 
-    # T4: L2_PROVIDER=local 시 _call_llm → local_llm_service 위임
-    llm_mod.L2_PROVIDER = "local"
+    # T4: L3_PROVIDER=local 시 _call_llm → local_llm_service 위임
+    llm_mod.L3_PROVIDER = "local"
     called_local = []
 
     import app.services.local_llm_service as local_mod
@@ -108,8 +108,8 @@ def test_llm_provider_dispatch() -> None:
     finally:
         local_mod.call_local = original_call_local
 
-    # T5: L2_PROVIDER=gemini 시 _call_gemini 경로
-    llm_mod.L2_PROVIDER = "gemini"
+    # T5: L3_PROVIDER=gemini 시 _call_gemini 경로
+    llm_mod.L3_PROVIDER = "gemini"
     original_key = llm_mod.GOOGLE_API_KEY
     llm_mod.GOOGLE_API_KEY = ""  # 키 없으면 None 반환해야 함
     try:
@@ -120,23 +120,23 @@ def test_llm_provider_dispatch() -> None:
             fail("T5", f"기대 None, 실제: {result!r}")
     finally:
         llm_mod.GOOGLE_API_KEY = original_key
-        llm_mod.L2_PROVIDER = original_provider
+        llm_mod.L3_PROVIDER = original_provider
 
-    # T6: local 프로바이더에서 run_l2_contextualizer — 서버 없으면 빈 리스트
-    llm_mod.L2_PROVIDER = "local"
+    # T6: local 프로바이더에서 run_l3_contextualizer — 서버 없으면 빈 리스트
+    llm_mod.L3_PROVIDER = "local"
     try:
-        results = llm_mod.run_l2_contextualizer(
+        results = llm_mod.run_l3_contextualizer(
             preprocess_result={"files": []},
             l1_violations=[],
         )
         if isinstance(results, list):
-            ok("T6", f"run_l2_contextualizer(local) 정상 반환: {len(results)}건")
+            ok("T6", f"run_l3_contextualizer(local) 정상 반환: {len(results)}건")
         else:
             fail("T6", f"list 반환 기대, 실제: {type(results)}")
     except Exception as e:
         fail("T6", str(e))
     finally:
-        llm_mod.L2_PROVIDER = original_provider
+        llm_mod.L3_PROVIDER = original_provider
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -204,12 +204,12 @@ def test_gemini_no_key() -> None:
 
     import app.services.llm_service as llm_mod
     original_key = llm_mod.GOOGLE_API_KEY
-    original_provider = llm_mod.L2_PROVIDER
+    original_provider = llm_mod.L3_PROVIDER
     llm_mod.GOOGLE_API_KEY = ""
-    llm_mod.L2_PROVIDER = "gemini"
+    llm_mod.L3_PROVIDER = "gemini"
 
     try:
-        results = llm_mod.run_l2_contextualizer(
+        results = llm_mod.run_l3_contextualizer(
             preprocess_result={"files": []},
             l1_violations=[{"file": "a.c", "line": 1, "rule_id": "COM-001",
                              "severity": "high", "pattern_type": "regex", "message": "test"}],
@@ -222,7 +222,7 @@ def test_gemini_no_key() -> None:
         fail("T10", str(e))
     finally:
         llm_mod.GOOGLE_API_KEY = original_key
-        llm_mod.L2_PROVIDER = original_provider
+        llm_mod.L3_PROVIDER = original_provider
 
 
 # ─────────────────────────────────────────────────────────────────

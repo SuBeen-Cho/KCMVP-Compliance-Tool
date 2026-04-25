@@ -2,9 +2,9 @@
 Phase 3 통합 테스트.
 
 검증 항목:
-  [T1] post_process_violations: L1+L2 dedup (file+line+rule_id 기준)
-  [T2] post_process_violations: L2 병합 (source=L1+L2, suggestion 반영)
-  [T3] post_process_violations: 매칭 안 된 L2 독립 유지
+  [T1] post_process_violations: L1+L3 dedup (file+line+rule_id 기준)
+  [T2] post_process_violations: L3 병합 (source=L1+L3, suggestion 반영)
+  [T3] post_process_violations: 매칭 안 된 L3 독립 유지
   [T4] post_process_violations: L1만 있을 때 정상 반환
   [T5] attach_evidence: 위반 리스트에 evidence 필드 추가
   [T6] attach_evidence: 이미 evidence 있으면 스킵
@@ -17,7 +17,7 @@ Phase 3 통합 테스트.
 실행:
   cd backend
   venv/bin/python3 scripts/test_phase3.py
-  venv/bin/python3 scripts/test_phase3.py --l2   # L2 Gemini 포함
+  venv/bin/python3 scripts/test_phase3.py --l3   # L3 Gemini 포함
 """
 
 from __future__ import annotations
@@ -60,13 +60,13 @@ def test_post_process() -> None:
         {"file": "src/a.c", "line": 10, "rule_id": "COM-003", "message": "하드코딩 키 (중복)", "severity": "high", "pattern_type": "regex"},  # 중복
         {"file": "src/b.c", "line": 20, "rule_id": "COM-001", "message": "제로화 미처리", "severity": "high", "pattern_type": "missing"},
     ]
-    l2_empty: List[Dict] = []
-    l2_match = [
+    l3_empty: List[Dict] = []
+    l3_match = [
         {
-            "source": "L2",
+            "source": "L3",
             "file": "src/a.c",
             "line": 10,
-            "rule_id": "L2-COM-003",
+            "rule_id": "L3-COM-003",
             "message": "실제 암호 키로 확인됨",
             "severity": "high",
             "suggestion": "외부 KMS에서 키 로드",
@@ -76,27 +76,27 @@ def test_post_process() -> None:
     ]
 
     # T1: dedup (동일 file+line+rule_id 중복 제거)
-    result = post_process_violations(l1, l2_empty)
+    result = post_process_violations(l1, l3_empty)
     if len(result) == 2:
         ok("T1", f"dedup 성공: {len(l1)}건 → {len(result)}건")
     else:
         fail("T1", f"dedup 실패: 기대 2건, 실제 {len(result)}건")
 
-    # T2: L2 병합 (source=L1+L2, suggestion 반영)
-    result_merged = post_process_violations(l1, l2_match)
-    merged = [v for v in result_merged if v.get("source") == "L1+L2"]
+    # T2: L3 병합 (source=L1+L3, suggestion 반영)
+    result_merged = post_process_violations(l1, l3_match)
+    merged = [v for v in result_merged if v.get("source") == "L1+L3"]
     if merged and merged[0].get("suggestion") == "외부 KMS에서 키 로드":
-        ok("T2", f"L2 병합 성공 — suggestion='{merged[0]['suggestion']}'")
+        ok("T2", f"L3 병합 성공 — suggestion='{merged[0]['suggestion']}'")
     else:
-        fail("T2", f"L2 병합 실패: merged={merged}")
+        fail("T2", f"L3 병합 실패: merged={merged}")
 
-    # T3: 매칭 안 된 L2는 독립 유지
-    l2_unmatched = [
+    # T3: 매칭 안 된 L3는 독립 유지
+    l3_unmatched = [
         {
-            "source": "L2",
+            "source": "L3",
             "file": "src/c.c",  # L1에 없는 파일
             "line": 99,
-            "rule_id": "L2-COM-004",
+            "rule_id": "L3-COM-004",
             "message": "PRNG 사용 확인",
             "severity": "medium",
             "suggestion": "getrandom() 사용",
@@ -104,12 +104,12 @@ def test_post_process() -> None:
             "pattern_type": "regex",
         }
     ]
-    result_unmatched = post_process_violations(l1, l2_unmatched)
-    l2_items = [v for v in result_unmatched if v.get("source") == "L2"]
-    if l2_items:
-        ok("T3", f"매칭 안 된 L2 독립 유지: {len(l2_items)}건")
+    result_unmatched = post_process_violations(l1, l3_unmatched)
+    l3_items = [v for v in result_unmatched if v.get("source") == "L3"]
+    if l3_items:
+        ok("T3", f"매칭 안 된 L3 독립 유지: {len(l3_items)}건")
     else:
-        fail("T3", "매칭 안 된 L2가 제거됨")
+        fail("T3", "매칭 안 된 L3가 제거됨")
 
     # T4: L1만 있을 때 정상 반환
     result_l1_only = post_process_violations(l1, [])
@@ -197,14 +197,14 @@ def test_generate_patch() -> None:
 # ─────────────────────────────────────────────────────────────────
 # T9: 전체 파이프라인 통합
 # ─────────────────────────────────────────────────────────────────
-def test_full_pipeline(run_l2: bool = False) -> None:
+def test_full_pipeline(run_l3: bool = False) -> None:
     section("T9~T11: 전체 파이프라인 (post_process + evidence + patch)")
 
     from scripts.create_phase1_test_zip import ZIP_FAIL, main as generate_zips
     from app.services.upload_service import create_job_from_upload, get_job_root
     from app.services.preprocess_service import run_preprocess
     from app.services.rule_engine_service import run_rule_engine
-    from app.services.llm_service import run_l2_contextualizer, generate_patch_for_violation
+    from app.services.llm_service import run_l3_contextualizer, generate_patch_for_violation
     from app.services.rag_service import attach_evidence
     from app.services.report_service import post_process_violations, save_patch
     from app.services.code_slicer import slice_code
@@ -217,12 +217,12 @@ def test_full_pipeline(run_l2: bool = False) -> None:
     preprocess_result = run_preprocess(job_root)
     l1_violations = run_rule_engine(preprocess_result, BACKEND / "rules", job_root)
 
-    l2_violations = []
-    if run_l2:
-        l2_violations = run_l2_contextualizer(preprocess_result, l1_violations)
+    l3_violations = []
+    if run_l3:
+        l3_violations = run_l3_contextualizer(preprocess_result, l1_violations)
 
     # T9: post_process
-    merged = post_process_violations(l1_violations, l2_violations)
+    merged = post_process_violations(l1_violations, l3_violations)
     if len(merged) <= len(l1_violations):
         ok("T9", f"post_process 완료: {len(l1_violations)}건 → {len(merged)}건 (dedup)")
     else:
@@ -295,7 +295,7 @@ def print_summary() -> int:
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--l2", action="store_true")
+    parser.add_argument("--l3", action="store_true")
     args = parser.parse_args()
 
     print("Phase 3 통합 테스트 시작\n")
@@ -307,7 +307,7 @@ def main() -> int:
             fail(fn.__name__, str(e))
 
     try:
-        test_full_pipeline(run_l2=args.l2)
+        test_full_pipeline(run_l3=args.l3)
     except Exception as e:
         fail("전체 파이프라인", str(e))
 

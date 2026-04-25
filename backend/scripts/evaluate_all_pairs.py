@@ -5,19 +5,19 @@ accuracy_test_v12.zip (코드) + testdata/ 내 모든 설계서 PDF를 대상으
 다음 지표를 측정하고 EVALUATION_REPORT.md 를 생성한다.
 
 지표:
-  1. 탐지율      — L1+L2 최종 위반 중 기준 진실(ground truth) 대비 재현율
+  1. 탐지율      — L1+L3 최종 위반 중 기준 진실(ground truth) 대비 재현율
   2. 오탐 수     — N-case 파일에서 탐지된 위반 건수
-  3. L2 필터링 효과 — L1 후보 중 L2가 오탐 제거한 비율
+  3. L3 필터링 효과 — L1 후보 중 L3가 오탐 제거한 비율
   4. 문서 탐지 성능 — DOC ground truth가 있는 design_fail.pdf 대상 정밀도/재현율
   5. 패치 성공률  — 생성된 패치 파일의 유효성 검사 통과율
   6. 실행 시간    — 단계별 wall-clock 측정
 
 Usage:
     cd backend
-    python scripts/evaluate_all_pairs.py [--no-l2] [--skip-doc-gen]
+    python scripts/evaluate_all_pairs.py [--no-l3] [--skip-doc-gen]
 
 Options:
-    --no-l2        L2 Gemini 호출 없이 L1만 평가 (API key 없을 때)
+    --no-l3        L3 Gemini 호출 없이 L1만 평가 (API key 없을 때)
     --skip-doc-gen design_fail.pdf 생성 스크립트 건너뜀 (이미 생성된 경우)
 """
 
@@ -38,7 +38,7 @@ BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
 # ── 설정 ─────────────────────────────────────────────────────────
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 SKIP_DOC_GEN = "--skip-doc-gen" in sys.argv
 
 TESTDATA = BACKEND_ROOT / "testdata"
@@ -70,12 +70,12 @@ from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
 from app.services.report_service import post_process_violations, build_summary
 
 try:
-    from app.services.llm_service import run_l2_contextualizer, run_doc_l2_contextualizer
-    L2_AVAILABLE = True
+    from app.services.llm_service import run_l3_contextualizer, run_doc_l3_contextualizer
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
-    USE_L2 = False
-    print("[WARN] llm_service 임포트 실패 → L2 비활성화")
+    L3_AVAILABLE = False
+    USE_L3 = False
+    print("[WARN] llm_service 임포트 실패 → L3 비활성화")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -157,7 +157,7 @@ def evaluate_code(tmp_dir: Path) -> Dict:
     Returns: 지표 딕셔너리
     """
     print("\n" + "─"*60)
-    print("[코드] L1 + L2 파이프라인 평가 시작")
+    print("[코드] L1 + L3 파이프라인 평가 시작")
 
     with zipfile.ZipFile(CODE_ZIP) as zf:
         zf.extractall(tmp_dir)
@@ -200,43 +200,43 @@ def evaluate_code(tmp_dir: Path) -> Dict:
     t_l1 = time.time() - t1
     print(f"  L1 규칙 엔진: {len(l1_violations)}건, {t_l1:.2f}s")
 
-    # ── L2 필터링 ──────────────────────────────────────────────
+    # ── L3 필터링 ──────────────────────────────────────────────
     t2 = time.time()
-    if USE_L2:
-        l2_rejected_keys: set = set()
-        l2_violations = run_l2_contextualizer(
+    if USE_L3:
+        l3_rejected_keys: set = set()
+        l3_violations = run_l3_contextualizer(
             preprocess_result=preprocess_result,
             l1_violations=l1_violations,
-            _rejected_tracker=l2_rejected_keys,
+            _rejected_tracker=l3_rejected_keys,
         )
         final_violations = post_process_violations(
             l1=l1_violations,
-            l2=l2_violations,
-            l2_rejected_keys=l2_rejected_keys,
+            l3=l3_violations,
+            l3_rejected_keys=l3_rejected_keys,
         )
-        t_l2 = time.time() - t2
-        # L2 필터링 효과 계산
-        # L2 전송 대상: needs_ai_review=True 또는 severity=high인 regex/semantic/ast
-        l2_candidates = [
+        t_l3 = time.time() - t2
+        # L3 필터링 효과 계산
+        # L3 전송 대상: needs_ai_review=True 또는 severity=high인 regex/semantic/ast
+        l3_candidates = [
             v for v in l1_violations
             if v.get("needs_ai_review") or (
                 v.get("severity") == "high" and
                 v.get("pattern_type") in ("regex", "semantic", "ast")
             )
         ]
-        l2_sent = len(l2_candidates)
-        l2_rejected = len(l2_rejected_keys)
-        l2_filter_rate = (l2_rejected / l2_sent * 100) if l2_sent > 0 else 0.0
-        print(f"  L2 Gemini: 후보 {l2_sent}건, 제거 {l2_rejected}건, 최종 {len(final_violations)}건, {t_l2:.2f}s")
+        l3_sent = len(l3_candidates)
+        l3_rejected = len(l3_rejected_keys)
+        l3_filter_rate = (l3_rejected / l3_sent * 100) if l3_sent > 0 else 0.0
+        print(f"  L3 Gemini: 후보 {l3_sent}건, 제거 {l3_rejected}건, 최종 {len(final_violations)}건, {t_l3:.2f}s")
     else:
         final_violations = l1_violations
-        l2_rejected = 0
-        l2_sent = len([v for v in l1_violations if v.get("needs_ai_review")])
-        l2_filter_rate = 0.0
-        t_l2 = 0.0
-        print("  L2: 비활성화 (L1 결과 그대로 사용)")
+        l3_rejected = 0
+        l3_sent = len([v for v in l1_violations if v.get("needs_ai_review")])
+        l3_filter_rate = 0.0
+        t_l3 = 0.0
+        print("  L3: 비활성화 (L1 결과 그대로 사용)")
 
-    t_total_code = t_preprocess + t_l1 + t_l2
+    t_total_code = t_preprocess + t_l1 + t_l3
 
     # ── 혼동 행렬 계산 ────────────────────────────────────────
     detected: Dict[str, Set[str]] = defaultdict(set)
@@ -289,16 +289,16 @@ def evaluate_code(tmp_dir: Path) -> Dict:
         "precision": precision, "recall": recall, "f1": f1,
         "l1_count": len(l1_violations),
         "final_count": len(final_violations),
-        "l2_sent": l2_sent,
-        "l2_rejected": l2_rejected,
-        "l2_filter_rate": l2_filter_rate,
+        "l3_sent": l3_sent,
+        "l3_rejected": l3_rejected,
+        "l3_filter_rate": l3_filter_rate,
         "fn_list": fn_list,
         "fp_list": fp_list,
         "rule_stats": dict(rule_stats),
         "timing": {
             "preprocess_s": round(t_preprocess, 2),
             "l1_s": round(t_l1, 2),
-            "l2_s": round(t_l2, 2),
+            "l3_s": round(t_l3, 2),
             "total_code_s": round(t_total_code, 2),
         },
         "detected": dict(detected),
@@ -345,21 +345,21 @@ def evaluate_doc(pdf_path: Path, pair_name: str,
         l1_rule_ids = {v.get("rule_id") for v in l1_doc_viols}
         print(f"  DOC L1: {len(l1_doc_viols)}건 (규칙: {sorted(l1_rule_ids)}), {t_doc_l1:.2f}s")
 
-        # DOC L2
+        # DOC L3
         t2 = time.time()
-        if USE_L2 and l1_doc_viols:
+        if USE_L3 and l1_doc_viols:
             try:
-                final_doc_viols = run_doc_l2_contextualizer(l1_doc_viols, preprocess)
+                final_doc_viols = run_doc_l3_contextualizer(l1_doc_viols, preprocess)
             except Exception as e:
-                print(f"  [WARN] DOC L2 실패: {e}")
+                print(f"  [WARN] DOC L3 실패: {e}")
                 final_doc_viols = l1_doc_viols
         else:
             final_doc_viols = l1_doc_viols
-        t_doc_l2 = time.time() - t2
+        t_doc_l3 = time.time() - t2
         final_rule_ids = {v.get("rule_id") for v in final_doc_viols}
-        l2_doc_removed = len(l1_doc_viols) - len(final_doc_viols)
-        l2_doc_filter_rate = (l2_doc_removed / len(l1_doc_viols) * 100) if l1_doc_viols else 0.0
-        print(f"  DOC L2: 최종 {len(final_doc_viols)}건 (제거 {l2_doc_removed}건), {t_doc_l2:.2f}s")
+        l3_doc_removed = len(l1_doc_viols) - len(final_doc_viols)
+        l3_doc_filter_rate = (l3_doc_removed / len(l1_doc_viols) * 100) if l1_doc_viols else 0.0
+        print(f"  DOC L3: 최종 {len(final_doc_viols)}건 (제거 {l3_doc_removed}건), {t_doc_l3:.2f}s")
 
         result = {
             "pair_name": pair_name,
@@ -369,13 +369,13 @@ def evaluate_doc(pdf_path: Path, pair_name: str,
             "final_count": len(final_doc_viols),
             "l1_rule_ids": sorted(l1_rule_ids),
             "final_rule_ids": sorted(final_rule_ids),
-            "l2_doc_removed": l2_doc_removed,
-            "l2_doc_filter_rate": round(l2_doc_filter_rate, 1),
+            "l3_doc_removed": l3_doc_removed,
+            "l3_doc_filter_rate": round(l3_doc_filter_rate, 1),
             "timing": {
                 "doc_preprocess_s": round(t_doc_preprocess, 2),
                 "doc_l1_s": round(t_doc_l1, 2),
-                "doc_l2_s": round(t_doc_l2, 2),
-                "total_doc_s": round(t_doc_preprocess + t_doc_l1 + t_doc_l2, 2),
+                "doc_l3_s": round(t_doc_l3, 2),
+                "total_doc_s": round(t_doc_preprocess + t_doc_l1 + t_doc_l3, 2),
             },
             "has_ground_truth": has_ground_truth,
         }
@@ -464,7 +464,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     md.append("# KCMVP 파이프라인 성능 평가 보고서")
     md.append(f"\n**생성일시:** {now}")
     md.append(f"**평가 도구 버전:** KCMVP Pre-Validator (2026-03 기준)")
-    md.append(f"**L2 Gemini 사용:** {'예' if USE_L2 else '아니오 (--no-l2 옵션)'}")
+    md.append(f"**L3 Gemini 사용:** {'예' if USE_L3 else '아니오 (--no-l3 옵션)'}")
     md.append(f"**총 실행 시간:** {total_elapsed:.1f}초\n")
 
     # ── 1. 실험 설정 ──────────────────────────────────────────────
@@ -484,10 +484,10 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     md.append("코드 ZIP 입력")
     md.append("  → 전처리 (AST 파싱, 심볼 그래프)")
     md.append("  → L1 규칙 엔진 (YAML 패턴 매칭)")
-    md.append("  → L2 AI 판정 (Gemini — 후보 위반 재판정)")
+    md.append("  → L3 AI 판정 (Gemini — 후보 위반 재판정)")
     md.append("  → 설계서 전처리 (PDF 섹션 추출)")
     md.append("  → DOC 규칙 엔진 (문서 패턴 검사)")
-    md.append("  → DOC L2 (문서 위반 의미 판정)")
+    md.append("  → DOC L3 (문서 위반 의미 판정)")
     md.append("  → 보고서 생성")
     md.append("```\n")
 
@@ -498,7 +498,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     cr = code_result
     dr_pct  = f"{cr['recall']:.1%}"
     fp_cnt  = str(cr['FP'])
-    filter_r = f"{cr['l2_filter_rate']:.1f}% ({cr['l2_rejected']}건 제거 / {cr['l2_sent']}건 후보)"
+    filter_r = f"{cr['l3_filter_rate']:.1f}% ({cr['l3_rejected']}건 제거 / {cr['l3_sent']}건 후보)"
     prec_pct = f"{cr['precision']:.1%}"
     f1_pct   = f"{cr['f1']:.1%}"
     code_time = f"{cr['timing']['total_code_s']:.1f}초"
@@ -522,12 +522,12 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
 
     md.append("| 지표 | 정의 | 결과 |")
     md.append("|------|------|------|")
-    md.append(f"| **탐지율** | 기준 진실 위반 중 L1+L2가 찾아낸 비율 (재현율) | **{dr_pct}** |")
-    md.append(f"| **오탐 수** | 실제 비위반(N-case)에서 L1+L2가 위반으로 낸 건수 | **{fp_cnt}건** |")
-    md.append(f"| **L3 필터링 효과** | L2(Gemini)가 오탐으로 제거·재분류한 비율 | **{filter_r}** |")
+    md.append(f"| **탐지율** | 기준 진실 위반 중 L1+L3가 찾아낸 비율 (재현율) | **{dr_pct}** |")
+    md.append(f"| **오탐 수** | 실제 비위반(N-case)에서 L1+L3가 위반으로 낸 건수 | **{fp_cnt}건** |")
+    md.append(f"| **L3 필터링 효과** | L3(Gemini)가 오탐으로 제거·재분류한 비율 | **{filter_r}** |")
     md.append(f"| **문서 탐지 성능** | DOC 규칙 정밀도·재현율 (design_fail.pdf 기준) | **{doc_perf}** |")
     md.append(f"| **패치 성공률** | 생성된 수정 권고가 유효한 비율 | **{patch_pct}** |")
-    md.append(f"| **실행 시간 (코드)** | 전처리+L1+L2 단계별 실측 소요 시간 | **{code_time}** |")
+    md.append(f"| **실행 시간 (코드)** | 전처리+L1+L3 단계별 실측 소요 시간 | **{code_time}** |")
     md.append("")
 
     # 단계별 실행 시간 상세
@@ -536,13 +536,13 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     md.append("|------|----------|")
     md.append(f"| 전처리 (AST 파싱, {len(list((TESTDATA/'..').rglob('accuracy_test_v12.zip')))}개 파일) | {cr['timing']['preprocess_s']}초 |")
     md.append(f"| L1 규칙 엔진 | {cr['timing']['l1_s']}초 |")
-    md.append(f"| L2 Gemini 판정 | {cr['timing']['l2_s']}초 |")
+    md.append(f"| L3 Gemini 판정 | {cr['timing']['l3_s']}초 |")
     md.append(f"| **합계 (코드)** | **{cr['timing']['total_code_s']}초** |")
     md.append("")
 
     # 설계서별 실행 시간
     md.append("### 2.2 단계별 실행 시간 (설계서 파이프라인)\n")
-    md.append("| 설계서 | 섹션 수 | DOC 전처리 | DOC L1 | DOC L2 | 합계 |")
+    md.append("| 설계서 | 섹션 수 | DOC 전처리 | DOC L1 | DOC L3 | 합계 |")
     md.append("|--------|---------|-----------|--------|--------|------|")
     for dr in doc_results:
         if "error" in dr:
@@ -551,7 +551,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
         t = dr["timing"]
         md.append(
             f"| {dr['pair_name']} | {dr['sections']} | {t['doc_preprocess_s']}s "
-            f"| {t['doc_l1_s']}s | {t['doc_l2_s']}s | **{t['total_doc_s']}s** |"
+            f"| {t['doc_l1_s']}s | {t['doc_l3_s']}s | **{t['total_doc_s']}s** |"
         )
     md.append("")
 
@@ -608,7 +608,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     # ── 5. 설계서별 DOC 탐지 현황 ─────────────────────────────────
     md.append("---")
     md.append("\n## 5. 설계서별 DOC 탐지 현황\n")
-    md.append("| 설계서 | 섹션 수 | L1 탐지 | L2 최종 | L2 제거율 | Ground Truth | 비고 |")
+    md.append("| 설계서 | 섹션 수 | L1 탐지 | L3 최종 | L3 제거율 | Ground Truth | 비고 |")
     md.append("|--------|---------|---------|---------|-----------|-------------|------|")
     for dr in doc_results:
         if "error" in dr:
@@ -619,21 +619,21 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
         if dr["has_ground_truth"] and "doc_precision" in dr:
             note = f"P={dr['doc_precision']:.0%} R={dr['doc_recall']:.0%} F1={dr['doc_f1']:.0%}"
         md.append(f"| {dr['pair_name']} | {dr['sections']} | {dr['l1_count']} "
-                  f"| {dr['final_count']} | {dr['l2_doc_filter_rate']}% | {gt_str} | {note} |")
+                  f"| {dr['final_count']} | {dr['l3_doc_filter_rate']}% | {gt_str} | {note} |")
     md.append("")
 
-    # ── 6. L2 필터링 분석 ─────────────────────────────────────────
+    # ── 6. L3 필터링 분석 ─────────────────────────────────────────
     md.append("---")
-    md.append("\n## 6. L2 필터링 효과 분석\n")
+    md.append("\n## 6. L3 필터링 효과 분석\n")
     md.append(f"- **L1 전체 위반:** {cr['l1_count']}건")
-    md.append(f"- **L2 전송 후보:** {cr['l2_sent']}건 (high-severity regex/semantic/ast + needs_ai_review)")
-    md.append(f"- **L2 오탐 제거:** {cr['l2_rejected']}건")
-    md.append(f"- **L2 필터링율:** {cr['l2_filter_rate']:.1f}%")
+    md.append(f"- **L3 전송 후보:** {cr['l3_sent']}건 (high-severity regex/semantic/ast + needs_ai_review)")
+    md.append(f"- **L3 오탐 제거:** {cr['l3_rejected']}건")
+    md.append(f"- **L3 필터링율:** {cr['l3_filter_rate']:.1f}%")
     md.append(f"- **최종 위반 수:** {cr['final_count']}건")
     md.append("")
 
-    if not USE_L2:
-        md.append("> ⚠️ L2 비활성화 상태 (`--no-l2` 옵션). 실제 운영 시 L2 필터링 효과는 다를 수 있음.")
+    if not USE_L3:
+        md.append("> ⚠️ L3 비활성화 상태 (`--no-l3` 옵션). 실제 운영 시 L3 필터링 효과는 다를 수 있음.")
         md.append("")
 
     # ── 7. 미탐지(FN) / 오탐(FP) 상세 목록 ───────────────────────
@@ -641,7 +641,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     md.append("\n## 7. 코드 FN / FP 상세 목록\n")
 
     if cr["fn_list"]:
-        md.append("### 7.1 미탐지 (FN) — L1+L2가 찾지 못한 실제 위반\n")
+        md.append("### 7.1 미탐지 (FN) — L1+L3가 찾지 못한 실제 위반\n")
         md.append("| 파일 | 기대 Rule ID | 설명 |")
         md.append("|------|-------------|------|")
         for item in cr["fn_list"]:
@@ -698,12 +698,12 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     if cr["fp_list"]:
         md.append(f"오탐 수는 **{cr['FP']}건** 이다. "
                   "FP가 발생한 주요 이유로는: (1) regex 패턴이 허용 예외(공개 상수, KAT 벡터, "
-                  "lookup table)를 인식하지 못하는 경우, (2) L2 Gemini가 허용 케이스를 "
+                  "lookup table)를 인식하지 못하는 경우, (2) L3 Gemini가 허용 케이스를 "
                   "충분히 걸러내지 못한 경우가 있다. "
-                  "L2 프롬프트 개선 또는 허용 리스트 규칙 추가를 고려해야 한다.\n")
+                  "L3 프롬프트 개선 또는 허용 리스트 규칙 추가를 고려해야 한다.\n")
     else:
         md.append("오탐(FP)은 **0건** 이다. "
-                  "L2 Gemini의 의미적 재판정이 정상적으로 작동하여 오탐을 효과적으로 제거하고 있다.\n")
+                  "L3 Gemini의 의미적 재판정이 정상적으로 작동하여 오탐을 효과적으로 제거하고 있다.\n")
 
     if cr["fn_list"]:
         fn_rules = sorted({item["rule_id"] for item in cr["fn_list"]})
@@ -718,26 +718,26 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
                           f"(`{desc_sample}`)")
             elif rule_id.startswith("COM-"):
                 md.append(f"- `{rule_id}`: 코드 맥락(변수 유형, 사용 패턴)을 고려해야 하는 규칙으로, "
-                          f"L2가 false negative 처리했을 가능성이 있다.")
+                          f"L3가 false negative 처리했을 가능성이 있다.")
             else:
                 md.append(f"- `{rule_id}`: {desc_sample}")
         md.append("")
 
-    md.append("### 9.2 L2 필터링 효과 해석\n")
-    if USE_L2:
-        if cr["l2_filter_rate"] > 30:
-            md.append(f"L2 필터링율이 **{cr['l2_filter_rate']:.1f}%** 로 높게 나타났다. "
+    md.append("### 9.2 L3 필터링 효과 해석\n")
+    if USE_L3:
+        if cr["l3_filter_rate"] > 30:
+            md.append(f"L3 필터링율이 **{cr['l3_filter_rate']:.1f}%** 로 높게 나타났다. "
                       "L1이 생성한 후보 위반 중 상당수가 실제로는 허용 패턴(공개 상수, 검증 벡터 등)이었음을 "
-                      "의미하며, L2의 의미적 재판정이 FP를 효과적으로 제거하고 있다.\n")
-        elif cr["l2_filter_rate"] > 10:
-            md.append(f"L2 필터링율이 **{cr['l2_filter_rate']:.1f}%** 로 적당한 수준이다. "
+                      "의미하며, L3의 의미적 재판정이 FP를 효과적으로 제거하고 있다.\n")
+        elif cr["l3_filter_rate"] > 10:
+            md.append(f"L3 필터링율이 **{cr['l3_filter_rate']:.1f}%** 로 적당한 수준이다. "
                       "L1이 생성한 후보 위반 중 일부가 허용 패턴으로 필터링되었다.\n")
         else:
-            md.append(f"L2 필터링율이 **{cr['l2_filter_rate']:.1f}%** 로 낮게 나타났다. "
+            md.append(f"L3 필터링율이 **{cr['l3_filter_rate']:.1f}%** 로 낮게 나타났다. "
                       "이는 L1이 이미 높은 정밀도로 위반을 탐지하고 있거나, "
-                      "L2로 전달된 후보 수가 적기 때문일 수 있다.\n")
+                      "L3로 전달된 후보 수가 적기 때문일 수 있다.\n")
     else:
-        md.append("> L2 비활성화 상태이므로 필터링 효과를 측정할 수 없었다. "
+        md.append("> L3 비활성화 상태이므로 필터링 효과를 측정할 수 없었다. "
                   "실제 Gemini API 연동 시 오탐 제거 효과를 확인해야 한다.\n")
 
     md.append("### 9.3 문서 탐지 성능 해석\n")
@@ -754,7 +754,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
             if dr["doc_fp_ids"]:
                 md.append(f"오탐된 DOC 위반: **{', '.join(dr['doc_fp_ids'])}**. "
                           "design_pass.pdf에서도 동일 키워드가 검출되어 오탐 발생. "
-                          "L2 판정 조건 또는 패턴을 정밀화해야 한다.\n")
+                          "L3 판정 조건 또는 패턴을 정밀화해야 한다.\n")
     else:
         md.append("실제 설계서(SECUI, keybiz, sifr_kit, 한컴위드) 대상 DOC 탐지는 "
                   "ground truth가 없으므로 정량적 평가를 수행하지 않았다. "
@@ -770,15 +770,15 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
         max_doc = max(all_doc_times)
         min_doc = min(all_doc_times)
         md.append(f"- 코드 파이프라인: **{cr['timing']['total_code_s']}초** "
-                  f"(전처리 {cr['timing']['preprocess_s']}s + L1 {cr['timing']['l1_s']}s + L2 {cr['timing']['l2_s']}s)")
+                  f"(전처리 {cr['timing']['preprocess_s']}s + L1 {cr['timing']['l1_s']}s + L3 {cr['timing']['l3_s']}s)")
         md.append(f"- 설계서 파이프라인: 평균 **{avg_doc:.1f}초**, 최소 {min_doc:.1f}초, 최대 {max_doc:.1f}초")
-        if cr["timing"]["l2_s"] > 30:
-            md.append(f"\nL2 Gemini 판정이 **{cr['timing']['l2_s']:.1f}초** 로 전체 실행 시간의 "
-                      f"{cr['timing']['l2_s']/cr['timing']['total_code_s']:.0%}를 차지한다. "
+        if cr["timing"]["l3_s"] > 30:
+            md.append(f"\nL3 Gemini 판정이 **{cr['timing']['l3_s']:.1f}초** 로 전체 실행 시간의 "
+                      f"{cr['timing']['l3_s']/cr['timing']['total_code_s']:.0%}를 차지한다. "
                       "이는 Gemini API 호출의 네트워크 지연과 batch 처리 시간 때문이다. "
-                      "L2 전송 후보 수를 제한하거나 캐싱을 활용하면 시간을 단축할 수 있다.")
-        elif USE_L2 and cr["timing"]["l2_s"] > 0:
-            md.append(f"\nL2 Gemini 판정은 **{cr['timing']['l2_s']:.1f}초** 로 "
+                      "L3 전송 후보 수를 제한하거나 캐싱을 활용하면 시간을 단축할 수 있다.")
+        elif USE_L3 and cr["timing"]["l3_s"] > 0:
+            md.append(f"\nL3 Gemini 판정은 **{cr['timing']['l3_s']:.1f}초** 로 "
                       "전체 실행 시간의 합리적인 비율을 차지한다.")
     md.append("")
 
@@ -793,7 +793,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
     md.append(f"- **오탐 {cr['FP']}건**: "
               + ("오탐이 없어 사용자 불편이 최소화되었다."
                  if cr["FP"] == 0 else
-                 f"오탐 {cr['FP']}건이 발생하였으며, L2 필터링 프롬프트 개선을 통해 추가 감소 가능하다."))
+                 f"오탐 {cr['FP']}건이 발생하였으며, L3 필터링 프롬프트 개선을 통해 추가 감소 가능하다."))
     if doc_gt_result and "doc_f1" in doc_gt_result:
         md.append(f"- **DOC 탐지 F1 {doc_gt_result['doc_f1']:.1%}**: "
                   + ("설계서 검사 정확도가 우수하다."
@@ -811,7 +811,7 @@ def gen_report(code_result: Dict, doc_results: List[Dict],
 def main():
     print("=" * 65)
     print("KCMVP 코드-설계서 쌍 성능 평가")
-    print(f"L2 Gemini: {'활성화' if USE_L2 else '비활성화 (--no-l2)'}")
+    print(f"L3 Gemini: {'활성화' if USE_L3 else '비활성화 (--no-l3)'}")
     print("=" * 65)
 
     t_start_all = time.time()
@@ -884,7 +884,7 @@ def main():
     print(f"\n[요약]")
     print(f"  코드 탐지율 (Recall): {code_result['recall']:.1%}")
     print(f"  오탐 수 (FP):         {code_result['FP']}건")
-    print(f"  L2 필터링 효과:       {code_result['l2_filter_rate']:.1f}% 제거")
+    print(f"  L3 필터링 효과:       {code_result['l3_filter_rate']:.1f}% 제거")
     print(f"  코드 파이프라인 시간:  {code_result['timing']['total_code_s']}초")
     for dr in doc_results:
         if "doc_f1" in dr:

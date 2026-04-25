@@ -14,7 +14,7 @@ Pattern B (선택): HuggingFace transformers (MPS/CUDA/CPU)
   - pip install transformers torch accelerate
 
 사용 조건:
-  - config.L2_PROVIDER = "local" 시 llm_service에서 이 모듈 사용
+  - config.L3_PROVIDER = "local" 시 llm_service에서 이 모듈 사용
   - Pattern A 우선; HF_MODEL 설정 시 Pattern B 활성화
 """
 

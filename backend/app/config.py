@@ -32,16 +32,16 @@ class Settings(BaseSettings):
 
     # LLM (OpenAI - 사용 시 .env에 OPENAI_API_KEY 설정)
     OPENAI_API_KEY: str = ""
-    LLM_MODEL_L2: str = "gpt-4o"
+    LLM_MODEL_L3: str = "gpt-4o"
     LLM_MODEL_PATCH: str = "gpt-4o"
 
-    # Google Gemini (AI Studio) - L2용, .env에 GOOGLE_API_KEY 설정
+    # Google Gemini (AI Studio) - L3용, .env에 GOOGLE_API_KEY 설정
     GOOGLE_API_KEY: str = ""
-    GEMINI_L2_MODEL: str = "gemini-2.5-flash-lite"
+    GEMINI_L3_MODEL: str = "gemini-2.5-flash-lite"
 
-    # L2 제공자 선택: "gemini" (기본) 또는 "local"
+    # L3 제공자 선택: "gemini" (기본) 또는 "local"
     # local 선택 시 LOCAL_LLM_BASE_URL의 OpenAI 호환 서버 사용
-    L2_PROVIDER: str = "gemini"
+    L3_PROVIDER: str = "gemini"
 
     # 로컬 LLM (llama.cpp 서버 또는 OpenAI 호환 API)
     # Pattern A: llama-server -m model.gguf --port 8080 --host 0.0.0.0

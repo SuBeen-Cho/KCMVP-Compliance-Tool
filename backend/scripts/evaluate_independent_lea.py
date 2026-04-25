@@ -9,7 +9,7 @@ KISA 레퍼런스가 아닌 독립 LEA C 구현(RFC draft-hong-lea 기반)을
 
 Usage:
     cd backend
-    python scripts/evaluate_independent_lea.py [--no-l2]
+    python scripts/evaluate_independent_lea.py [--no-l3]
 """
 
 import sys, os, json, time, tempfile, shutil, math
@@ -19,19 +19,19 @@ from datetime import datetime
 BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-USE_L2 = "--no-l2" not in sys.argv
+USE_L3 = "--no-l3" not in sys.argv
 
 from app.services.rule_engine_service import run_rule_engine
 
 try:
-    from app.services.llm_service import run_l2_contextualizer
+    from app.services.llm_service import run_l3_contextualizer
     from app.services.report_service import post_process_violations
-    L2_AVAILABLE = True
+    L3_AVAILABLE = True
 except Exception:
-    L2_AVAILABLE = False
+    L3_AVAILABLE = False
 
-if not L2_AVAILABLE:
-    USE_L2 = False
+if not L3_AVAILABLE:
+    USE_L3 = False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -470,7 +470,7 @@ def create_independent_lea_source(dest_dir: Path):
 
 
 def run_pipeline_on_dir(src_dir: Path) -> tuple:
-    """L1(+L2) 파이프라인 실행. (violations, l2_rejected_count) 반환."""
+    """L1(+L3) 파이프라인 실행. (violations, l3_rejected_count) 반환."""
     c_files = sorted(src_dir.rglob("*.c"))
     file_entries = []
     for f in c_files:
@@ -491,27 +491,27 @@ def run_pipeline_on_dir(src_dir: Path) -> tuple:
         job_root=src_dir.parent,
     )
 
-    l2_rejected_count = 0
-    if USE_L2 and L2_AVAILABLE and l1_violations:
-        l2_rejected = set()
+    l3_rejected_count = 0
+    if USE_L3 and L3_AVAILABLE and l1_violations:
+        l3_rejected = set()
         try:
-            l2_violations = run_l2_contextualizer(
+            l3_violations = run_l3_contextualizer(
                 preprocess_result=preprocess_result,
                 l1_violations=l1_violations,
-                _rejected_tracker=l2_rejected,
+                _rejected_tracker=l3_rejected,
             )
             final = post_process_violations(
-                l1=l1_violations, l2=l2_violations,
-                l2_rejected_keys=l2_rejected,
+                l1=l1_violations, l3=l3_violations,
+                l3_rejected_keys=l3_rejected,
             )
-            l2_rejected_count = len(l2_rejected)
+            l3_rejected_count = len(l3_rejected)
         except Exception as e:
-            print(f"    L2 오류: {e}")
+            print(f"    L3 오류: {e}")
             final = l1_violations
     else:
         final = l1_violations
 
-    return final, l2_rejected_count
+    return final, l3_rejected_count
 
 
 def count_loc(src_dir: Path) -> int:
@@ -529,7 +529,7 @@ def count_loc(src_dir: Path) -> int:
 def main():
     print("=" * 65)
     print("Phase 5: 독립 LEA 구현 기반 블라인드 FP 테스트")
-    print(f"L2: {'활성화' if USE_L2 else '비활성화'}")
+    print(f"L3: {'활성화' if USE_L3 else '비활성화'}")
     print("=" * 65)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -546,7 +546,7 @@ def main():
         # 파이프라인 실행
         print(f"\n파이프라인 실행 중...")
         t0 = time.time()
-        violations, l2_removed = run_pipeline_on_dir(src_dir)
+        violations, l3_removed = run_pipeline_on_dir(src_dir)
         elapsed = time.time() - t0
         print(f"완료: {elapsed:.1f}초")
 
@@ -566,9 +566,9 @@ def main():
         print(f"  코드 크기: {loc} LOC ({kloc:.1f} KLOC)")
         print(f"  L1 FP 총 수: {fp_total}건")
         print(f"  FP/KLOC: {fp_per_kloc:.1f}건/KLOC")
-        if USE_L2:
-            print(f"  L2 제거: {l2_removed}건")
-            print(f"  L2 후 FP: {fp_total}건 ({fp_per_kloc:.1f}건/KLOC)")
+        if USE_L3:
+            print(f"  L3 제거: {l3_removed}건")
+            print(f"  L3 후 FP: {fp_total}건 ({fp_per_kloc:.1f}건/KLOC)")
 
         print(f"\n  [패턴 타입별 FP]")
         for pt, cnt in pattern_counter.most_common():
@@ -611,13 +611,13 @@ def main():
             "timestamp": datetime.now().isoformat(),
             "phase": "Phase 5",
             "description": "독립 LEA C 구현 기반 블라인드 FP 테스트",
-            "use_l2": USE_L2,
+            "use_l3": USE_L3,
             "source": "RFC draft-hong-lea 기반 독립 구현",
             "loc": loc,
             "kloc": round(kloc, 1),
             "fp_total": fp_total,
             "fp_per_kloc": round(fp_per_kloc, 1),
-            "l2_removed": l2_removed,
+            "l3_removed": l3_removed,
             "elapsed_s": round(elapsed, 1),
             "by_pattern_type": dict(pattern_counter),
             "by_severity": dict(severity_counter),

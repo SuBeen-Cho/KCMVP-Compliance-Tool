@@ -15,7 +15,7 @@ class ViolationItem(BaseModel):
     snippet: Optional[str] = None
     evidence: Optional[str] = None
     patch_ref: Optional[str] = None
-    source: Optional[str] = None  # l1 | l2
+    source: Optional[str] = None  # l1 | l3
 
 
 class ReportSummary(BaseModel):

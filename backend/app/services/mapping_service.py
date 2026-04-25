@@ -43,7 +43,7 @@ def lookup(rule_id: str) -> Dict[str, Any]:
         "item_ids": ["AS09.29"],
         "kcmvp_ref": "KS X ISO/IEC 19790:2015 §7.9",
         "l3_search_query": "잔존 정보 제거 제로화 SSP",
-        "l2_required": false,
+        "l3_required": false,
         "guideline_file": "guidelines/COM-001_zeroization.md"
     }
     """
@@ -100,10 +100,10 @@ def get_search_query(rule_id: str) -> str:
     return info.get("l3_search_query") or rule_id
 
 
-def is_l2_required(rule_id: str) -> bool:
-    """해당 rule_id가 L2 판정을 필요로 하는지 여부."""
+def is_l3_required(rule_id: str) -> bool:
+    """해당 rule_id가 L3 판정을 필요로 하는지 여부."""
     info = lookup(rule_id)
-    return bool(info.get("l2_required", False))
+    return bool(info.get("l3_required", False))
 
 
 def list_all_rule_ids() -> List[str]:

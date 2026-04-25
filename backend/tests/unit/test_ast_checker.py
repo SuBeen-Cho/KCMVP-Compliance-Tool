@@ -10,7 +10,7 @@ AST 체커 단위 테스트 — Tier 1 (FP/FN 실제 발생 규칙 10개).
 - CFB-002: FP 13건
 - CTR-001: FP 10건
 - CTR-002: FN 발생 (세트4)
-- LEA-047: FN + L2 오판 이력
+- LEA-047: FN + L3 오판 이력
 """
 
 import pytest
@@ -1005,7 +1005,7 @@ uint32_t normal_shift(uint32_t x) {
 }
 """
         result = check_rule("LEA-006", code)
-        # None = 판단 불가 (L2 위임), [] = 위반 없음
+        # None = 판단 불가 (L3 위임), [] = 위반 없음
         if result is not None:
             assert len(result) == 0
 

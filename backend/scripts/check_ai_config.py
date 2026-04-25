@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AI(L2) 매칭 설정 확인: API 키·모델·프로바이더가 올바르게 로드되는지,
+AI(L3) 매칭 설정 확인: API 키·모델·프로바이더가 올바르게 로드되는지,
 실제 Gemini 호출이 되는지 검사합니다.
 
 실행: backend/ 에서
@@ -17,7 +17,7 @@ if str(_backend) not in sys.path:
     sys.path.insert(0, str(_backend))
 
 def main():
-    print("=== AI(L2) 설정 확인 ===\n")
+    print("=== AI(L3) 설정 확인 ===\n")
 
     # 1) 설정 로드
     try:
@@ -27,13 +27,13 @@ def main():
         print("  → backend/ 디렉터리에서 실행했는지 확인하세요.")
         return 1
 
-    provider = (settings.L2_PROVIDER or "").strip().lower()
+    provider = (settings.L3_PROVIDER or "").strip().lower()
     key = (settings.GOOGLE_API_KEY or "").strip()
-    model = (settings.GEMINI_L2_MODEL or "").strip()
+    model = (settings.GEMINI_L3_MODEL or "").strip()
 
     print("1. 환경 변수 로드 (backend/.env)")
-    print(f"   L2_PROVIDER    = {repr(provider)}")
-    print(f"   GEMINI_L2_MODEL = {repr(model)}")
+    print(f"   L3_PROVIDER    = {repr(provider)}")
+    print(f"   GEMINI_L3_MODEL = {repr(model)}")
     if key:
         print(f"   GOOGLE_API_KEY = (설정됨, 길이 {len(key)}자)")
     else:
@@ -42,18 +42,18 @@ def main():
     # 2) Gemini 사용 시 키·모델 검사
     if provider == "gemini":
         if not key:
-            print("\n[실패] L2_PROVIDER=gemini 인데 GOOGLE_API_KEY가 비어 있습니다.")
+            print("\n[실패] L3_PROVIDER=gemini 인데 GOOGLE_API_KEY가 비어 있습니다.")
             print("  → backend/.env 에 GOOGLE_API_KEY=발급받은키 를 넣으세요.")
             return 1
         if not model:
-            print("\n[실패] GEMINI_L2_MODEL이 비어 있습니다.")
+            print("\n[실패] GEMINI_L3_MODEL이 비어 있습니다.")
             return 1
         print("\n2. Gemini 설정: 키·모델명 모두 있음 (형식 OK)")
     elif provider == "local":
-        print("\n2. L2_PROVIDER=local → 로컬 LLM 사용. 키/모델 검사 생략.")
+        print("\n2. L3_PROVIDER=local → 로컬 LLM 사용. 키/모델 검사 생략.")
         return 0
     else:
-        print(f"\n2. L2_PROVIDER={provider} → Gemini/local 외 설정. 필요 시 .env에서 gemini 또는 local 로 변경.")
+        print(f"\n2. L3_PROVIDER={provider} → Gemini/local 외 설정. 필요 시 .env에서 gemini 또는 local 로 변경.")
         return 0
 
     # 3) 실제 API 호출 테스트

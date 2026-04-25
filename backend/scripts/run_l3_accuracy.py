@@ -1,17 +1,17 @@
 """
-L1+L2 전체 파이프라인 정확도 평가 스크립트 (실제 Gemini API 호출)
+L1+L3 전체 파이프라인 정확도 평가 스크립트 (실제 Gemini API 호출)
 
 Usage:
-    python scripts/run_l2_accuracy.py [zip_path]
-    python scripts/run_l2_accuracy.py testdata/accuracy_test_v7.zip
+    python scripts/run_l3_accuracy.py [zip_path]
+    python scripts/run_l3_accuracy.py testdata/accuracy_test_v7.zip
 
 평가 기준:
   - P-case: 최종 violations에 (filename, rule_id) 존재 → TP / 없으면 FN
   - N-case: 최종 violations에 (filename, rule_id) 없음 → TN / 있으면 FP
 
-L2 세부 분석:
-  - L2에 전달된 항목 중 P-case 얼마나 확정됐는지 (L2 recall)
-  - L2에 전달된 항목 중 N-case 얼마나 걸러졌는지 (L2 FP 제거율)
+L3 세부 분석:
+  - L3에 전달된 항목 중 P-case 얼마나 확정됐는지 (L3 recall)
+  - L3에 전달된 항목 중 N-case 얼마나 걸러졌는지 (L3 FP 제거율)
 """
 
 import sys
@@ -25,7 +25,7 @@ BACKEND_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.services.rule_engine_service import run_rule_engine
-from app.services.llm_service import run_l2_contextualizer
+from app.services.llm_service import run_l3_contextualizer
 from app.services.report_service import post_process_violations
 
 
@@ -93,29 +93,29 @@ def run_eval(zip_path: str):
         pt_dist = Counter(v.get("pattern_type", "?") for v in l1_violations)
         print(f"      분포: {dict(pt_dist)}")
 
-        # ── L2 실행 (실제 Gemini API 호출) ─────────────────────────
-        print("\n[L2] Gemini 판정 실행 중... (API 호출 발생)")
-        l2_rejected_keys: set = set()
-        l2_violations = run_l2_contextualizer(
+        # ── L3 실행 (실제 Gemini API 호출) ─────────────────────────
+        print("\n[L3] Gemini 판정 실행 중... (API 호출 발생)")
+        l3_rejected_keys: set = set()
+        l3_violations = run_l3_contextualizer(
             preprocess_result=preprocess_result,
             l1_violations=l1_violations,
-            _rejected_tracker=l2_rejected_keys,
+            _rejected_tracker=l3_rejected_keys,
         )
-        print(f"[L2] 확정 위반: {len(l2_violations)}건")
-        print(f"[L2] 오탐 제거: {len(l2_rejected_keys)}건")
+        print(f"[L3] 확정 위반: {len(l3_violations)}건")
+        print(f"[L3] 오탐 제거: {len(l3_rejected_keys)}건")
 
-        # L2 confidence 분포
-        if l2_violations:
-            scores = [v.get("confidence_score", 0) for v in l2_violations]
-            confirmed = sum(1 for v in l2_violations if v.get("confidence") == "확정")
-            print(f"      확정(≥70): {confirmed}건 / 후보(<70): {len(l2_violations)-confirmed}건")
+        # L3 confidence 분포
+        if l3_violations:
+            scores = [v.get("confidence_score", 0) for v in l3_violations]
+            confirmed = sum(1 for v in l3_violations if v.get("confidence") == "확정")
+            print(f"      확정(≥70): {confirmed}건 / 후보(<70): {len(l3_violations)-confirmed}건")
             print(f"      평균 confidence: {sum(scores)/len(scores):.1f}")
 
         # ── 최종 병합 ──────────────────────────────────────────────
         final_violations = post_process_violations(
             l1=l1_violations,
-            l2=l2_violations,
-            l2_rejected_keys=l2_rejected_keys,
+            l3=l3_violations,
+            l3_rejected_keys=l3_rejected_keys,
         )
         print(f"\n[최종] 위반 {len(final_violations)}건")
 
@@ -150,79 +150,79 @@ def run_eval(zip_path: str):
         f1        = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
         print(f"\n{'─'*50}")
-        print(f"  [전체 파이프라인 L1+L2]")
+        print(f"  [전체 파이프라인 L1+L3]")
         print(f"  TP={TP}  FP={FP}  FN={FN}  TN={TN}")
         print(f"  Precision={precision:.1%}  Recall={recall:.1%}  F1={f1:.1%}")
         print(f"{'─'*50}")
 
         if fn_list:
-            print("\n[FN — 미탐지 (L2가 제거하거나 L1도 못 잡은 경우)]")
+            print("\n[FN — 미탐지 (L3가 제거하거나 L1도 못 잡은 경우)]")
             for l in fn_list: print(l)
         if fp_list:
-            print("\n[FP — 오탐 (L2가 걸러내지 못한 경우)]")
+            print("\n[FP — 오탐 (L3가 걸러내지 못한 경우)]")
             for l in fp_list: print(l)
         if not fn_list and not fp_list:
             print("\n✓ 완벽한 정확도 (FN=0, FP=0)")
 
-        # ── L2 전용 분석 ────────────────────────────────────────────
+        # ── L3 전용 분석 ────────────────────────────────────────────
         print(f"\n{'─'*50}")
-        print(f"  [L2 판정 세부 분석]")
+        print(f"  [L3 판정 세부 분석]")
 
-        # L2에 실제로 전달된 항목 파악 (l2_violations + l2_rejected_keys)
-        l2_sent_pnames: set = set()  # (fname, rule_id)
-        for v in l2_violations:
+        # L3에 실제로 전달된 항목 파악 (l3_violations + l3_rejected_keys)
+        l3_sent_pnames: set = set()  # (fname, rule_id)
+        for v in l3_violations:
             fname = Path(v.get("file","")).name
             rid   = v.get("rule_id","")
             if fname and rid:
-                l2_sent_pnames.add((fname, rid))
-        for (file_, rid_, line_) in l2_rejected_keys:
+                l3_sent_pnames.add((fname, rid))
+        for (file_, rid_, line_) in l3_rejected_keys:
             fname = Path(file_).name
             if fname and rid_:
-                l2_sent_pnames.add((fname, rid_))
+                l3_sent_pnames.add((fname, rid_))
 
-        l2_tp = l2_fp = l2_fn = l2_tn = 0
-        l2_fn_list, l2_fp_list = [], []
+        l3_tp = l3_fp = l3_fn = l3_tn = 0
+        l3_fn_list, l3_fp_list = [], []
 
         for fname, rule_id, desc in p_cases:
-            if (fname, rule_id) not in l2_sent_pnames:
-                continue  # L2에 안 보낸 항목은 분석 제외
+            if (fname, rule_id) not in l3_sent_pnames:
+                continue  # L3에 안 보낸 항목은 분석 제외
             if rule_id in detected.get(fname, set()):
-                l2_tp += 1
+                l3_tp += 1
             else:
-                l2_fn += 1
-                l2_fn_list.append(f"  L2-FN | {fname} | {rule_id} | {desc}")
+                l3_fn += 1
+                l3_fn_list.append(f"  L3-FN | {fname} | {rule_id} | {desc}")
 
         for fname, rule_id, desc in n_cases:
-            if (fname, rule_id) not in l2_sent_pnames:
+            if (fname, rule_id) not in l3_sent_pnames:
                 continue
             if rule_id in detected.get(fname, set()):
-                l2_fp += 1
-                l2_fp_list.append(f"  L2-FP | {fname} | {rule_id} | {desc}")
+                l3_fp += 1
+                l3_fp_list.append(f"  L3-FP | {fname} | {rule_id} | {desc}")
             else:
-                l2_tn += 1
+                l3_tn += 1
 
-        total_l2_judged = l2_tp + l2_fp + l2_fn + l2_tn
-        if total_l2_judged > 0:
-            l2_prec   = l2_tp / (l2_tp + l2_fp) if (l2_tp + l2_fp) > 0 else 1.0
-            l2_recall = l2_tp / (l2_tp + l2_fn) if (l2_tp + l2_fn) > 0 else 0.0
-            l2_f1     = 2 * l2_prec * l2_recall / (l2_prec + l2_recall) if (l2_prec + l2_recall) > 0 else 0.0
-            print(f"  L2가 판정한 케이스: {total_l2_judged}건")
-            print(f"  TP={l2_tp}  FP={l2_fp}  FN={l2_fn}  TN={l2_tn}")
-            print(f"  Precision={l2_prec:.1%}  Recall={l2_recall:.1%}  F1={l2_f1:.1%}")
+        total_l3_judged = l3_tp + l3_fp + l3_fn + l3_tn
+        if total_l3_judged > 0:
+            l3_prec   = l3_tp / (l3_tp + l3_fp) if (l3_tp + l3_fp) > 0 else 1.0
+            l3_recall = l3_tp / (l3_tp + l3_fn) if (l3_tp + l3_fn) > 0 else 0.0
+            l3_f1     = 2 * l3_prec * l3_recall / (l3_prec + l3_recall) if (l3_prec + l3_recall) > 0 else 0.0
+            print(f"  L3가 판정한 케이스: {total_l3_judged}건")
+            print(f"  TP={l3_tp}  FP={l3_fp}  FN={l3_fn}  TN={l3_tn}")
+            print(f"  Precision={l3_prec:.1%}  Recall={l3_recall:.1%}  F1={l3_f1:.1%}")
         else:
-            print(f"  L2가 판정한 케이스 없음 (ground truth 케이스가 L2 범위 밖)")
+            print(f"  L3가 판정한 케이스 없음 (ground truth 케이스가 L3 범위 밖)")
         print(f"{'─'*50}")
 
-        if l2_fn_list:
-            print("\n[L2-FN — L2가 실제 위반을 오탐으로 제거]")
-            for l in l2_fn_list: print(l)
-        if l2_fp_list:
-            print("\n[L2-FP — L2가 정상 코드를 위반으로 확정]")
-            for l in l2_fp_list: print(l)
+        if l3_fn_list:
+            print("\n[L3-FN — L3가 실제 위반을 오탐으로 제거]")
+            for l in l3_fn_list: print(l)
+        if l3_fp_list:
+            print("\n[L3-FP — L3가 정상 코드를 위반으로 확정]")
+            for l in l3_fp_list: print(l)
 
         return {
             "TP": TP, "FP": FP, "FN": FN, "TN": TN, "F1": f1,
-            "L2_TP": l2_tp, "L2_FP": l2_fp, "L2_FN": l2_fn, "L2_TN": l2_tn,
+            "L3_TP": l3_tp, "L3_FP": l3_fp, "L3_FN": l3_fn, "L3_TN": l3_tn,
         }
 
 

@@ -20,7 +20,7 @@ Phase 2 통합 테스트 스크립트.
 실행:
   cd backend
   python scripts/test_phase2.py
-  python scripts/test_phase2.py --l2   # L2 Gemini 호출 포함
+  python scripts/test_phase2.py --l3   # L3 Gemini 호출 포함
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ def test_mapping_service() -> None:
 
     from app.services.mapping_service import (
         lookup, get_guideline_path, get_search_query,
-        is_l2_required, list_all_rule_ids,
+        is_l3_required, list_all_rule_ids,
     )
 
     # T1: lookup 반환값 구조 확인
@@ -344,7 +344,7 @@ def test_llm_service_slicer_integration() -> None:
 # ─────────────────────────────────────────────────────────────────
 # T15: Phase 1 ZIP으로 L1+RAG 연동 (선택적)
 # ─────────────────────────────────────────────────────────────────
-def test_full_pipeline_rag(run_l2: bool = False) -> None:
+def test_full_pipeline_rag(run_l3: bool = False) -> None:
     section("T15: 전체 파이프라인 + RAG 연동")
 
     from scripts.create_phase1_test_zip import ZIP_FAIL, main as generate_zips
@@ -383,13 +383,13 @@ def test_full_pipeline_rag(run_l2: bool = False) -> None:
     else:
         fail("T15b", "RAG 근거 검색 결과 없음 (guideline MD 파일 연결 확인 필요)")
 
-    # L2 실제 호출 (선택적)
-    if run_l2:
-        from app.services.llm_service import run_l2_contextualizer
-        l2_results = run_l2_contextualizer(preprocess_result, violations)
-        ok("T15c", f"L2 호출 완료: {len(l2_results)}건 실제 위반 확정")
+    # L3 실제 호출 (선택적)
+    if run_l3:
+        from app.services.llm_service import run_l3_contextualizer
+        l3_results = run_l3_contextualizer(preprocess_result, violations)
+        ok("T15c", f"L3 호출 완료: {len(l3_results)}건 실제 위반 확정")
     else:
-        ok("T15c", "L2 호출 스킵 (--l2 옵션으로 실행 가능)")
+        ok("T15c", "L3 호출 스킵 (--l3 옵션으로 실행 가능)")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -417,7 +417,7 @@ def print_summary() -> int:
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser(description="Phase 2 통합 테스트")
-    parser.add_argument("--l2", action="store_true", help="L2 Gemini 실제 호출 포함")
+    parser.add_argument("--l3", action="store_true", help="L3 Gemini 실제 호출 포함")
     args = parser.parse_args()
 
     print("Phase 2 통합 테스트 시작\n")
@@ -443,7 +443,7 @@ def main() -> int:
         fail("llm_service slicer 연동", str(e))
 
     try:
-        test_full_pipeline_rag(run_l2=args.l2)
+        test_full_pipeline_rag(run_l3=args.l3)
     except Exception as e:
         fail("전체 파이프라인 RAG", str(e))
 

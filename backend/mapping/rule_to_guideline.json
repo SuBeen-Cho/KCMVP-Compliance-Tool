@@ -6,7 +6,7 @@
     ],
     "kcmvp_ref": "KS X ISO/IEC 19790:2015 §7.9 [09.01]",
     "l3_search_query": "잔존 정보 제거 제로화 SSP 민감 파라미터",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/COM-001_zeroization.md"
   },
   "COM-002": {
@@ -16,7 +16,7 @@
     ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12",
     "l3_search_query": "에러 처리 에러 코드 통일 오라클 공격 방지",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/COM-002_error_handling.md"
   },
   "COM-003": {
@@ -25,7 +25,7 @@
     ],
     "kcmvp_ref": "암호기술 구현안내서 §3.2",
     "l3_search_query": "하드코딩 키 IV 금지 런타임 주입",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/COM-003_hardcoded_key.md"
   },
   "COM-004": {
@@ -34,7 +34,7 @@
     ],
     "kcmvp_ref": "KS X ISO/IEC 19790:2015 §7.9 [09.06]",
     "l3_search_query": "CSPRNG 암호학적 난수 생성 DRBG getrandom",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/COM-004_csprng.md"
   },
   "COM-005": {
@@ -44,7 +44,7 @@
     ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12~§4.3.15",
     "l3_search_query": "온라인 API 호출 순서 init update final 스트리밍",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/COM-005_api_order.md"
   },
   "COM-006": {
@@ -53,7 +53,7 @@
     ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12~§4.3.15",
     "l3_search_query": "온라인 API 표준 명칭 lea_online 함수명",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/COM-006_api_naming.md"
   },
   "LEA-001": {
@@ -63,287 +63,287 @@
     ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4",
     "l3_search_query": "LEA 키 길이 128 192 256 비트 블록 크기",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/LEA-001_key_size.md"
   },
   "LEA-002": {
     "item_ids": ["LEA.002"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 키 길이 128 192 256 라운드 수",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-003": {
     "item_ids": ["LEA.002"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 키 길이 라운드 수 일치 검증",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-004": {
     "item_ids": ["LEA.003"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "32비트 워드 지향 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-005": {
     "item_ids": ["LEA.004"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "바이트 배열 워드 변환 리틀 엔디안",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_02_데이터_표현/LEA_004_바이트_워드_변환.md"
   },
   "LEA-006": {
     "item_ids": ["LEA.005"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "워드 비트 색인 방향 31~0",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_02_데이터_표현/LEA_005_비트_색인_규약.md"
   },
   "LEA-007": {
     "item_ids": ["LEA.007"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "비밀키 바이트 배열 크기 정의",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_007_비밀키_배열_구성.md"
   },
   "LEA-008": {
     "item_ids": ["LEA.008"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "내부 상태 변수 4개 워드 배열",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_008_내부_상태_변수.md"
   },
   "LEA-009": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "라운드키 6개 워드 192비트 구성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-010": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 ARX 델타 라운드키 생성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-011": {
     "item_ids": ["LEA.009"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "델타 상수 정의 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-012": {
     "item_ids": ["LEA.009"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "델타 상수 유도 근거 주석",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-013": {
     "item_ids": ["LEA.011"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 내부 상태 T 초기화",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_011_임시변수_초기화.md"
   },
   "LEA-014": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 모듈러 덧셈 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-015": {
     "item_ids": ["LEA.009"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 델타 인덱싱 규칙",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-016": {
     "item_ids": ["LEA.010"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL1 회전 연산 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-017": {
     "item_ids": ["LEA.010"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL3 회전 연산 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-018": {
     "item_ids": ["LEA.010"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL6 회전 연산 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-019": {
     "item_ids": ["LEA.010"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL11 회전 연산 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-020": {
     "item_ids": ["LEA.010"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL13 ROL17 회전 연산 192 256 비트",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-021": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "LEA-128 라운드키 워드 연접 규칙",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-022": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "LEA-256 키 스케줄 워드 인덱싱",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-023": {
     "item_ids": ["LEA.016", "LEA.019"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암복호화 라운드키 역순 관계 검증",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-024": {
     "item_ids": ["LEA.012"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "워드 간 인터리빙 부재 키 스케줄",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-025": {
     "item_ids": ["LEA.009"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "암복호화 키 스케줄 상수 동일성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-026": {
     "item_ids": ["LEA.013"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 초기화 단계 X0 평문",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_013_암호화_초기화.md"
   },
   "LEA-027": {
     "item_ids": ["LEA.014"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROL9 회전 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-028": {
     "item_ids": ["LEA.014"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROR5 회전 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-029": {
     "item_ids": ["LEA.014"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROR3 회전 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-030": {
     "item_ids": ["LEA.014"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 워드 스왑",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-031": {
     "item_ids": ["LEA.014"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "XOR ADD 결합 순서 라운드 함수",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-032": {
     "item_ids": ["LEA.016"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "마지막 라운드 함수 구조 동일성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-033": {
     "item_ids": ["LEA.017"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 초기화 단계 X0 암호문",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_017_복호화_초기화.md"
   },
   "LEA-034": {
     "item_ids": ["LEA.018"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 모듈러 뺄셈 연산",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-035": {
     "item_ids": ["LEA.018"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 라운드 역 워드 스왑",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-036": {
     "item_ids": ["LEA.018"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 역 회전 ROR9 ROL5 ROL3",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-037": {
     "item_ids": ["LEA.015"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "최종 암호문 대입 XNr",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_015_암호문_최종_대입.md"
   },
   "LEA-038": {
     "item_ids": ["LEA.015"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 최종 평문 대입",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_015_암호문_최종_대입.md"
   },
   "LEA-039": {
     "item_ids": ["LEA.016"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암복호화 정합성 라운드트립 검증",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-040": {
     "item_ids": ["LEA.016"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "라운드 루프 경계 조건 off-by-one 방지",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-041": {
     "item_ids": ["LEA.022"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.6",
     "l3_search_query": "부채널 공격 방지 S-box 배제 ARX",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_022_부채널_방지_ARX.md"
   },
   "LEA-042": {
@@ -352,336 +352,336 @@
     ],
     "kcmvp_ref": "암호모듈 구현안내서 §5.4 타이밍 공격",
     "l3_search_query": "타이밍 공격 부채널 공격 상수시간 비교",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/LEA-042_timing_attack.md"
   },
   "LEA-043": {
     "item_ids": ["LEA.003"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "레지스터 스필링 방지 최적화 32비트",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-044": {
     "item_ids": ["SEC.001"],
     "kcmvp_ref": "암호모듈 구현안내서 §5.2 잔존정보 제거",
     "l3_search_query": "중요 보안매개변수 비밀키 메모리 제거 제로화",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/03_소스코드_구성/03_02_보안_코딩/SEC_001_잔존정보_제로화.md"
   },
   "LEA-045": {
     "item_ids": ["LEA.003"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "32비트 워드 연산 원자성 보존",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-046": {
     "item_ids": ["LEA.021"],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 이중 루프 100 1000 키 길이 갱신",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-047": {
     "item_ids": ["LEA.021"],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "운영모드별 MCT 수행 규칙",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-048": {
     "item_ids": ["VER.001"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "KAT MMT MCT REQUEST 파일 형식 규격",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
   },
   "LEA-049": {
     "item_ids": ["LEA.020"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "Variable Key KAT 수행 구현",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-050": {
     "item_ids": ["LEA.020"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "Variable Text KAT 수행 구현",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-051": {
     "item_ids": ["API.001"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.1",
     "l3_search_query": "lea_set_key API 표준 명칭 인자",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_001_핵심_함수명_규격.md"
   },
   "LEA-052": {
     "item_ids": ["API.003"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2",
     "l3_search_query": "LEA_KEY 구조체 정의",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_003_구조체_및_타입.md"
   },
   "LEA-053": {
     "item_ids": ["API.004"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12",
     "l3_search_query": "에러 반환 음수 반환 규약",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_004_에러_반환_규격.md"
   },
   "LEA-054": {
     "item_ids": ["API.001"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §3",
     "l3_search_query": "헤더 파일 분리 lea.h lea_locl.h",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_001_핵심_함수명_규격.md"
   },
   "LEA-055": {
     "item_ids": ["OPT.001"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §5",
     "l3_search_query": "SIMD 가속 구현 파일 SSE NEON",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_03_성능_최적화/OPT_001_SIMD_가속_구현.md"
   },
   "LEA-056": {
     "item_ids": ["LEA.021"],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 연산 루프 구조 100 1000",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-057": {
     "item_ids": ["LEA.021"],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 키 갱신 수식 XOR 암호문",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-058": {
     "item_ids": ["VER.001"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "KAT REQUEST RESPONSE 파일 명칭",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
   },
   "LEA-059": {
     "item_ids": ["LEA.020"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 MMT",
     "l3_search_query": "다중 블록 메시지 MMT 가변 블록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-060": {
     "item_ids": ["LEA.020"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "기지 답안 KAT 참조구현값 일치성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-061": {
     "item_ids": ["LEA.002"],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 허용 키 길이 128 192 256비트",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-062": {
     "item_ids": ["VER.001"],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "KAT REQUEST RESPONSE 파일 처리 Variable Key Text",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
   },
   "CBC-002": {
     "item_ids": ["CBC.002"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC 복호화 수식 IV XOR",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_002_복호화_수식.md"
   },
   "CBC-003": {
     "item_ids": ["CBC.003"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC IV 길이 관리 128비트",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_003_IV_길이_및_관리.md"
   },
   "CBC-004": {
     "item_ids": ["CBC.004"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC 패딩 오라클 방지 상수시간 비교",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_004_패딩_오라클_방지.md"
   },
   "CBC-005": {
     "item_ids": ["CBC.005"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC SSP 관리 제로화 키 IV",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_005_SSP_관리_및_제로화.md"
   },
   "CBC-061": {
     "item_ids": ["CBC.006"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CBC LEA 전용 API lea_cbc 함수명",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_006_LEA_전용_API.md"
   },
   "CBC-LEA-004": {
     "item_ids": ["CBC.003"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC IV 길이 관리 LEA",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_003_IV_길이_및_관리.md"
   },
   "CBC-LEA-005": {
     "item_ids": ["CBC.005"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC SSP 제로화 LEA",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_005_SSP_관리_및_제로화.md"
   },
   "CTR-002": {
     "item_ids": ["CTR.002"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 카운터 유일성 재사용 금지",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_002_카운터_유일성.md"
   },
   "CTR-003": {
     "item_ids": ["CTR.003"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 초기 카운터 길이 128비트",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_003_초기카운터_길이.md"
   },
   "CTR-004": {
     "item_ids": ["CTR.004"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR SSP 관리 제로화 키 카운터",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_004_SSP_관리_및_제로화.md"
   },
   "CTR-005": {
     "item_ids": ["CTR.005"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CTR LEA 전용 API lea_ctr 함수명",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_005_LEA_전용_API.md"
   },
   "CTR-LEA-001": {
     "item_ids": ["CTR.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 암복호화 수식 카운터 블록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_001_암복호화_수식.md"
   },
   "CTR-LEA-004": {
     "item_ids": ["CTR.004"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR SSP 제로화 LEA",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_004_SSP_관리_및_제로화.md"
   },
   "CTR-LEA-005": {
     "item_ids": ["CTR.005"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CTR LEA API",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_005_LEA_전용_API.md"
   },
   "CTR-LEA-006": {
     "item_ids": ["CTR.006"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §5",
     "l3_search_query": "CTR SIMD 가속 병렬 처리",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_006_SIMD_가속.md"
   },
   "GCM-002": {
     "item_ids": ["GCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM GHASH 인증 연산 구조",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "GCM-005": {
     "item_ids": ["GCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM 추가 인증 데이터 AAD 처리",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "GCM-LEA-001": {
     "item_ids": ["GCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM LEA 기본 구조 AEAD",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "GCM-LEA-002": {
     "item_ids": ["GCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM 인증 태그 생성 검증",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "CCM-002": {
     "item_ids": ["CCM.002"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM Nonce 유일성 재사용 방지",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_002_Nonce_유일성.md"
   },
   "CCM-003": {
     "item_ids": ["CCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM 구조 개요 CBC-MAC CTR",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CCM-004": {
     "item_ids": ["CCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM 태그 길이 MAC 검증",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CCM-005": {
     "item_ids": ["CCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM AAD 추가 인증 데이터 처리",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CCM-LEA-001": {
     "item_ids": ["CCM.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM LEA 구현 AEAD",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CMAC-002": {
     "item_ids": ["CMAC.002"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC 검증 로직 태그 비교",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_002_검증_로직.md"
   },
   "CMAC-003": {
     "item_ids": ["CMAC.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC 보조키 생성 K1 K2",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_001_보조키_생성.md"
   },
   "CMAC-LEA-001": {
     "item_ids": ["CMAC.001"],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC LEA 보조키 생성 구조",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_001_보조키_생성.md"
   },
   "GCM-001": {
@@ -690,7 +690,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM Nonce IV 재사용 금지 96비트",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/GCM-001_nonce.md"
   },
   "GCM-003": {
@@ -700,7 +700,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM API",
     "l3_search_query": "GCM 초기화 API lea_gcm_init 암호화",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/GCM-003_api.md"
   },
   "GCM-004": {
@@ -709,7 +709,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM 인증",
     "l3_search_query": "GCM 인증 태그 검증 실패 처리",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/GCM-004_auth_tag.md"
   },
   "CCM-001": {
@@ -718,7 +718,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM Nonce 길이 7-13바이트",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/CCM-001_nonce.md"
   },
   "CBC-001": {
@@ -727,7 +727,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC IV 무작위 생성 CSPRNG 예측 불가",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/CBC-001_iv.md"
   },
   "CTR-001": {
@@ -736,7 +736,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 카운터 재사용 금지 초기값",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/CTR-001_counter.md"
   },
   "CMAC-001": {
@@ -745,7 +745,7 @@
     ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC 메시지 인증 코드 태그 길이",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/CMAC-001_tag.md"
   },
   "TRC-001": {
@@ -755,7 +755,7 @@
     ],
     "kcmvp_ref": "2025 암호모듈 제출물 작성 안내서 AS04",
     "l3_search_query": "인터페이스 추적성 설계서 코드 일치",
-    "l2_required": true,
+    "l3_required": true,
     "guideline_file": "guidelines/TRC-001_interface.md"
   },
   "TRC-002": {
@@ -764,7 +764,7 @@
     ],
     "kcmvp_ref": "2025 암호모듈 제출물 작성 안내서 AS07",
     "l3_search_query": "에러 코드 일관성 설계서 테스트 문서",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/TRC-002_error_code.md"
   },
   "TRC-003": {
@@ -773,7 +773,7 @@
     ],
     "kcmvp_ref": "2025 암호모듈 제출물 작성 안내서 AS11",
     "l3_search_query": "시험 커버리지 코드 함수 시험 항목 추적성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/TRC-003_test_coverage.md"
   },
   "DOC-001": {
@@ -782,7 +782,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.03",
     "l3_search_query": "암호모듈 유형 하드웨어 소프트웨어 펌웨어 선택 근거",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_01_암호모듈_유형/AS02_03_암호모듈_유형.md"
   },
   "DOC-002": {
@@ -791,7 +791,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.07",
     "l3_search_query": "암호모듈 경계 구성요소 암호경계 구현물경계",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_02_암호모듈_경계/AS02_07_암호경계_및_구성요소.md"
   },
   "DOC-003": {
@@ -800,7 +800,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.09",
     "l3_search_query": "검증대상 암호알고리즘 CSP 핵심보안매개변수 비밀키",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_02_암호모듈_경계/AS02_09_보안요소_명세.md"
   },
   "DOC-004": {
@@ -810,7 +810,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.11, AS02.12",
     "l3_search_query": "암호모듈 명칭 버전 정보 식별자",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_02_암호모듈_경계/AS02_11_적절한_명칭_사용.md"
   },
   "DOC-005": {
@@ -819,7 +819,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.16",
     "l3_search_query": "소프트웨어 운영환경 OS 플랫폼 CPU 아키텍처",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_02_암호모듈_경계/AS02_16_소프트웨어_암호경계_범위_설정.md"
   },
   "DOC-006": {
@@ -828,7 +828,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.19",
     "l3_search_query": "검증대상 동작모드 실행 천이 운영절차",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_03_동작모드/AS02_19_검증대상_동작모드_운영절차_명세.md"
   },
   "DOC-007": {
@@ -837,7 +837,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.20",
     "l3_search_query": "탑재 검증대상 암호알고리즘 목록 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_03_동작모드/AS02_20_탑재_검증대상_암호알고리즘_명세.md"
   },
   "DOC-008": {
@@ -846,7 +846,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.21",
     "l3_search_query": "비검증대상 암호알고리즘 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_03_동작모드/AS02_21_비검증대상_암호알고리즘_명세.md"
   },
   "DOC-009": {
@@ -855,7 +855,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.22",
     "l3_search_query": "CSP 독립적 분리 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_03_동작모드/AS02_22_CSP_독립적_분리_명세.md"
   },
   "DOC-010": {
@@ -864,7 +864,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS02.24",
     "l3_search_query": "서비스 표시기 명세 동작 상태",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/01_암호모듈_명세/01_03_동작모드/AS02_24_서비스_표시기_명세.md"
   },
   "DOC-011": {
@@ -874,7 +874,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS03.01, AS03.02",
     "l3_search_query": "물리적 포트 논리적 인터페이스 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/02_암호모듈_인터페이스/02_01_기본사항/AS03_01_02_물리적포트_및_논리적인터페이스.md"
   },
   "DOC-012": {
@@ -886,7 +886,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS03.04, AS03.05, AS03.06, AS03.08",
     "l3_search_query": "데이터 입출력 인터페이스 유형 정의",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/02_암호모듈_인터페이스/02_02_인터페이스_유형과_정의/AS03_04_05_06_08_11_인터페이스_유형_및_정의.md"
   },
   "DOC-013": {
@@ -896,7 +896,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS03.07, AS03.10",
     "l3_search_query": "특정상태 데이터 출력 금지 제어 출력",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/02_암호모듈_인터페이스/02_02_인터페이스_유형과_정의/AS03_07_특정상태_데이터_출력_금지.md"
   },
   "DOC-014": {
@@ -905,7 +905,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS03.11",
     "l3_search_query": "상태 출력 인터페이스 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/02_암호모듈_인터페이스/02_02_인터페이스_유형과_정의/AS03_11_상태_출력_인터페이스_명세.md"
   },
   "DOC-015": {
@@ -914,7 +914,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS03.15",
     "l3_search_query": "가변 길이 입력 제한 형식 정의",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/02_암호모듈_인터페이스/02_02_인터페이스_유형과_정의/AS03_15_가변_길이_입력_제한_및_형식_정의.md"
   },
   "DOC-016": {
@@ -923,7 +923,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.02",
     "l3_search_query": "동시 운영자 지원 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_01_기본사항/AS04_02_동시_운영자_지원_명세.md"
   },
   "DOC-017": {
@@ -933,7 +933,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.05, AS04.06",
     "l3_search_query": "암호모듈 관리자 사용자 역할 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_02_역할/AS04_05_암호모듈_관리자_역할_명세.md"
   },
   "DOC-018": {
@@ -942,7 +942,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.11",
     "l3_search_query": "서비스별 입력 출력 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_03_서비스/AS04_11_서비스_별_입력_및_출력_명세.md"
   },
   "DOC-019": {
@@ -951,7 +951,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.13",
     "l3_search_query": "버전 출력 서비스 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_03_서비스/AS04_13_버전_출력_서비스_명세.md"
   },
   "DOC-020": {
@@ -960,7 +960,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.14",
     "l3_search_query": "상태 표시 서비스 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_03_서비스/AS04_14_상태_표시_서비스_명세.md"
   },
   "DOC-021": {
@@ -969,7 +969,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.15",
     "l3_search_query": "동작 전 자가시험 서비스 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_03_서비스/AS04_15_동작_전_자가시험_서비스_명세.md"
   },
   "DOC-022": {
@@ -978,7 +978,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.17",
     "l3_search_query": "제로화 서비스 동작 명세 API 함수",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_03_서비스/AS04_17_제로화_서비스_동작_명세.md"
   },
   "DOC-023": {
@@ -987,7 +987,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.43",
     "l3_search_query": "운영자 인증 소멸 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_04_인증/AS04_43_운영자_인증_소멸_명세.md"
   },
   "DOC-024": {
@@ -996,7 +996,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.44",
     "l3_search_query": "인증데이터 보호 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_04_인증/AS04_44_인증데이터_보호_명세.md"
   },
   "DOC-025": {
@@ -1005,7 +1005,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS04.56",
     "l3_search_query": "암묵적 명시적 역할 할당",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/03_역할_서비스_및_인증/03_04_인증/AS04_56_암묵적_명시적_역할_할당.md"
   },
   "DOC-026": {
@@ -1014,7 +1014,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS05.02",
     "l3_search_query": "무결성 기법 시험방법 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/4_소프트웨어_펌웨어_보안/04_01_기본사항/AS05_02_무결성_기법_및_시험방법_명세.md"
   },
   "DOC-027": {
@@ -1023,7 +1023,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS05.05",
     "l3_search_query": "자체 무결성 검증 방법 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/4_소프트웨어_펌웨어_보안/04_01_기본사항/AS05_05_자체_무결성_검증_방법_명세.md"
   },
   "DOC-028": {
@@ -1032,7 +1032,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS05.06",
     "l3_search_query": "무결성 시험 실패 오류 상태 전환",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/4_소프트웨어_펌웨어_보안/04_01_기본사항/AS05_06_무결성_시험_실패_시_오류_상태_전환.md"
   },
   "DOC-029": {
@@ -1041,7 +1041,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS05.09",
     "l3_search_query": "운영자 요구 무결성 시험 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/4_소프트웨어_펌웨어_보안/04_01_기본사항/AS05_09_운영자_요구_무결성_시험_명세.md"
   },
   "DOC-030": {
@@ -1050,7 +1050,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS05.04",
     "l3_search_query": "안전한 배포 운영 설치 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/4_소프트웨어_펌웨어_보안/04_01_기본사항/AS05_04_안전한_배포_운영_및_설치.md"
   },
   "DOC-031": {
@@ -1059,7 +1059,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS06.03",
     "l3_search_query": "운영환경 정보 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/5_운영환경/05_01_기본사항/AS06_03_운영환경_정보_명세.md"
   },
   "DOC-032": {
@@ -1069,7 +1069,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS06.05, AS06.06",
     "l3_search_query": "독립적 SSP 제어 운영환경 프로세스 보호",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/5_운영환경/05_02_변경_가능한_운영환경의_요구사항/AS06_05_독립적_SSP_제어_메커니즘.md"
   },
   "DOC-033": {
@@ -1078,7 +1078,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS06.08",
     "l3_search_query": "생성 프로세스 제한 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/5_운영환경/05_02_변경_가능한_운영환경의_요구사항/AS06_08_생성_프로세스_제한_명세.md"
   },
   "DOC-034": {
@@ -1088,7 +1088,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.01, AS09.02",
     "l3_search_query": "중요 보안매개변수 공개 보안매개변수 보호 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_01_기본사항/AS09_01_중요_보안매개변수_보호_명세.md"
   },
   "DOC-035": {
@@ -1097,7 +1097,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.04",
     "l3_search_query": "중요 보안매개변수 난수 생성 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "guidelines/DOC-design-rules.md"
   },
   "DOC-036": {
@@ -1107,7 +1107,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.07, AS09.08",
     "l3_search_query": "CSP 암호화 저장 보호 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_02_난수발생기/AS09_07_엔트로피_데이터_CSP_명세.md"
   },
   "DOC-037": {
@@ -1117,7 +1117,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.09, AS09.10",
     "l3_search_query": "중요 보안매개변수 생성 설정 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_03_중요_보안매개변수_생성/AS09_09_중요_보안매개변수_생성_및_설정_명세.md"
   },
   "DOC-038": {
@@ -1126,7 +1126,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.19",
     "l3_search_query": "소프트웨어 암호모듈 SSP 주입 출력 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_05_중요_보안매개변수의_주입과_출력/AS09_19_소프트웨어_암호모듈_주입_출력_명세.md"
   },
   "DOC-039": {
@@ -1135,7 +1135,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.27",
     "l3_search_query": "인가되지 않은 PSP 변경 금지 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_06_중요_보안매개변수의_저장/AS09_27_인가되지_않은_PSP_변경_금지_명세.md"
   },
   "DOC-040": {
@@ -1144,7 +1144,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS09.27",
     "l3_search_query": "운영 상황별 제로화 방법 오류 전원 차단",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/6_중요_보안매개변수_관리/06_06_중요_보안매개변수의_저장/AS09_27_인가되지_않은_PSP_변경_금지_명세.md"
   },
   "DOC-041": {
@@ -1153,7 +1153,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "전원 투입 자가시험 KAT 알고리즘",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-042": {
@@ -1162,7 +1162,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "조건부 자가시험 지속적 난수 생성",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-043": {
@@ -1171,7 +1171,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "소프트웨어 무결성 시험 자가시험",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-044": {
@@ -1180,7 +1180,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "자가시험 오류 응답 오류 상태",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-045": {
@@ -1189,7 +1189,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "전원 투입 자가시험 KAT 목록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-046": {
@@ -1198,7 +1198,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS10.29",
     "l3_search_query": "자가시험 알고리즘 구현 시험 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/7_자가시험/07_03_조건부_자가시험/AS10_29_검증대상_알고리즘_자가시험_파라미터_명세.md"
   },
   "DOC-047": {
@@ -1207,7 +1207,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "암호모듈 기능시험 소스코드",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-048": {
@@ -1216,7 +1216,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "유한상태모델 FSM 상태 다이어그램 전이",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-049": {
@@ -1225,7 +1225,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "생명주기 보증 개발 보안",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-050": {
@@ -1234,7 +1234,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "벤더 시험 기능시험 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-051": {
@@ -1243,7 +1243,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "암호모듈 기능시험 결과 기록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-052": {
@@ -1252,7 +1252,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "형상관리 보안 개발",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-053": {
@@ -1261,7 +1261,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "설계문서 및 정책문서 명세",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-054": {
@@ -1270,7 +1270,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "보안정책 암호모듈 사용 지침",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "DOC-055": {
@@ -1279,7 +1279,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "암호모듈 보안정책서 사용 절차",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "CM-001": {
@@ -1288,7 +1288,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "형상관리 형상항목 소스코드 목록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "CM-002": {
@@ -1297,7 +1297,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "버전 관리 절차 변경 이력 추적",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "CM-003": {
@@ -1306,7 +1306,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "변경 통제 절차 버전 번호",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "CM-004": {
@@ -1315,7 +1315,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "배포 설치 삭제 절차 형상관리",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "TEST-001": {
@@ -1324,7 +1324,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "구현적합성 시험 KAT 알고리즘 시험",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "TEST-002": {
@@ -1333,7 +1333,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "알고리즘 시험 MMT MCT 시험 결과",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "TEST-003": {
@@ -1342,7 +1342,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "자가시험 결과 전원투입 조건부",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "TEST-004": {
@@ -1351,7 +1351,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "오류 처리 시험 결과 기록",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   },
   "TEST-005": {
@@ -1360,7 +1360,7 @@
     ],
     "kcmvp_ref": "2025 최신 암호모듈 제출물 작성 안내서 AS11.29",
     "l3_search_query": "타이밍 공격 방지 시험 상수시간",
-    "l2_required": false,
+    "l3_required": false,
     "guideline_file": "database/docs/상세설계서/8_생명주기_보증/08_05_벤더_시험/AS11_29_암호모듈_기능시험_명세.md"
   }
 }

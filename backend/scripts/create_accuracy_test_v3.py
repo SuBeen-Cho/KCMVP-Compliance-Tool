@@ -366,10 +366,10 @@ void n13_correct_api_order(LEA_CTX *ctx, uint8_t *data, size_t len) {
 
 /* ===== N14: init→update×2→final 순서도 올바름 ===== */
 void n14_multi_update(LEA_CTX *ctx, uint8_t *d1, size_t l1,
-                       uint8_t *d2, size_t l2) {
+                       uint8_t *d2, size_t l3) {
     lea_online_init(ctx);
     lea_online_update(ctx, d1, l1);
-    lea_online_update(ctx, d2, l2);
+    lea_online_update(ctx, d2, l3);
     lea_online_final(ctx, d1, &l1);
 }
 

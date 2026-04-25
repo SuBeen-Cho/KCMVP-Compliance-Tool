@@ -36,7 +36,7 @@ from app.config import settings
 # 학습 데이터 생성기
 # ─────────────────────────────────────────────────────────────────
 
-# L2 판정 판단 기준 (llm_service.py의 PROMPT_TEMPLATES와 동기화)
+# L3 판정 판단 기준 (llm_service.py의 PROMPT_TEMPLATES와 동기화)
 _PROMPT_TEMPLATES: Dict[str, str] = {
     "COM-001": (
         "잔존정보 제거 관점: 키/IV/라운드키/중간 연산 버퍼가 사용 후 "
@@ -61,7 +61,7 @@ _PROMPT_TEMPLATES: Dict[str, str] = {
     "DEFAULT": "KCMVP 암호모듈 보안 관점에서 위반 여부를 판단하라.",
 }
 
-_L2_INSTRUCTION = (
+_L3_INSTRUCTION = (
     "당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다. "
     "아래 코드 스니펫이 실제 보안 위반인지 판정하라. "
     "반드시 JSON 형식으로만 출력하라: "
@@ -139,28 +139,28 @@ def _get_snippet(preprocess: Dict[str, Any], file_path: str, line: int, window: 
     return ""
 
 
-def _build_l2_sample(v: Dict[str, Any], snippet: str) -> Optional[Dict[str, str]]:
-    """단일 위반 → L2 판정 학습 샘플 생성."""
+def _build_l3_sample(v: Dict[str, Any], snippet: str) -> Optional[Dict[str, str]]:
+    """단일 위반 → L3 판정 학습 샘플 생성."""
     if not snippet:
         return None
 
-    rule_id = (v.get("rule_id") or "UNKNOWN").lstrip("L2-")
+    rule_id = (v.get("rule_id") or "UNKNOWN").lstrip("L3-")
     file_path = v.get("file") or ""
     line = v.get("line") or 0
     l1_msg = v.get("message") or ""
     template = _get_template(rule_id)
     source = v.get("source") or "L1"
 
-    # L2 판정 결과 (is_real_issue는 source와 l2_confirmed 기반)
-    is_real = source in ("L1+L2",) or bool(v.get("l2_confirmed"))
+    # L3 판정 결과 (is_real_issue는 source와 l3_confirmed 기반)
+    is_real = source in ("L1+L3",) or bool(v.get("l3_confirmed"))
     output_obj = {
         "is_real_issue": is_real,
-        "description": v.get("l2_message") or l1_msg,
+        "description": v.get("l3_message") or l1_msg,
         "suggestion": v.get("suggestion") or "",
     }
 
     return {
-        "instruction": _L2_INSTRUCTION,
+        "instruction": _L3_INSTRUCTION,
         "input": (
             f"파일: {file_path}\n"
             f"라인: {line}\n"
@@ -240,7 +240,7 @@ def generate_samples(
         for v in violations:
             file_path = v.get("file") or ""
             line = int(v.get("line") or 0)
-            rule_id = (v.get("rule_id") or "").lstrip("L2-")
+            rule_id = (v.get("rule_id") or "").lstrip("L3-")
             pattern_type = v.get("pattern_type") or "regex"
 
             # missing 타입은 스니펫 없으므로 스킵; None은 regex로 취급
@@ -259,10 +259,10 @@ def generate_samples(
                 continue
             seen.add(dedup_key)
 
-            # L2 판정 샘플
-            l2_sample = _build_l2_sample(v, snippet)
-            if l2_sample:
-                samples.append(l2_sample)
+            # L3 판정 샘플
+            l3_sample = _build_l3_sample(v, snippet)
+            if l3_sample:
+                samples.append(l3_sample)
 
             # 패치 샘플 (옵션)
             if include_patches and rule_id in patch_index:
