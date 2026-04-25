@@ -4468,6 +4468,35 @@ def check_rule(
     if _regex_pre:
         return _regex_pre
 
+    # LEA-021: KISA 1D stride-6 체크 — positive detection of wrong assignment
+    # KISA lea_core.c는 struct pointer 1D 스타일(key->rk[N]=ROL(key->rk[M]+...))을 사용
+    # pycparser가 KISA 전용 타입/매크로를 파싱하지 못하므로, 오류 패턴을 직접 검출
+    # LEA-128 정상: rk[6]=ROL(rk[0]+...), rk[7]=ROL(rk[1]+...)
+    # 돌연변이:     rk[7]=ROL(rk[0]+...) ← rk[7]이 rk[0]에서 유래 → stride=7 오류
+    if rule_id == "LEA-021":
+        import re as _re_lea021
+        # C 블록 주석 제거 (mutation script가 /* MUTATION: ... */를 인라인 삽입하므로)
+        _clean = _re_lea021.sub(r"/\*.*?\*/", " ", content, flags=_re_lea021.DOTALL)
+        _WRONG_STRIDE_RE = _re_lea021.compile(
+            r'(?:\w+->)?rk\s*\[\s*7\s*\]\s*=\s*\w+\s*\(\s*(?:\w+->)?rk\s*\[\s*0\s*\]'
+        )
+        _m = _WRONG_STRIDE_RE.search(_clean)
+        if _m:
+            _line_no = content[: _m.start()].count("\n") + 1
+            return [
+                {
+                    "line": _line_no,
+                    "message": (
+                        "LEA-128 키 스케줄 stride-6 오류: rk[7]=ROL(rk[0]+...) 검출 "
+                        "— 올바른 체인은 rk[6]=ROL(rk[0]+...)"
+                    ),
+                    "ast_evidence": (
+                        "rk[0]→rk[7] 잘못된 stride=7 검출. "
+                        "LEA-128 표준: rk[0]→rk[6] stride=6 필수 (KS X 3246 §5.1.1)"
+                    ),
+                }
+            ]
+
     # pycparser fallback
     checker = _CHECKERS.get(rule_id)
     if checker is None:
