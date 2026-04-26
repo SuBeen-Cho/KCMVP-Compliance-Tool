@@ -265,8 +265,3 @@ rm -rf backend/storage/jobs/*
 - IDE 스타일 프론트엔드 (CodeViewer, DocViewer, 패치 탭)
 - 6단계 평가 체계 + 외부 블라인드 검증
 
-**진행 예정:**
-- fallback-only AST 룰 15개 완전 구현
-- ChromaDB RAG 인덱스 구축
-- TRC 룰 확장
-- Celery 비동기 파이프라인 연동
