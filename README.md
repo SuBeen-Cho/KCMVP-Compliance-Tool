@@ -251,17 +251,3 @@ rm -rf backend/storage/jobs/*
 
 ---
 
-## Current Status (2026-04)
-
-**완료:**
-- L1 룰 엔진 — COM/LEA/ARIA + 8개 운용 모드, 170+ 규칙
-- AST 완전 분석 25개 룰 (libclang primary + pycparser fallback)
-- L2/L3 AI 재판정 — Gemini 기반 FP 제거 파이프라인
-- 알고리즘 구현 감지 필터 — KISA LEA 실제 코드 기반 FP 47건 감소
-- Micro-rubric L3 프롬프트 — L3 정확도 60% → 80%
-- 문서 분석 — PDF 섹션·표 구조화 + DOC 룰 + L2 재판정
-- 스캔본 PDF OCR (Gemini Vision)
-- 추적성 TRC-001/002 구현
-- IDE 스타일 프론트엔드 (CodeViewer, DocViewer, 패치 탭)
-- 6단계 평가 체계 + 외부 블라인드 검증
-
