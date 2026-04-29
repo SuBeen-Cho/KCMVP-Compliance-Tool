@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-24T17:33:24.279301",
+  "timestamp": "2026-04-26T20:56:58.704957",
   "phase": "Phase 4",
   "description": "4-Fold Leave-One-Out Cross-Validation",
   "folds": [
@@ -11,13 +11,13 @@
         "세트 3",
         "세트 4"
       ],
-      "train_recall": 0.948051948051948,
+      "train_recall": 1.0,
       "train_gt": 77,
-      "train_tp": 73,
-      "test_recall": 0.9285714285714286,
+      "train_tp": 77,
+      "test_recall": 1.0,
       "test_gt": 28,
-      "test_tp": 26,
-      "gap_pp": 1.9480519480519431
+      "test_tp": 28,
+      "gap_pp": 0.0
     },
     {
       "fold": 2,
@@ -27,13 +27,13 @@
         "세트 3",
         "세트 4"
       ],
-      "train_recall": 0.9615384615384616,
+      "train_recall": 1.0,
       "train_gt": 78,
-      "train_tp": 75,
-      "test_recall": 0.8888888888888888,
+      "train_tp": 78,
+      "test_recall": 1.0,
       "test_gt": 27,
-      "test_tp": 24,
-      "gap_pp": 7.264957264957273
+      "test_tp": 27,
+      "gap_pp": 0.0
     },
     {
       "fold": 3,
@@ -43,13 +43,13 @@
         "세트 2",
         "세트 4"
       ],
-      "train_recall": 0.935064935064935,
+      "train_recall": 1.0,
       "train_gt": 77,
-      "train_tp": 72,
-      "test_recall": 0.9642857142857143,
+      "train_tp": 77,
+      "test_recall": 1.0,
       "test_gt": 28,
-      "test_tp": 27,
-      "gap_pp": -2.922077922077926
+      "test_tp": 28,
+      "gap_pp": 0.0
     },
     {
       "fold": 4,
@@ -59,25 +59,25 @@
         "세트 2",
         "세트 3"
       ],
-      "train_recall": 0.927710843373494,
+      "train_recall": 1.0,
       "train_gt": 83,
-      "train_tp": 77,
+      "train_tp": 83,
       "test_recall": 1.0,
       "test_gt": 22,
       "test_tp": 22,
-      "gap_pp": -7.2289156626506035
+      "gap_pp": 0.0
     }
   ],
   "summary": {
-    "mean_gap_pp": -0.2,
-    "max_gap_pp": 7.3,
-    "mean_test_recall": 0.9454365079365079,
-    "std_test_recall": 0.04127508742602129,
-    "overall_recall": 0.9428571428571428,
-    "ci_95_low": 0.8809019831863215,
-    "ci_95_high": 0.9735507260719031,
-    "verdict": "MILD: 경미한 overfitting 징후 (gap 5~10pp)",
+    "mean_gap_pp": 0.0,
+    "max_gap_pp": 0.0,
+    "mean_test_recall": 1.0,
+    "std_test_recall": 0.0,
+    "overall_recall": 1.0,
+    "ci_95_low": 0.9647046717431569,
+    "ci_95_high": 0.9999999999999998,
+    "verdict": "OK: overfitting 징후 없음 (gap < 5pp)",
     "total_gt": 105,
-    "total_tp": 99
+    "total_tp": 105
   }
 }

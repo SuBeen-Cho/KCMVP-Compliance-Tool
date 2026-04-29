@@ -1,15 +1,15 @@
 {
-  "timestamp": "2026-04-25T14:13:03.899873",
+  "timestamp": "2026-04-26T21:24:26.084539",
   "description": "외부 코드(HackerCodeJ LEA) Mutation 기반 블라인드 Recall 테스트",
   "dataset": "HackerCodeJ LEA (github.com/Hacker-Code-J/LEA, MIT)",
-  "use_l3": false,
+  "use_l3": true,
   "total_mutations": 12,
   "applied": 12,
   "skipped": 0,
   "TP": 10,
   "FN": 2,
   "mutation_recall": 0.8333333333333334,
-  "elapsed_s": 76.5,
+  "elapsed_s": 400.2,
   "results": [
     {
       "id": "EM01",
@@ -18,8 +18,8 @@
       "status": "FN",
       "detected": false,
       "matched_count": 0,
-      "total_violations": 158,
-      "elapsed_s": 6.8
+      "total_violations": 137,
+      "elapsed_s": 163.6
     },
     {
       "id": "EM02",
@@ -28,8 +28,8 @@
       "status": "FN",
       "detected": false,
       "matched_count": 0,
-      "total_violations": 158,
-      "elapsed_s": 6.2
+      "total_violations": 154,
+      "elapsed_s": 40.8
     },
     {
       "id": "EM03",
@@ -37,9 +37,9 @@
       "description": "델타 상수 LSB 변조 (0xc3efe9dbU → 0xc3efe9daU)",
       "status": "TP",
       "detected": true,
-      "matched_count": 4,
-      "total_violations": 159,
-      "elapsed_s": 6.2
+      "matched_count": 3,
+      "total_violations": 153,
+      "elapsed_s": 47.2
     },
     {
       "id": "EM04",
@@ -48,8 +48,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 158,
-      "elapsed_s": 6.2
+      "total_violations": 153,
+      "elapsed_s": 36.4
     },
     {
       "id": "EM05",
@@ -59,7 +59,7 @@
       "detected": true,
       "matched_count": 3,
       "total_violations": 158,
-      "elapsed_s": 6.5
+      "elapsed_s": 24.2
     },
     {
       "id": "EM06",
@@ -68,8 +68,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 5,
-      "total_violations": 158,
-      "elapsed_s": 6.4
+      "total_violations": 157,
+      "elapsed_s": 22.1
     },
     {
       "id": "EM07",
@@ -79,7 +79,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 159,
-      "elapsed_s": 6.3
+      "elapsed_s": 6.9
     },
     {
       "id": "EM08",
@@ -89,7 +89,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 159,
-      "elapsed_s": 6.2
+      "elapsed_s": 6.8
     },
     {
       "id": "EM09",
@@ -99,7 +99,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 160,
-      "elapsed_s": 6.5
+      "elapsed_s": 15.8
     },
     {
       "id": "EM10",
@@ -109,7 +109,7 @@
       "detected": true,
       "matched_count": 16,
       "total_violations": 160,
-      "elapsed_s": 6.3
+      "elapsed_s": 14.5
     },
     {
       "id": "EM11",
@@ -118,8 +118,8 @@
       "status": "TP",
       "detected": true,
       "matched_count": 1,
-      "total_violations": 159,
-      "elapsed_s": 6.4
+      "total_violations": 158,
+      "elapsed_s": 15.1
     },
     {
       "id": "EM12",
@@ -129,7 +129,7 @@
       "detected": true,
       "matched_count": 1,
       "total_violations": 159,
-      "elapsed_s": 6.5
+      "elapsed_s": 6.7
     }
   ]
 }
