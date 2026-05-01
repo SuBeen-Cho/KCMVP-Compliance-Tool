@@ -591,6 +591,10 @@ def _apply_rule_to_file(
 
             # COM-003: S-box·델타상수·테스트벡터 등 FP 패턴 조기 제거
             if rule.get("id") == "COM-003":
+                # 테스트 파일(test_*, selftest*, kat*)의 하드코딩 상수는 테스트 벡터 — FP
+                _com3_fname = file_path.name.lower()
+                if any(tp in _com3_fname for tp in _TEST_FILENAME_PATTERNS):
+                    continue
                 name_match = re.search(r'\b(\w+)\s*[\[=]', line_text)
                 var_name = name_match.group(1).lower() if name_match else ""
                 ctx_lines = lines[max(0, start_line - 3):start_line + 1]

@@ -17,6 +17,13 @@ _AST_TP_PROTECT = frozenset({
     "CTR-001", "CTR-002",   # CTR 모드 — 동일
     "CTR-003", "CTR-004",   # CTR 카운터 오버플로우/유일성 — L3 오판 확인 (방안 2)
     "LEA-023",              # LEA 라운드 수식 — L3 오판으로 FN 발생 확인
+    # 세트4 GT ast 규칙 — L3 오판으로 FN 유발 방지 (2026-05-02 추가)
+    "LEA-021", "LEA-022",   # 라운드 수식 (lea_block.c)
+    "LEA-034", "LEA-035",   # 복호화 역연산 (lea_block.c)
+    "LEA-046", "LEA-047",   # MCT 내부/외부 루프 키 갱신 (lea_cbc.c, lea_ctr.c)
+    "LEA-056", "LEA-057",   # MCT 내부/외부 루프 (lea_cbc.c, lea_ctr.c)
+    "CBC-LEA-005",          # CBC-LEA 키 갱신 패턴 (lea_cbc.c)
+    "CTR-LEA-006",          # CTR-LEA 카운터 갱신 패턴 (lea_ctr.c)
 })
 from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
