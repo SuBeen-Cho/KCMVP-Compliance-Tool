@@ -39,7 +39,7 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 # 파일 분류: impl / test / data / benchmark / wrapper
 # 테스트/벤치마크/데이터/wrapper 파일에는 missing 규칙을 적용하지 않음.
 # ─────────────────────────────────────────────────────────────────────────────
-_TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector")
+_TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector", "selftest")
 _BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
 # 인프라/유틸리티 파일: 암호 알고리즘 구현이 아닌 시스템 지원 코드
 # "_base": KISA 디스패처 파일(lea_base.c 등) — SIMD 함수 포인터 초기화, 실제 암호 구현 없음
@@ -151,68 +151,6 @@ def _classify_file(filename: str, content: str) -> str:
         return "wrapper"
 
     return "impl"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 프로젝트 수준 알고리즘 구현 감지
-# LEA/ARIA 알고리즘 규칙은 해당 알고리즘을 실제 구현하는 프로젝트에만 적용.
-# "사용"(API 호출)과 "구현"(알고리즘 내부 정의)을 구분하여 FP 방지.
-# ─────────────────────────────────────────────────────────────────────────────
-
-# LEA 구현 판별 패턴: 알고리즘 내부를 직접 구현하는 코드에만 매칭.
-# "사용"(API 호출, 위반 데모)과 "구현"(알고리즘 핵심 정의)을 구분.
-_LEA_IMPL_PATTERNS = [
-    # 델타 상수 (KS X 3246 규격) — LEA 고유 매직 넘버
-    re.compile(r'0x[cC]3[eE][fF][eE]9[dD][bB]'),
-    # delta 배열 정의
-    re.compile(r'\bdelta\s*\[.*\]\s*=\s*\{'),
-    # 라운드 수 조건 분기 (LEA 고유: 24/28/32)
-    re.compile(r'(mk_len|key_?len|key_?size).*\?\s*(24|28|32)\b'),
-    # KISA LEA 전용: lea_set_key 함수 정의 (호출이 아닌 정의)
-    re.compile(r'(void|int)\s+lea_set_key\s*\('),
-    # ROL/ROR 매크로와 XOR+ADD 조합이 함께 있는 라운드 함수 (LEA 핵심 구조)
-    re.compile(r'(ROL|ROR|ROTL|ROTR)\d*\s*\(.*\^.*roundkey', re.IGNORECASE),
-]
-
-# ARIA 구현 판별 패턴
-_ARIA_IMPL_PATTERNS = [
-    re.compile(r'(void|static)\s+\w*(aria|ARIA)\w*\s*(Enc|Dec|encrypt|decrypt|Round)', re.IGNORECASE),
-    re.compile(r'\b(ARIA_KEY|aria_key|AriaKey)\b'),
-    re.compile(r'\bFO\s*\(.*\)\s*\^'),  # ARIA FO function
-]
-
-
-def _project_has_algorithm_impl(files: list, algorithm: str) -> bool:
-    """프로젝트에 특정 알고리즘의 구현 코드가 있는지 확인."""
-    patterns = {"lea": _LEA_IMPL_PATTERNS, "aria": _ARIA_IMPL_PATTERNS}.get(algorithm.lower(), [])
-    if not patterns:
-        return True  # 알 수 없는 알고리즘은 필터링 안 함
-
-    for item in files:
-        content = item.get("content") or ""
-        for pat in patterns:
-            if pat.search(content):
-                return True
-    return False
-
-
-def _file_has_algorithm_code(content: str, algorithm: str) -> bool:
-    """개별 파일에 해당 알고리즘의 구현 코드가 있는지 확인.
-    API 호출만 있는 파일(예: CBC 모드에서 lea_encrypt_block 호출)은 제외.
-    알고리즘 AST 규칙(라운드 수, 델타 상수 등)은 구현 파일에만 적용해야 함.
-    """
-    algo_lower = algorithm.lower()
-    if algo_lower == "lea":
-        for pat in _LEA_IMPL_PATTERNS:
-            if pat.search(content):
-                return True
-        return False
-    elif algo_lower == "aria":
-        for pat in _ARIA_IMPL_PATTERNS:
-            if pat.search(content):
-                return True
-        return False
-    return True
 
 
 def _extract_decl_var(snippet: str) -> str:
@@ -673,6 +611,7 @@ def _apply_rule_to_file(
                 "scope": "line-range",
                 "message": rule.get("name", ""),
                 "severity": rule.get("severity", "medium"),
+                "pattern_type": rule.get("pattern_type", "regex"),
                 "confidence": "확정",
                 "snippet": snippet,
                 "needs_ai_review": False,
@@ -798,15 +737,6 @@ def _apply_ast_rule(
 
     violations: List[Dict[str, Any]] = []
     ast_checker_handled = False  # ast_checker_service 가 처리했는지 여부
-
-    # ── [GPTScan 앵커] 알고리즘별 파일 관련성 필터 ──
-    # algorithm 필드가 있는 규칙은 해당 알고리즘을 실제 구현하는 코드가 프로젝트에 있을 때만 적용.
-    # "사용"(API 호출)과 "구현"(알고리즘 내부 정의)을 구분하여 FP 방지.
-    # 예: violations_cbc.c가 lea_encrypt_block()을 호출하지만 LEA 알고리즘 자체를 구현하지 않으면
-    #     LEA 알고리즘 규칙(라운드 수, 델타 상수 등)은 적용하지 않음.
-    if algo and algo in ("lea", "aria"):
-        if not _project_has_algorithm_impl(file_cache, algo):
-            return []
 
     def _get_display(item: Dict[str, Any]) -> str:
         try:
@@ -1487,18 +1417,7 @@ def run_rule_engine(
     else:
         algo_rules = load_ruleset(rules_dir, "algorithm")
 
-    # 알고리즘별 구현 여부 캐시
-    _algo_impl_cache: Dict[str, bool] = {}
-
     for rule in algo_rules:
-        # 규칙 ID에서 알고리즘 추출 (LEA-xxx → lea, ARIA-xxx → aria)
-        rule_id = rule.get("id", "")
-        rule_algo = rule_id.split("-")[0].lower() if "-" in rule_id else ""
-        if rule_algo and rule_algo in ("lea", "aria"):
-            if rule_algo not in _algo_impl_cache:
-                _algo_impl_cache[rule_algo] = _project_has_algorithm_impl(file_cache, rule_algo)
-            if not _algo_impl_cache[rule_algo]:
-                continue  # 프로젝트에 이 알고리즘 구현 없음 → 규칙 건너뜀
         _dispatch_rule(rule)
 
     # 모드 룰: 지정되면 해당 모드만, 미지정이면 전체 모드 룰 로드

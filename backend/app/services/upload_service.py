@@ -86,12 +86,16 @@ def create_job_from_github(repo_url: str, branch: Optional[str] = None) -> str:
     return job_id
 
 
-def _extract_zip_into_root(file_content: bytes, root: Path) -> None:
+def _extract_zip_into_root(file_content: bytes, root: Path, _depth: int = 0) -> None:
     """
-    공통 ZIP 해제 유틸리티.
+    공통 ZIP 해제 유틸리티. 중첩 ZIP(ZIP 안의 ZIP)을 재귀적으로 해제한다.
     - file_content: ZIP 파일 바이트
     - root: 압축을 풀 최상위 디렉터리
+    - _depth: 재귀 깊이 제한 (최대 5단계)
     """
+    if _depth > 5:
+        return
+
     root_resolved = root.resolve()
     with zipfile.ZipFile(io.BytesIO(file_content), "r") as zf:
         for member in zf.namelist():
@@ -113,7 +117,13 @@ def _extract_zip_into_root(file_content: bytes, root: Path) -> None:
                 target.mkdir(parents=True, exist_ok=True)
             else:
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(zf.read(member))
+                inner_bytes = zf.read(member)
+                # 중첩 ZIP 감지: .zip 확장자이고 실제 ZIP 시그니처(PK\x03\x04)인 경우 재귀 해제
+                if member.lower().endswith(".zip") and inner_bytes[:4] == b"PK\x03\x04":
+                    # 내부 ZIP은 같은 루트에 풀어서 구조를 평탄화
+                    _extract_zip_into_root(inner_bytes, root, _depth + 1)
+                else:
+                    target.write_bytes(inner_bytes)
 
 
 def attach_docs_zip_to_job(job_id: str, file_content: bytes, filename: str) -> None:
