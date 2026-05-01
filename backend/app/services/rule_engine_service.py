@@ -36,6 +36,37 @@ _C_TYPE_KEYWORDS: frozenset = frozenset({
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 알고리즘 스코프 필터
+# LEA에 중점을 두고 있으므로, 비-LEA 알고리즘 구현 파일에는 LEA 전용 규칙을 적용하지 않는다.
+# COM-* (공통 보안) 규칙은 모든 파일에 계속 적용.
+# ─────────────────────────────────────────────────────────────────────────────
+# 명확하게 비-LEA 알고리즘을 구현하는 파일명 키워드
+_NON_LEA_ALGO_FNAME_KW = frozenset({
+    "aria",
+    "sha", "sha2", "hash",
+    "ecdsa", "kcdsa", "ec_kcdsa", "ecc",
+    "pbkdf", "kbkdf",
+    "hmac",
+    "drbg",
+    "mpz", "gfp", "gf2n",
+})
+
+
+def _is_lea_related_file(fname_lower: str) -> bool:
+    """파일이 LEA 규칙 적용 대상인지 판별.
+
+    - 파일명에 'lea'가 포함되면 LEA 파일 → True
+    - 파일명에 명확한 비-LEA 알고리즘 키워드가 있으면 → False
+    - 그 외(cipher.c, utils.c, 모드 파일 등) → True (LEA 코드 포함 가능)
+    """
+    if "lea" in fname_lower:
+        return True
+    if any(kw in fname_lower for kw in _NON_LEA_ALGO_FNAME_KW):
+        return False
+    return True  # cipher.c, addmac.c 등 공통/모드 파일은 포함
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 파일 분류: impl / test / data / benchmark / wrapper
 # 테스트/벤치마크/데이터/wrapper 파일에는 missing 규칙을 적용하지 않음.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1309,8 +1340,23 @@ def run_rule_engine(
         pattern_type = rule.get("pattern_type")
         pattern      = rule.get("pattern")
 
+        # ── 알고리즘 스코프 사전 필터 ─────────────────────────────────────────
+        # LEA 전용 규칙(algorithm 카테고리, 또는 모드명에 LEA 포함)은
+        # LEA 관련 파일에만 적용한다. 이를 위해 활성 파일 캐시를 미리 필터링.
+        # COM-* (common 카테고리)과 일반 모드 규칙은 모든 파일 적용 유지.
+        _rc = rule.get("category", "")
+        _ri = rule.get("id", "").upper()
+        _is_lea_scoped = _rc == "algorithm" or (_rc == "mode" and "LEA" in _ri)
+        if _is_lea_scoped:
+            _active_cache = [
+                item for item in file_cache
+                if _is_lea_related_file((item.get("display") or "").lower())
+            ]
+        else:
+            _active_cache = file_cache
+
         if pattern_type == "ast":
-            violations.extend(_apply_ast_rule(rule, file_cache, job_root,
+            violations.extend(_apply_ast_rule(rule, _active_cache, job_root,
                                               symbol_graph=symbol_graph))
             return
 
@@ -1344,7 +1390,7 @@ def run_rule_engine(
                         return  # 이 모드를 구현하는 파일 없음 → missing 규칙 skip
 
             violations.extend(
-                _apply_project_missing_rule(rule, file_cache, job_root, symbol_graph=symbol_graph)
+                _apply_project_missing_rule(rule, _active_cache, job_root, symbol_graph=symbol_graph)
             )
             return
 
@@ -1358,7 +1404,7 @@ def run_rule_engine(
         # COM-003 하드코딩 키 규칙: 테스트/벤치마크 파일은 정당한 테스트 벡터 포함 → 스킵
         _com003_skip = rule.get("id", "") == "COM-003"
 
-        for item in file_cache:
+        for item in _active_cache:
             ft = item.get("file_type", "impl")
 
             # check_in field: 규칙이 특정 파일 타입에만 적용되도록 제한
@@ -1393,6 +1439,7 @@ def run_rule_engine(
                     # 콘텐츠에 모드 키워드가 없으면 미관련 → skip
                     if not mode_kw_re.search(item.get("content") or ""):
                         continue
+
             for v in _apply_rule_to_file(
                 item["path"],
                 item["content"],

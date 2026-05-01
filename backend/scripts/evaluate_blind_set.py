@@ -1,17 +1,15 @@
 """
-smart-crypto (0_KCMVP.zip) 블라인드 평가
-==========================================
-KCMVP 인증을 실제 통과한 smart-crypto 라이브러리를 대상으로 규칙 엔진을 실행.
+블라인드 평가 세트 평가 스크립트
+==================================
+내부 참조 세트를 대상으로 규칙 엔진을 실행하여 탐지 성능을 측정.
 
-기존 KISA LEA(v1.3) 평가와의 차이:
-  - 기존: KISA LEA를 "완벽한 코드"로 전제, 탐지 = FP
-  - 이번: 실제 인증 모듈 기준. 탐지된 위반이
-          (a) FP (규칙 엔진의 과탐) 인지
-          (b) 실제 개선 여지인지 분석이 필요함.
+탐지된 위반은 두 가지로 구분:
+  (a) FP — 규칙 엔진의 과탐 (개선 대상)
+  (b) 실제 개선 여지 — 인증 이후 강화 가능한 항목
 
 Usage:
     cd backend
-    python scripts/evaluate_smart_crypto.py [--no-l3]
+    python scripts/evaluate_blind_set.py [--no-l3]
 """
 
 import io
@@ -30,7 +28,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 USE_L3 = "--no-l3" not in sys.argv
 
-KCMVP_ZIP = BACKEND_ROOT.parent / "0_KCMVP.zip"
+_BLIND_ZIP = BACKEND_ROOT.parent / "0_KCMVP.zip"
 
 from app.services.rule_engine_service import run_rule_engine
 
@@ -58,10 +56,10 @@ def count_loc(src_dir: Path) -> int:
 
 def extract_smart_crypto(dest: Path) -> Path:
     """0_KCMVP.zip → smart-crypto-master.zip → src/ 재귀 해제 후 소스 루트 반환."""
-    if not KCMVP_ZIP.exists():
-        raise FileNotFoundError(f"0_KCMVP.zip 없음: {KCMVP_ZIP}")
+    if not _BLIND_ZIP.exists():
+        raise FileNotFoundError(f"블라인드 평가 ZIP 없음: {_BLIND_ZIP}")
 
-    outer_bytes = KCMVP_ZIP.read_bytes()
+    outer_bytes = _BLIND_ZIP.read_bytes()
     _recursive_unzip(outer_bytes, dest)
 
     # src/ 디렉터리가 있으면 그걸 소스 루트로, 없으면 최상위 사용
@@ -124,16 +122,15 @@ def collect_files(src_root: Path):
 
 def run_evaluation():
     print("=" * 65)
-    print("smart-crypto (0_KCMVP.zip) 블라인드 평가")
-    print(f"ZIP 경로: {KCMVP_ZIP}")
+    print("블라인드 평가 세트 — 규칙 엔진 평가")
     print(f"L3 (Gemini): {'활성화' if USE_L3 else '비활성화'}")
     print("=" * 65)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        extract_dest = tmp / "smart_crypto"
+        extract_dest = tmp / "blind_set"
 
-        print("\n[압축 해제] 0_KCMVP.zip → smart-crypto 소스...")
+        print("\n[압축 해제] 블라인드 평가 세트 소스 추출...")
         src_root = extract_smart_crypto(extract_dest)
 
         file_entries = collect_files(src_root)
@@ -246,19 +243,18 @@ def run_evaluation():
 
     print(f"\n{'═' * 65}")
     print("  [해석 가이드]")
-    print("  이 코드는 KCMVP 인증을 통과한 실제 모듈입니다.")
     print("  탐지된 위반은 두 가지로 구분됩니다:")
     print("    (a) FP — 규칙 엔진의 과탐 (개선 대상)")
-    print("    (b) 실제 개선 여지 — 인증 이후 강화 가능한 항목")
+    print("    (b) 실제 개선 여지 — 강화 가능한 항목")
     print("  high 심각도 + regex/ast 패턴 위반을 우선 검토하세요.")
     print(f"{'═' * 65}")
 
     # JSON 저장
     ts = datetime.now().strftime("%Y%m%d_%H%M")
-    out_path = BACKEND_ROOT / "scripts" / f"smart_crypto_eval_{ts}.json"
+    out_path = BACKEND_ROOT / "scripts" / f"blind_eval_{ts}.json"
     result = {
         "timestamp": ts,
-        "source": "smart-crypto (0_KCMVP.zip)",
+        "source": "blind_set",
         "total_loc": total_loc,
         "total_violations": total,
         "violations_per_kloc": round(per_kloc, 2),
