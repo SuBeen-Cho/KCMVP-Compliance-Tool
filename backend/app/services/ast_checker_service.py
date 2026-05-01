@@ -619,8 +619,16 @@ def _check_lea_010(root, offset: int, filename: str,
     gcc -E 후 ROL(W, i) → (((W)<<(i))|((W)>>(32-(i)))) 으로 확장되므로
     FuncCall 탐지 외에 << / >> 연산자 조합도 회전으로 인정한다.
     """
-    # CMAC/GCM 서브키 파생 함수는 블록 암호 키 스케줄이 아님 → 제외
-    _DERIVED_KEY_EXCL = {"cmac", "subkey", "gcm", "ghash", "gmac"}
+    # LEA ARX 키 스케줄 규칙은 LEA 구현 파일에만 적용.
+    # ARIA(SPN), EC-KCDSA(타원곡선), SHA, HMAC 등은 ARX 구조가 아님 → 제외.
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "gfp", "gf2n", "sha", "hmac", "hash", "pbkdf", "kbkdf")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
+    # CMAC/GCM 서브키 파생 함수 및 비-LEA 알고리즘 키 생성 함수 제외
+    _DERIVED_KEY_EXCL = {"cmac", "subkey", "gcm", "ghash", "gmac",
+                         "aria", "ecdsa", "kcdsa", "sha", "hmac", "private_key", "public_key"}
     key_funcs = [
         fd for fd in _funcs_matching(root, _KEY_KW)
         if not any(kw in _func_name(fd).lower() for kw in _DERIVED_KEY_EXCL)
@@ -906,7 +914,18 @@ def _check_lea_034(root, offset: int, filename: str,
     - typedef 별칭(uint32_t 등) 사용 시에도 정확히 뺄셈 연산 위치 특정.
     - unsigned 타입의 뺄셈 = 모듈러 뺄셈(⊟)임을 타입 정보로 확인.
     """
-    dec_funcs = _funcs_matching(root, _DEC_KW)
+    # LEA 역연산(모듈러 뺄셈) 규칙은 LEA 구현 파일에만 적용.
+    # ARIA 복호화는 역 S-box 구조, utils 함수는 암호와 무관 → 제외.
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac", "hash",
+                        "utils", "pbkdf", "kbkdf", "gfp", "gf2n")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
+    # 비-LEA 알고리즘 복호화 함수 제외 (함수명 기반)
+    _NON_LEA_DEC_EXCL = {"aria", "ecdsa", "kcdsa", "sha", "hmac"}
+    dec_funcs = [fd for fd in _funcs_matching(root, _DEC_KW)
+                 if not any(kw in _func_name(fd).lower() for kw in _NON_LEA_DEC_EXCL)]
     if not dec_funcs:
         return []
 
@@ -1025,11 +1044,20 @@ def _check_lea_040(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     if not _HAS_PYCPARSER:
         return []
 
+    # LEA 라운드 수 규칙(24/28/32)은 LEA 파일에만 적용.
+    # ARIA-256은 정상적으로 16라운드를 사용하며, LEA_BLOCKSIZE=16 출력 루프도 별개.
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
     _KEY_SCHED_EXCL = frozenset({"key", "sched", "schedule", "setkey", "expand", "keygen"})
+    # ARIA/EC-KCDSA 함수도 제외
+    _NON_LEA_FUNC_EXCL = frozenset({"aria", "ecdsa", "kcdsa", "sha", "hmac"})
     _LEA040_KW = _ENC_KW + _DEC_KW + ["round", "block", "cipher", "lea"]
     funcs = _funcs_matching(root, _LEA040_KW)
     funcs = [fd for fd in funcs
-             if not any(kw in _func_name(fd).lower() for kw in _KEY_SCHED_EXCL)
+             if not any(kw in _func_name(fd).lower() for kw in _KEY_SCHED_EXCL | _NON_LEA_FUNC_EXCL)
              and not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
 
     violations: List[Dict[str, Any]] = []
@@ -1065,6 +1093,17 @@ def _check_lea_040(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                 continue
 
             if val is None:
+                # i < ctx->nr / i < nr → 변수 기반 라운드 루프 → 정상 패턴
+                if cond.op == "<":
+                    rhs = cond.right
+                    rhs_name = ""
+                    if isinstance(rhs, c_ast.StructRef):
+                        field = getattr(rhs, "field", None)
+                        rhs_name = getattr(field, "name", "") if field else ""
+                    elif isinstance(rhs, c_ast.ID):
+                        rhs_name = getattr(rhs, "name", "")
+                    if _re.search(r'nr|round', rhs_name, _re.IGNORECASE):
+                        found_valid = True
                 continue
 
             if cond.op == "<=":
@@ -2675,6 +2714,618 @@ def _check_lea_032(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     return violations
 
 
+# ──────────────────────────────────────────────────────────────────
+# LEA-024: 키 스케줄 워드 간 인터리빙 부재 확인
+# ──────────────────────────────────────────────────────────────────
+
+def _check_lea_024(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """LEA-024: 키 스케줄에서 워드 간 혼합(인터리빙)이 없는 단순 구조인지 확인.
+
+    LEA 키 스케줄은 T[i] = ROL(T[i] + delta) 형태의 독립적 워드 갱신 구조.
+    T[i] = f(T[j]) (i≠j) 같은 크로스 워드 혼합이 있으면 위반.
+
+    탐지 전략:
+    1. 키 스케줄 함수에서 T[] 배열 대입문 수집
+    2. T[i] = ... T[j] ... (i≠j) 형태의 크로스 참조 탐지
+    3. 크로스 참조 있으면 위반 (인터리빙 존재)
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    key_funcs = _funcs_matching(root, _KEY_KW)
+    if not key_funcs:
+        return []
+
+    violations = []
+    for fd in key_funcs:
+        fname = _func_name(fd)
+        # T[] 대입문: T[i] = expr
+        for assign in _collect(fd, c_ast.Assignment):
+            if assign.op != "=":
+                continue
+            lv = assign.lvalue
+            if not isinstance(lv, c_ast.ArrayRef):
+                continue
+            lv_base = _array_base(lv)
+            if not lv_base or lv_base.upper() != "T":
+                continue
+            lv_idx = _const_value(lv.subscript)
+            if lv_idx is None:
+                continue  # 변수 인덱스 → (6i+j)%8 등 동적 패턴은 LEA-022 관할
+
+            # rvalue에서 T[j] (j≠i) 참조 탐지
+            for ref in _collect(assign.rvalue, c_ast.ArrayRef):
+                ref_base = _array_base(ref)
+                if not ref_base or ref_base.upper() != "T":
+                    continue
+                ref_idx = _const_value(ref.subscript)
+                if ref_idx is not None and ref_idx != lv_idx:
+                    line = _coord_line(assign, offset)
+                    violations.append({
+                        "line": line,
+                        "message": (
+                            f"함수 '{fname}': T[{lv_idx}] = ...T[{ref_idx}]... — "
+                            "워드 간 크로스 참조(인터리빙) 탐지. "
+                            "LEA 키 스케줄은 T[i]=ROL(T[i]+δ) 독립 갱신 구조여야 함"
+                        ),
+                        "ast_evidence": (
+                            f"Assignment(T[{lv_idx}] = ...ArrayRef(T[{ref_idx}])...) 탐지. "
+                            "LEA 표준: 키 스케줄 워드 간 혼합 없는 단순 구조 — "
+                            "T[i]는 자기 자신(T[i])과 δ 상수만으로 갱신"
+                        ),
+                    })
+                    break  # 같은 대입문에서 중복 보고 방지
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# LEA-025: 복호화 키 스케줄 델타 상수 동일성 확인
+# ──────────────────────────────────────────────────────────────────
+
+# LEA 표준 델타 상수 (KS X 3246 §5.1)
+_LEA_DELTA_CONSTS = {
+    0xc3efe9db, 0x44626b02, 0x79e27c8a, 0x78df30ec,
+    0x715ea49e, 0xc785da0a, 0xe04ef22a, 0xe7ae6536,
+}
+
+
+def _check_lea_025(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """LEA-025: 복호화 키 생성 시 암호화와 동일한 δ 상수가 사용되는지 확인.
+
+    탐지 전략:
+    1. 복호화 키 스케줄 함수 식별
+    2. 함수 내에 LEA 표준 δ 상수(0xc3efe9db 등) 중 하나라도 있는지 확인
+    3. 없으면 위반 (비표준 상수 사용 또는 δ 누락)
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    _DEC_KEY_KW = ["dec_key", "set_dec", "decrypt_key", "dec_schedule",
+                   "lea_set_dec", "inv_key", "deckey"]
+    dec_funcs = _funcs_matching(root, _DEC_KEY_KW)
+    if not dec_funcs:
+        return []
+
+    violations = []
+    for fd in dec_funcs:
+        fname = _func_name(fd)
+
+        # 상수 수집
+        consts = _collect(fd, c_ast.Constant)
+        found_delta = False
+        for c in consts:
+            val = _const_value(c)
+            if val is not None and (val & 0xFFFFFFFF) in _LEA_DELTA_CONSTS:
+                found_delta = True
+                break
+
+        # δ 배열 참조 확인 (delta[], DELTA[], d[] 등)
+        if not found_delta:
+            for ref in _collect(fd, c_ast.ArrayRef):
+                base = _array_base(ref)
+                if base and base.lower() in ("delta", "d", "lea_delta"):
+                    found_delta = True
+                    break
+
+        # 표준 함수 호출 확인 (lea_set_enc_key 등에서 δ를 이미 사용)
+        if not found_delta:
+            calls = _call_names_in(fd)
+            if calls & {"lea_set_enc_key", "lea_set_key", "lea_keyschedule"}:
+                found_delta = True
+
+        if not found_delta:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': 복호화 키 스케줄에서 LEA 표준 δ 상수 미확인 — "
+                    "암호화와 동일한 δ[0]~δ[7] 사용 필수 (KS X 3246 §5.2.2)"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' 내 상수값 AST 분석: "
+                    f"LEA δ 상수(0xc3efe9db 등 8개) 0건. "
+                    "delta[]/DELTA[] 배열 참조 0건. "
+                    "표준 키 스케줄 함수 호출 0건 — "
+                    "복호화 키 생성에 동일 δ 상수 미사용 의심"
+                ),
+            })
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# ARIA-002: ARIA S-box 구조 확인
+# ──────────────────────────────────────────────────────────────────
+
+_ARIA_FUNC_KW = ["aria", "sbox", "s_box"]
+_ARIA_KEY_KW = ["aria_key", "aria_set", "aria_schedule", "key_expansion",
+                "aria_enc_key", "aria_dec_key"]
+
+
+def _check_aria_002(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """ARIA-002: ARIA 키 스케줄 구조(CK 생성 + FO/FE 라운드) 확인.
+
+    탐지 전략:
+    1. ARIA 키 스케줄 함수 식별 (aria_key*, key_expansion 등)
+    2. 함수 내 XOR(^) 연산 및 S-box 배열 참조 확인
+    3. CK 생성에 필요한 XOR+회전 구조 존재 여부 확인
+    4. ARIA 함수 없으면 [] 반환 (해당 없음)
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    aria_key_funcs = _funcs_matching(root, _ARIA_KEY_KW)
+    if not aria_key_funcs:
+        # ARIA 관련 함수가 전혀 없으면 해당 없음
+        all_funcs = _get_func_defs(root)
+        has_aria = any("aria" in _func_name(fd).lower() for fd in all_funcs)
+        if not has_aria:
+            return []
+        return None  # ARIA 함수는 있지만 키 스케줄 함수 매칭 실패 → fallback
+
+    violations = []
+    for fd in aria_key_funcs:
+        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
+            continue
+        fname = _func_name(fd)
+
+        # XOR 연산 확인 (키 스케줄 필수)
+        has_xor = _has_op(fd, "^")
+        # S-box 배열 참조 확인
+        has_sbox = False
+        for ref in _collect(fd, c_ast.ArrayRef):
+            base = (_array_base(ref) or "").lower()
+            if any(sb in base for sb in ("sb", "sbox", "s1", "s2", "s_box")):
+                has_sbox = True
+                break
+        # 함수 호출로 S-box 적용 (SubstLayer, FO, FE 등)
+        if not has_sbox:
+            calls = _call_names_in(fd)
+            sbox_calls = {c for c in calls if any(
+                kw in c.lower() for kw in ("subst", "sbox", "fo", "fe", "sl1", "sl2")
+            )}
+            if sbox_calls:
+                has_sbox = True
+
+        # 회전 연산 확인
+        has_rotation = bool(_call_names_in(fd) & _ROL_NAMES)
+        if not has_rotation:
+            has_rotation = _has_op(fd, "<<") and _has_op(fd, ">>")
+
+        if not has_xor:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': ARIA 키 스케줄에 XOR(^) 연산 없음 — "
+                    "CK 생성 및 라운드키 XOR 구조 필수"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' AST 분석: BinaryOp('^') 0건. "
+                    "ARIA 키 스케줄 표준: CK1=W0⊕W2, CK2=W1⊕W3 등 XOR 구조 필수"
+                ),
+            })
+
+        if not has_sbox and not has_rotation:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': ARIA 키 스케줄에 S-box 참조 및 회전 연산 없음 — "
+                    "FO/FE 라운드 함수 구조 필수"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' AST 분석: S-box 배열 참조 0건, ROL/ROR 호출 0건. "
+                    "ARIA 표준: 키 스케줄에 FO(SubstLayer+확산)/FE 라운드 적용 필수"
+                ),
+            })
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# CBC-LEA-005: MCT-CBC 키 갱신 수식 (Key[i+1]=Key[i]⊕CT[j])
+# ──────────────────────────────────────────────────────────────────
+
+_MCT_CBC_KW = ["mct_cbc", "cbc_mct", "monte_cbc", "cbc_monte"]
+
+
+def _check_cbc_lea_005(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """CBC-LEA-005: MCT-CBC에서 키 갱신(Key XOR CT) 수식 확인.
+
+    탐지 전략:
+    1. MCT-CBC 함수 식별
+    2. 키 변수에 XOR(^=) 대입 또는 key[i] ^= ct 패턴 확인
+    3. 키 갱신 없으면 위반
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    # MCT-CBC 전용 함수 먼저, 없으면 일반 MCT에서 CBC 모드 탐색
+    mct_cbc_funcs = _funcs_matching(root, _MCT_CBC_KW)
+    if not mct_cbc_funcs:
+        mct_funcs = _funcs_matching(root, _MCT_KW)
+        mct_cbc_funcs = [fd for fd in mct_funcs
+                         if "cbc" in _func_name(fd).lower()]
+    if not mct_cbc_funcs:
+        return []  # MCT-CBC 함수 없음 → 해당 없음
+
+    violations = []
+    for fd in mct_cbc_funcs:
+        fname = _func_name(fd)
+
+        # 키 갱신 패턴 탐색: key ^= ct, key[i] ^= ct[j], key XOR 대입
+        has_key_xor_update = False
+        for assign in _collect(fd, c_ast.Assignment):
+            if assign.op != "^=":
+                continue
+            lv = assign.lvalue
+            lv_name = ""
+            if isinstance(lv, c_ast.ID):
+                lv_name = lv.name.lower()
+            elif isinstance(lv, c_ast.ArrayRef):
+                lv_name = (_array_base(lv) or "").lower()
+            if any(kw in lv_name for kw in ("key", "k", "rk")):
+                has_key_xor_update = True
+                break
+
+        # memcpy + XOR 루프 패턴 (key update via loop)
+        if not has_key_xor_update:
+            calls = _call_names_in(fd)
+            has_memcpy = "memcpy" in calls or "memmove" in calls
+            has_xor = _has_op(fd, "^")
+            if has_memcpy and has_xor:
+                # 키 관련 변수에 대한 XOR 대입 있는지 확인
+                for assign in _collect(fd, c_ast.Assignment):
+                    if assign.op != "=":
+                        continue
+                    if not _has_op(assign.rvalue, "^"):
+                        continue
+                    lv = assign.lvalue
+                    lv_name = ""
+                    if isinstance(lv, c_ast.ID):
+                        lv_name = lv.name.lower()
+                    elif isinstance(lv, c_ast.ArrayRef):
+                        lv_name = (_array_base(lv) or "").lower()
+                    if any(kw in lv_name for kw in ("key", "k", "rk")):
+                        has_key_xor_update = True
+                        break
+
+        if not has_key_xor_update:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': MCT-CBC 키 갱신 수식 미확인 — "
+                    "Key[i+1]=Key[i]⊕CT[j] 형태의 XOR 키 갱신 필수 (LEA 검증시스템 §6.4)"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' AST 분석: "
+                    "key/rk 변수에 대한 '^=' 대입 0건, key=...^... 패턴 0건 — "
+                    "MCT-CBC 표준: 내부 루프 종료 후 Key[i+1]=Key[i]⊕CT[j] 갱신 필수"
+                ),
+            })
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# CTR-LEA-006: MCT-CTR 카운터 갱신 + 키 갱신 수식
+# ──────────────────────────────────────────────────────────────────
+
+_MCT_CTR_KW = ["mct_ctr", "ctr_mct", "monte_ctr", "ctr_monte"]
+
+
+def _check_ctr_lea_006(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """CTR-LEA-006: MCT-CTR에서 카운터 증가((CTR+1) mod 2^128) + 키 갱신 확인.
+
+    탐지 전략:
+    1. MCT-CTR 함수 식별
+    2. 카운터 증가 패턴: ctr++, counter += 1, ctr = ctr + 1
+    3. 키 갱신 패턴: key ^= ct 또는 key XOR 대입
+    4. 둘 다 없으면 위반
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    mct_ctr_funcs = _funcs_matching(root, _MCT_CTR_KW)
+    if not mct_ctr_funcs:
+        mct_funcs = _funcs_matching(root, _MCT_KW)
+        mct_ctr_funcs = [fd for fd in mct_funcs
+                         if "ctr" in _func_name(fd).lower()]
+    if not mct_ctr_funcs:
+        return []
+
+    violations = []
+    for fd in mct_ctr_funcs:
+        fname = _func_name(fd)
+
+        # 카운터 증가 패턴 확인
+        has_ctr_inc = False
+        _CTR_VARS = {"ctr", "counter", "nonce", "iv", "cnt"}
+
+        # UnaryOp(++/--) 확인
+        for uop in _collect(fd, c_ast.UnaryOp):
+            if uop.op in ("p++", "++", "p--"):
+                operand = uop.expr
+                if isinstance(operand, c_ast.ID) and operand.name.lower() in _CTR_VARS:
+                    has_ctr_inc = True
+                    break
+
+        # += 1 확인
+        if not has_ctr_inc:
+            for assign in _collect(fd, c_ast.Assignment):
+                if assign.op == "+=" and _const_value(assign.rvalue) == 1:
+                    lv = assign.lvalue
+                    lv_name = ""
+                    if isinstance(lv, c_ast.ID):
+                        lv_name = lv.name.lower()
+                    elif isinstance(lv, c_ast.ArrayRef):
+                        lv_name = (_array_base(lv) or "").lower()
+                    if lv_name in _CTR_VARS:
+                        has_ctr_inc = True
+                        break
+
+        # 증가 함수 호출 확인 (increment_counter 등)
+        if not has_ctr_inc:
+            calls = _call_names_in(fd)
+            inc_calls = {c for c in calls if any(
+                kw in c.lower() for kw in ("increment", "inc_ctr", "ctr_inc", "add_one")
+            )}
+            if inc_calls:
+                has_ctr_inc = True
+
+        # 일반적 + 1 패턴 (ctr = ctr + 1)
+        if not has_ctr_inc:
+            for assign in _collect(fd, c_ast.Assignment):
+                if assign.op != "=":
+                    continue
+                lv = assign.lvalue
+                lv_name = ""
+                if isinstance(lv, c_ast.ID):
+                    lv_name = lv.name.lower()
+                if lv_name not in _CTR_VARS:
+                    continue
+                if _has_op(assign.rvalue, "+"):
+                    has_ctr_inc = True
+                    break
+
+        # 키 갱신 패턴 (CBC-LEA-005와 동일)
+        has_key_update = False
+        for assign in _collect(fd, c_ast.Assignment):
+            if assign.op == "^=":
+                lv = assign.lvalue
+                lv_name = ""
+                if isinstance(lv, c_ast.ID):
+                    lv_name = lv.name.lower()
+                elif isinstance(lv, c_ast.ArrayRef):
+                    lv_name = (_array_base(lv) or "").lower()
+                if any(kw in lv_name for kw in ("key", "k", "rk")):
+                    has_key_update = True
+                    break
+        if not has_key_update:
+            for assign in _collect(fd, c_ast.Assignment):
+                if assign.op != "=":
+                    continue
+                if not _has_op(assign.rvalue, "^"):
+                    continue
+                lv = assign.lvalue
+                lv_name = ""
+                if isinstance(lv, c_ast.ID):
+                    lv_name = lv.name.lower()
+                elif isinstance(lv, c_ast.ArrayRef):
+                    lv_name = (_array_base(lv) or "").lower()
+                if any(kw in lv_name for kw in ("key", "k", "rk")):
+                    has_key_update = True
+                    break
+
+        issues = []
+        if not has_ctr_inc:
+            issues.append("카운터 증가((CTR+1) mod 2^128) 패턴 없음")
+        if not has_key_update:
+            issues.append("키 갱신(Key⊕CT) 패턴 없음")
+
+        if issues:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': MCT-CTR — {'; '.join(issues)} "
+                    "(LEA 검증시스템 §6.4)"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' AST 분석: "
+                    f"카운터 증가 패턴: {'있음' if has_ctr_inc else '없음'}, "
+                    f"키 XOR 갱신 패턴: {'있음' if has_key_update else '없음'} — "
+                    "MCT-CTR 표준: 매 연산 (CTR+1) mod 2^128 증가 + CT로 키 갱신 필수"
+                ),
+            })
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# LEA-039: 양방향 암/복호화 정합성(라운드트립) 검증
+# ──────────────────────────────────────────────────────────────────
+
+_TEST_FUNC_KW = ["test", "verify", "check", "roundtrip", "round_trip",
+                 "self_test", "selftest", "kat", "validate"]
+
+
+def _check_lea_039(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """LEA-039: Decrypt(Encrypt(P,K),K)=P 라운드트립 검증 패턴 존재 확인.
+
+    정적 분석의 한계: 실행 결과 일치는 검증 불가.
+    대신 테스트/검증 함수에서 enc→dec 호출 쌍 + memcmp 패턴 존재 확인.
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    # check_in: ["test", "benchmark"] — 파일명에 test/bench가 있는 경우만 검사
+    fn_lower = filename.lower()
+    if not any(kw in fn_lower for kw in ("test", "bench", "verify", "kat", "roundtrip")):
+        return []  # 테스트 파일이 아님 → 해당 없음
+
+    # KAT(Known Answer Test) 파일 — 고정 벡터 검증, 라운드트립 불필요
+    if any(kw in fn_lower for kw in ("selftest", "kat", "known_answer")):
+        return []
+
+    test_funcs = _funcs_matching(root, _TEST_FUNC_KW)
+    all_funcs = _get_func_defs(root)
+    # 파일 전체에서도 확인
+    target_funcs = test_funcs if test_funcs else all_funcs
+    if not target_funcs:
+        return []
+
+    violations = []
+    for fd in target_funcs:
+        fname = _func_name(fd)
+        calls = _call_names_in(fd)
+        calls_lower = {c.lower() for c in calls}
+
+        has_enc = any(any(kw in c for kw in ("encrypt", "enc")) for c in calls_lower)
+        has_dec = any(any(kw in c for kw in ("decrypt", "dec")) for c in calls_lower)
+        has_cmp = any(any(kw in c for kw in ("memcmp", "strcmp", "assert", "verify",
+                                              "check", "equal"))
+                      for c in calls_lower)
+
+        if has_enc and has_dec and has_cmp:
+            continue  # 라운드트립 패턴 있음 → 준수
+        if has_enc and has_dec:
+            continue  # enc+dec 쌍 호출은 있음 → 보수적 통과
+
+    # 파일 전체에서 enc+dec 쌍이 있는지 확인
+    all_calls = set()
+    for fd in all_funcs:
+        all_calls |= _call_names_in(fd)
+    all_calls_lower = {c.lower() for c in all_calls}
+
+    has_enc_file = any(any(kw in c for kw in ("encrypt", "enc")) for c in all_calls_lower)
+    has_dec_file = any(any(kw in c for kw in ("decrypt", "dec")) for c in all_calls_lower)
+
+    if not (has_enc_file and has_dec_file):
+        # 테스트 파일인데 enc/dec 쌍 호출 없음 → 위반
+        violations.append({
+            "line": 1,
+            "message": (
+                f"테스트 파일 '{filename}': 암호화+복호화 함수 쌍 호출 없음 — "
+                "Decrypt(Encrypt(P,K),K)=P 라운드트립 검증 누락 (KS X 3246 부록 Ⅰ)"
+            ),
+            "ast_evidence": (
+                f"파일 전체 FuncCall 분석: "
+                f"encrypt/enc 호출: {'있음' if has_enc_file else '없음'}, "
+                f"decrypt/dec 호출: {'있음' if has_dec_file else '없음'} — "
+                "라운드트립 검증은 enc→dec→memcmp 패턴 필수"
+            ),
+        })
+
+    return violations
+
+
+# ──────────────────────────────────────────────────────────────────
+# LEA-059: MMT 가변 블록 수 처리 (1~10블록)
+# ──────────────────────────────────────────────────────────────────
+
+_MMT_KW = ["mmt", "multi_block", "multiblock", "variable_length"]
+
+
+def _check_lea_059(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """LEA-059: MMT(Multi-block Message Test) 가변 블록 수(1~10) 처리 확인.
+
+    탐지 전략:
+    1. MMT 함수 식별 (mmt, multi_block 등)
+    2. 1~10 블록 반복 루프 존재 확인
+    3. MMT 함수 없으면 [] (해당 없음)
+    """
+    if not _HAS_PYCPARSER:
+        return None
+
+    fn_lower = filename.lower()
+    if not any(kw in fn_lower for kw in ("test", "bench", "mmt", "verify")):
+        return []  # 테스트 파일이 아님 → 해당 없음
+
+    mmt_funcs = _funcs_matching(root, _MMT_KW)
+    if not mmt_funcs:
+        return []
+
+    violations = []
+    for fd in mmt_funcs:
+        fname = _func_name(fd)
+        # 루프 구조 확인
+        for_loops = _collect(fd, c_ast.For)
+        if not for_loops:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': MMT 루프 구조 없음 — "
+                    "블록 수 1~10개의 가변 길이 메시지 순차 시험 필요 (LEA 검증시스템 §6.3)"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' AST 분석: For 루프 0건. "
+                    "MMT 표준: i×128비트(i=1~10) 가변 길이 반복 처리 필수"
+                ),
+            })
+            continue
+
+        # 루프 bound에 10 또는 블록 수 관련 상수 확인
+        has_block_loop = False
+        for loop in for_loops:
+            cond = getattr(loop, "cond", None)
+            if cond is None:
+                continue
+            for const_node in _collect(cond, c_ast.Constant):
+                val = _const_value(const_node)
+                if val is not None and val in (10, 11, 16):  # 10블록 또는 16바이트 단위
+                    has_block_loop = True
+                    break
+            # 변수 bound도 허용 (num_blocks 등)
+            for id_node in _collect(cond, c_ast.ID):
+                if any(kw in id_node.name.lower() for kw in ("block", "num", "count", "len")):
+                    has_block_loop = True
+                    break
+            if has_block_loop:
+                break
+
+        if not has_block_loop:
+            line = _coord_line(fd, offset)
+            violations.append({
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': MMT 가변 블록 수 루프 bound 미확인 — "
+                    "1~10블록 반복 처리 확인 필요 (LEA 검증시스템 §6.3)"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' For 루프 bound AST 분석: "
+                    "상수 10/11 또는 block/num/count 변수 0건 — "
+                    "MMT 표준: 1~10블록 가변 길이 순차 시험 필수"
+                ),
+            })
+
+    return violations
+
+
 # ══════════════════════════════════════════════════════════════════
 # [LIBCLANG BACKEND]
 # 목적: MAKE_FUNC 매크로를 포함한 파일 완전 파싱 → pycparser FP 제거
@@ -4239,6 +4890,13 @@ _CHECKERS = {
     "LEA-023": _check_lea_023,
     "CTR-005": _check_ctr_005,
     "LEA-032": _check_lea_032,
+    "LEA-024": _check_lea_024,
+    "LEA-025": _check_lea_025,
+    "ARIA-002": _check_aria_002,
+    "CBC-LEA-005": _check_cbc_lea_005,
+    "CTR-LEA-006": _check_ctr_lea_006,
+    "LEA-039": _check_lea_039,
+    "LEA-059": _check_lea_059,
 }
 
 

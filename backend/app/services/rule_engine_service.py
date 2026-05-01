@@ -1373,7 +1373,7 @@ def run_rule_engine(
             # 예외: KAT(Known-Answer Test) 벡터 파일(_0tv, _kat 포함)은 정당한 테스트 벡터 포함 → COM도 스킵
             _rule_category = rule.get("category", "")
             _fname_lower = (item.get("display") or "").lower()
-            _is_kat_file = any(kw in _fname_lower for kw in ("_0tv", "0tv_", "_kat", "kat_"))
+            _is_kat_file = any(kw in _fname_lower for kw in ("_0tv", "0tv_", "_kat", "kat_", "selftest"))
             _is_security_always = (_rule_category == "common") and not _is_kat_file
             if ft in ("test", "data", "benchmark", "wrapper") and not _is_security_always:
                 # missing 규칙: 패턴 부재 = 위반인데, 비구현 파일에는 해당 없음
