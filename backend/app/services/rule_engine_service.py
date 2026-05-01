@@ -295,6 +295,8 @@ _COM003_FP_KEYWORDS = frozenset({
     "permut", "weight", "mds", "mask", "pad", "crc",
     "example", "dummy", "bench", "ref_",
     "reduction", "gf_mul", "galois", "ghash_table",
+    # SHA 라운드 상수 (FIPS 180-4 공개 상수 — 하드코딩 키 아님)
+    "sha256_k", "sha512_k", "sha1_k", "sha_k", "sha256", "sha512",
 })
 
 

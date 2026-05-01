@@ -1144,16 +1144,28 @@ def _check_lea_040(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 # CBC / ECB 구조 검사 (CBC-001, CBC-002, ECB-002)
 # ──────────────────────────────────────────────────────────────────
 
-_CBC_ENC_KW = ["cbc_enc", "cbc_encrypt"]
-_CBC_DEC_KW = ["cbc_dec", "cbc_decrypt"]
+_CBC_ENC_KW = ["cbc_enc", "cbc_encrypt", "_cbc"]
+_CBC_DEC_KW = ["cbc_dec", "cbc_decrypt", "_cbc"]
 _ECB_ENC_KW = ["ecb_enc", "ecb_encrypt", "ecb_cipher"]
+
+# XOR 함수 호출로 인정할 함수명 키워드 (xor_array, xor_block, bitxor 등)
+_XOR_CALL_KW = ("xor",)
+
+
+def _has_xor(node) -> bool:
+    """^ 연산자 또는 xor 함수 호출(xor_array, xor_block 등) 존재 확인."""
+    if _has_op(node, "^"):
+        return True
+    calls = _call_names_in(node)
+    return any(kw in c.lower() for kw in _XOR_CALL_KW for c in calls)
 
 
 def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """CBC-001: CBC 암호화 연쇄 수식 — XOR(^) 연산 존재 확인.
 
     CT[i] = ENC(Key, PT[i] ⊕ CT[i-1]) 수식에서 XOR 없으면 위반.
-    cbc_enc/cbc_encrypt 이름을 가진 함수 본문에서 ^ 연산자 부재 시 위반.
+    cbc_enc/cbc_encrypt/_cbc 이름을 가진 함수 본문에서 ^ 연산자 또는
+    xor_array/xor_block 등 XOR 함수 호출 부재 시 위반.
     """
     if not _HAS_PYCPARSER:
         return []
@@ -1174,7 +1186,7 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
             continue
         real_funcs_checked += 1
         fname = _func_name(fd)
-        if not _has_op(fd, "^"):
+        if not _has_xor(fd):
             line = _coord_line(fd, offset)
             violations.append({
                 "line": line,
@@ -1183,7 +1195,7 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     "CT[i]=ENC(PT[i]⊕CT[i-1]) 수식의 XOR 연쇄 누락"
                 ),
                 "ast_evidence": (
-                    f"함수 '{fname}' 전체 AST 탐색: BinaryOp('^') 0건. "
+                    f"함수 '{fname}' 전체 AST 탐색: BinaryOp('^') 0건, xor 함수 호출 0건. "
                     "CBC 암호화 수식: CT[i] = ENC(Key, PT[i]⊕CT[i-1]) — "
                     "이전 암호문 블록과 XOR 연쇄(chaining)가 CBC의 핵심"
                 ),
@@ -1218,7 +1230,7 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
             continue
         real_funcs_checked += 1
         fname = _func_name(fd)
-        if not _has_op(fd, "^"):
+        if not _has_xor(fd):
             line = _coord_line(fd, offset)
             violations.append({
                 "line": line,
@@ -1227,7 +1239,7 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                     "PT[i]=DEC(CT[i])⊕CT[i-1] 수식의 XOR 연쇄 누락"
                 ),
                 "ast_evidence": (
-                    f"함수 '{fname}' 전체 AST 탐색: BinaryOp('^') 0건. "
+                    f"함수 '{fname}' 전체 AST 탐색: BinaryOp('^') 0건, xor 함수 호출 0건. "
                     "CBC 복호화 수식: PT[i] = DEC(Key, CT[i]) ⊕ CT[i-1] — "
                     "이전 암호문 블록과 XOR이 CBC 복호화의 필수 역연산"
                 ),
