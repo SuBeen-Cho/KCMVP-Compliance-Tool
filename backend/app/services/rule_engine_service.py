@@ -49,6 +49,9 @@ _NON_LEA_ALGO_FNAME_KW = frozenset({
     "hmac",
     "drbg",
     "mpz", "gfp", "gf2n",
+    # 통합 cipher API 파일: LEA 전용이 아닌 멀티알고리즘 래퍼
+    # cipher.c/cipher.h에는 LEA 전용 모드/API 규칙이 적용되지 않아야 함
+    "cipher",
 })
 
 
