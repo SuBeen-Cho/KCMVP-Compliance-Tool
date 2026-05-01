@@ -2801,6 +2801,13 @@ def _check_lea_025(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     if not _HAS_PYCPARSER:
         return None
 
+    # 비-LEA 알고리즘 파일 제외 (utils.c에 set_decimal_len이 "set_dec" 키워드와 오매칭 방지)
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac", "hash",
+                        "utils", "pbkdf", "kbkdf", "gfp", "gf2n")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
     _DEC_KEY_KW = ["dec_key", "set_dec", "decrypt_key", "dec_schedule",
                    "lea_set_dec", "inv_key", "deckey"]
     dec_funcs = _funcs_matching(root, _DEC_KEY_KW)
@@ -4574,6 +4581,13 @@ def _lc_check_lea_023(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
 
 def _lc_check_lea_034(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     """LEA-034: 복호화 함수 내 모듈러 뺄셈 확인 (libclang)."""
+    # 비-LEA 알고리즘 파일 제외 (pycparser 버전과 동일 로직)
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac", "hash",
+                        "utils", "pbkdf", "kbkdf", "gfp", "gf2n")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
     dec_funcs = [fd for fd in _lc_funcs_matching(tu, _DEC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
     if not dec_funcs:

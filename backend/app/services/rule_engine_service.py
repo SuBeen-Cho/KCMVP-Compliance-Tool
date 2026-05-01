@@ -553,6 +553,7 @@ def _apply_rule_to_file(
             "scope": "file",
             "message": rule.get("name") or "잔존 정보 제거 필요",
             "severity": rule.get("severity", "high"),
+            "pattern_type": rule.get("pattern_type", "missing"),
             "confidence": "확정",
             "snippet": snippet,
             "key_lifecycle": key_lifecycle,
@@ -1341,12 +1342,12 @@ def run_rule_engine(
         pattern      = rule.get("pattern")
 
         # ── 알고리즘 스코프 사전 필터 ─────────────────────────────────────────
-        # LEA 전용 규칙(algorithm 카테고리, 또는 모드명에 LEA 포함)은
-        # LEA 관련 파일에만 적용한다. 이를 위해 활성 파일 캐시를 미리 필터링.
-        # COM-* (common 카테고리)과 일반 모드 규칙은 모든 파일 적용 유지.
+        # algorithm 카테고리(LEA 전용) 및 mode 카테고리 규칙은 LEA 관련 파일에만 적용.
+        # LEA 관련 파일 = "lea" 포함 OR 비-LEA 알고리즘 키워드(aria, sha, drbg 등) 미포함.
+        # COM-* (common 카테고리)은 모든 파일에 적용 유지.
         _rc = rule.get("category", "")
         _ri = rule.get("id", "").upper()
-        _is_lea_scoped = _rc == "algorithm" or (_rc == "mode" and "LEA" in _ri)
+        _is_lea_scoped = _rc == "algorithm" or _rc == "mode"
         if _is_lea_scoped:
             _active_cache = [
                 item for item in file_cache
