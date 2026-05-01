@@ -33,9 +33,9 @@ rules:
     name: "CMAC 보조키(K1, K2) 사용 후 제로화"
     pattern_type: missing
     scope: project
-    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory|lea_memset"
+    pattern: "memset_s|SecureZeroMemory|explicit_bzero|RtlSecureZeroMemory|lea_memset|smc_zeroize"
     severity: medium
-    description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
+    description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s, smc_zeroize 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
     kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
 
   - id: CMAC-LEA-001

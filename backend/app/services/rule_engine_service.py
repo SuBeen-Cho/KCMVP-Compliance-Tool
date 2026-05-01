@@ -1014,12 +1014,18 @@ def _apply_project_missing_rule(
     files: List[Dict[str, Any]],
     job_root: Path,
     symbol_graph: Optional[Dict[str, Any]] = None,
+    search_files: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
     pattern_type == missing 이면서 scope == project 인 룰 처리.
     - "어디든 한 번이라도 존재하면 통과"
     - "어디에도 없으면 프로젝트 레벨 위반 1건만 생성"
     COM-001 은 AST/symbol_graph 를 우선 사용하고, 나머지는 정규식만 사용한다.
+
+    search_files: 패턴 존재 여부를 검색할 파일 목록.
+                  None이면 files와 동일. 스코프 필터로 제외된 파일(cipher.c 등)이
+                  실제로는 패턴을 구현하고 있어 FP를 방지해야 할 때 file_cache 전체를 전달한다.
+                  위반 귀속(대표 파일 선택)은 항상 files(_active_cache)로 한다.
     """
     pattern = rule.get("pattern")
     if not pattern:
@@ -1027,6 +1033,8 @@ def _apply_project_missing_rule(
 
     rule_id = rule.get("id")
     found = False
+    # 존재 여부 검색 대상: search_files 우선, 없으면 files
+    _search = search_files if search_files is not None else files
 
     # COM-005: 파일별 lea_online API 호출 순서 체크 (init→update→final)
     if rule_id == "COM-005":
@@ -1210,7 +1218,7 @@ def _apply_project_missing_rule(
         if required_all:
             all_content = "\n".join(
                 item.get("stripped_content") or item.get("content") or ""
-                for item in files
+                for item in _search
                 if item.get("file_type", "impl") == "impl"
             )
             missing_ptns = []
@@ -1229,7 +1237,7 @@ def _apply_project_missing_rule(
             except re.error:
                 compiled = None
             if compiled:
-                for item in files:
+                for item in _search:
                     content = item.get("stripped_content") or item.get("content") or ""
                     if re.search(compiled, content):
                         found = True
@@ -1400,7 +1408,13 @@ def run_rule_engine(
                         return  # 이 모드를 구현하는 파일 없음 → missing 규칙 skip
 
             violations.extend(
-                _apply_project_missing_rule(rule, _active_cache, job_root, symbol_graph=symbol_graph)
+                _apply_project_missing_rule(
+                    rule, _active_cache, job_root,
+                    symbol_graph=symbol_graph,
+                    # 존재 여부 검색은 전체 file_cache(cipher.c 등 포함)로,
+                    # 위반 귀속은 _active_cache(LEA 관련 파일)로 분리
+                    search_files=file_cache,
+                )
             )
             return
 

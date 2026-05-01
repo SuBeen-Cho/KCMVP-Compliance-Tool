@@ -245,6 +245,12 @@ def _funcs_matching(root, keywords: List[str]) -> List[Any]:
             if any(kw in _func_name(fd).lower() for kw in keywords)]
 
 
+_MODE_UTILITY_FUNC_SUFFIXES = (
+    "_increase", "_increment", "_incr", "_counter_inc",
+    "_reset", "_prepare",
+)
+
+
 def _has_unchecked_real_mode_funcs(
     all_funcs: list, checked_funcs: list, mode_kw: str, filename: str = ""
 ) -> bool:
@@ -257,6 +263,7 @@ def _has_unchecked_real_mode_funcs(
     KISA LEA 같은 정상 코드에서 FP를 방지하기 위해:
     - 단순 dispatcher(thin wrapper)는 제외
     - 벤치마크/테스트 함수는 제외
+    - 카운터 증가/초기화 등 유틸리티 함수는 제외 (ctr_increase 등)
     - 모드 키워드가 함수명에 포함된 실제 구현 함수만 카운트
     """
     kw = mode_kw.lower()
@@ -270,6 +277,9 @@ def _has_unchecked_real_mode_funcs(
             continue
         # 함수명에 모드 키워드가 있는 경우만 (파일명만으로는 부족)
         if kw not in fname:
+            continue
+        # 유틸리티 함수(카운터 증가, 초기화 등)는 암호화 구현이 아님 → 제외
+        if any(fname.endswith(suf) for suf in _MODE_UTILITY_FUNC_SUFFIXES):
             continue
         if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd):
             return True
@@ -3630,6 +3640,9 @@ def _lc_has_unchecked_real_mode_funcs(
         if kw not in fname and kw not in filename.lower():
             continue
         if kw not in fname:
+            continue
+        # 유틸리티 함수(카운터 증가, 초기화 등)는 암호화 구현이 아님 → 제외
+        if any(fname.endswith(suf) for suf in _MODE_UTILITY_FUNC_SUFFIXES):
             continue
         if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd):
             return True
