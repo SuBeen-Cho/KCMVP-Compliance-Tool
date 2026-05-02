@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-05-02T19:39:38.084563",
+  "timestamp": "2026-05-02T20:00:02.133244",
   "use_l3": false,
-  "total_elapsed_s": 13.9,
+  "total_elapsed_s": 14.6,
   "code_results": [
     {
       "set_name": "세트 1",
@@ -148,15 +148,11 @@
         },
         {
           "file": "violations_cbc.c",
-          "rule_id": "CBC-004"
+          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
           "rule_id": "CBC-LEA-005"
-        },
-        {
-          "file": "violations_cbc.c",
-          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
@@ -172,19 +168,15 @@
         },
         {
           "file": "violations_cbc.c",
+          "rule_id": "COM-004"
+        },
+        {
+          "file": "violations_cbc.c",
           "rule_id": "CBC-002"
         },
         {
           "file": "violations_cbc.c",
-          "rule_id": "COM-004"
-        },
-        {
-          "file": "violations_com.c",
-          "rule_id": "COM-002"
-        },
-        {
-          "file": "violations_com.c",
-          "rule_id": "COM-005"
+          "rule_id": "CBC-004"
         },
         {
           "file": "violations_com.c",
@@ -192,23 +184,19 @@
         },
         {
           "file": "violations_com.c",
-          "rule_id": "COM-003"
+          "rule_id": "COM-002"
         },
         {
           "file": "violations_com.c",
           "rule_id": "COM-004"
         },
         {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-001"
+          "file": "violations_com.c",
+          "rule_id": "COM-005"
         },
         {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-004"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-006"
+          "file": "violations_com.c",
+          "rule_id": "COM-003"
         },
         {
           "file": "violations_ctr.c",
@@ -220,11 +208,11 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-001"
+          "rule_id": "CTR-002"
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "COM-003"
+          "rule_id": "CTR-LEA-006"
         },
         {
           "file": "violations_ctr.c",
@@ -232,7 +220,19 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-002"
+          "rule_id": "CTR-LEA-001"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-001"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-004"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "COM-003"
         }
       ],
       "fn_list": [],
@@ -256,9 +256,9 @@
         "total_s": 1.1
       },
       "detected": {
-        "violations_cbc.c": "{'CBC-001', 'CBC-004', 'COM-002', 'CBC-LEA-005', 'CBC-003', 'COM-001', 'CBC-061', 'CBC-005', 'CBC-002', 'COM-003', 'COM-004'}",
-        "violations_com.c": "{'COM-002', 'COM-005', 'COM-001', 'COM-003', 'COM-004'}",
-        "violations_ctr.c": "{'CTR-004', 'COM-003', 'COM-002', 'CTR-LEA-006', 'CTR-003', 'COM-001', 'CTR-LEA-001', 'CTR-001', 'COM-004', 'CTR-002'}"
+        "violations_cbc.c": "{'CBC-001', 'CBC-003', 'CBC-LEA-005', 'COM-001', 'COM-002', 'CBC-061', 'CBC-005', 'COM-004', 'CBC-002', 'CBC-004', 'COM-003'}",
+        "violations_com.c": "{'COM-001', 'COM-002', 'COM-004', 'COM-005', 'COM-003'}",
+        "violations_ctr.c": "{'CTR-003', 'COM-001', 'COM-002', 'CTR-002', 'CTR-LEA-006', 'COM-004', 'CTR-LEA-001', 'CTR-001', 'CTR-004', 'COM-003'}"
       }
     },
     {
@@ -406,15 +406,11 @@
         },
         {
           "file": "violations_cbc.c",
-          "rule_id": "CBC-004"
+          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
           "rule_id": "CBC-LEA-005"
-        },
-        {
-          "file": "violations_cbc.c",
-          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
@@ -430,23 +426,15 @@
         },
         {
           "file": "violations_cbc.c",
+          "rule_id": "COM-004"
+        },
+        {
+          "file": "violations_cbc.c",
           "rule_id": "CBC-002"
         },
         {
           "file": "violations_cbc.c",
-          "rule_id": "COM-004"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-001"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-004"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-006"
+          "rule_id": "CBC-004"
         },
         {
           "file": "violations_ctr.c",
@@ -458,11 +446,11 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-001"
+          "rule_id": "CTR-002"
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "COM-003"
+          "rule_id": "CTR-LEA-006"
         },
         {
           "file": "violations_ctr.c",
@@ -470,7 +458,23 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-002"
+          "rule_id": "CTR-LEA-001"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-001"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-004"
+        },
+        {
+          "file": "violations_ctr.c",
+          "rule_id": "COM-003"
+        },
+        {
+          "file": "violations_lea.c",
+          "rule_id": "LEA-003"
         },
         {
           "file": "violations_lea.c",
@@ -478,7 +482,7 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-011"
+          "rule_id": "LEA-005"
         },
         {
           "file": "violations_lea.c",
@@ -486,11 +490,7 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-005"
-        },
-        {
-          "file": "violations_lea.c",
-          "rule_id": "LEA-003"
+          "rule_id": "LEA-011"
         }
       ],
       "fn_list": [],
@@ -509,19 +509,7 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-002"
-        },
-        {
-          "file": "violations_lea.c",
-          "rule_id": "LEA-013"
-        },
-        {
-          "file": "violations_lea.c",
-          "rule_id": "LEA-027"
-        },
-        {
-          "file": "violations_lea.c",
-          "rule_id": "LEA-037"
+          "rule_id": "LEA-001"
         },
         {
           "file": "violations_lea.c",
@@ -529,7 +517,15 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-033"
+          "rule_id": "LEA-027"
+        },
+        {
+          "file": "violations_lea.c",
+          "rule_id": "LEA-002"
+        },
+        {
+          "file": "violations_lea.c",
+          "rule_id": "LEA-020"
         },
         {
           "file": "violations_lea.c",
@@ -537,15 +533,15 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-044"
+          "rule_id": "LEA-013"
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-026"
+          "rule_id": "LEA-028"
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-009"
+          "rule_id": "COM-002"
         },
         {
           "file": "violations_lea.c",
@@ -557,11 +553,15 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-020"
+          "rule_id": "LEA-061"
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-001"
+          "rule_id": "LEA-033"
+        },
+        {
+          "file": "violations_lea.c",
+          "rule_id": "LEA-019"
         },
         {
           "file": "violations_lea.c",
@@ -569,11 +569,7 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-061"
-        },
-        {
-          "file": "violations_lea.c",
-          "rule_id": "COM-002"
+          "rule_id": "LEA-044"
         },
         {
           "file": "violations_lea.c",
@@ -581,11 +577,15 @@
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-028"
+          "rule_id": "LEA-009"
         },
         {
           "file": "violations_lea.c",
-          "rule_id": "LEA-019"
+          "rule_id": "LEA-037"
+        },
+        {
+          "file": "violations_lea.c",
+          "rule_id": "LEA-026"
         }
       ],
       "timing": {
@@ -594,9 +594,9 @@
         "total_s": 2.2
       },
       "detected": {
-        "violations_cbc.c": "{'CBC-001', 'CBC-004', 'COM-002', 'CBC-LEA-005', 'CBC-003', 'COM-001', 'CBC-061', 'CBC-005', 'CBC-002', 'COM-003', 'COM-004'}",
-        "violations_ctr.c": "{'CTR-004', 'COM-003', 'COM-002', 'CTR-LEA-006', 'CTR-003', 'COM-001', 'CTR-LEA-001', 'CTR-001', 'COM-004', 'CTR-002'}",
-        "violations_lea.c": "{'LEA-013', 'LEA-027', 'LEA-037', 'LEA-044', 'LEA-026', 'LEA-009', 'LEA-029', 'LEA-032', 'LEA-011', 'LEA-061', 'LEA-036', 'LEA-003', 'LEA-019', 'LEA-002', 'LEA-008', 'LEA-033', 'LEA-053', 'LEA-005', 'LEA-016', 'LEA-018', 'LEA-020', 'LEA-001', 'LEA-017', 'COM-002', 'LEA-028'}"
+        "violations_cbc.c": "{'CBC-001', 'CBC-003', 'CBC-LEA-005', 'COM-001', 'COM-002', 'CBC-061', 'CBC-005', 'COM-004', 'CBC-002', 'CBC-004', 'COM-003'}",
+        "violations_ctr.c": "{'CTR-003', 'COM-001', 'COM-002', 'CTR-002', 'CTR-LEA-006', 'COM-004', 'CTR-LEA-001', 'CTR-001', 'CTR-004', 'COM-003'}",
+        "violations_lea.c": "{'LEA-027', 'LEA-002', 'LEA-020', 'LEA-011', 'LEA-013', 'LEA-018', 'LEA-016', 'LEA-061', 'LEA-019', 'LEA-005', 'LEA-017', 'LEA-026', 'LEA-001', 'LEA-008', 'LEA-053', 'LEA-028', 'LEA-003', 'COM-002', 'LEA-029', 'LEA-033', 'LEA-032', 'LEA-044', 'LEA-036', 'LEA-009', 'LEA-037'}"
       }
     },
     {
@@ -749,15 +749,11 @@
         },
         {
           "file": "violations_cbc.c",
-          "rule_id": "CBC-004"
+          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
           "rule_id": "CBC-LEA-005"
-        },
-        {
-          "file": "violations_cbc.c",
-          "rule_id": "CBC-003"
         },
         {
           "file": "violations_cbc.c",
@@ -776,16 +772,8 @@
           "rule_id": "CBC-002"
         },
         {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-001"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-004"
-        },
-        {
-          "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-006"
+          "file": "violations_cbc.c",
+          "rule_id": "CBC-004"
         },
         {
           "file": "violations_ctr.c",
@@ -797,11 +785,11 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-LEA-001"
+          "rule_id": "CTR-002"
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "COM-003"
+          "rule_id": "CTR-LEA-006"
         },
         {
           "file": "violations_ctr.c",
@@ -809,27 +797,19 @@
         },
         {
           "file": "violations_ctr.c",
-          "rule_id": "CTR-002"
+          "rule_id": "CTR-LEA-001"
         },
         {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-018"
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-001"
         },
         {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-029"
+          "file": "violations_ctr.c",
+          "rule_id": "CTR-004"
         },
         {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-040"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-027"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-031"
+          "file": "violations_ctr.c",
+          "rule_id": "COM-003"
         },
         {
           "file": "violations_lea_round.c",
@@ -837,7 +817,27 @@
         },
         {
           "file": "violations_lea_round.c",
+          "rule_id": "LEA-029"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-018"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-040"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-031"
+        },
+        {
+          "file": "violations_lea_round.c",
           "rule_id": "LEA-019"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-027"
         }
       ],
       "fn_list": [],
@@ -860,63 +860,7 @@
         },
         {
           "file": "violations_lea_round.c",
-          "rule_id": "LEA-016"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-002"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-013"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-020"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-022"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-032"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-011"
-        },
-        {
-          "file": "violations_lea_round.c",
           "rule_id": "LEA-038"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-061"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-017"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-033"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-053"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-036"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-044"
-        },
-        {
-          "file": "violations_lea_round.c",
-          "rule_id": "LEA-026"
         },
         {
           "file": "violations_lea_round.c",
@@ -924,18 +868,74 @@
         },
         {
           "file": "violations_lea_round.c",
+          "rule_id": "LEA-016"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-061"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-033"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-002"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-032"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-020"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-044"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-036"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-026"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-017"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-053"
+        },
+        {
+          "file": "violations_lea_round.c",
           "rule_id": "LEA-009"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-011"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-013"
+        },
+        {
+          "file": "violations_lea_round.c",
+          "rule_id": "LEA-022"
         }
       ],
       "timing": {
-        "l1_s": 2.0,
+        "l1_s": 2.2,
         "l3_s": 0.0,
-        "total_s": 2.0
+        "total_s": 2.2
       },
       "detected": {
-        "violations_cbc.c": "{'CBC-001', 'CBC-004', 'COM-002', 'CBC-LEA-005', 'CBC-003', 'COM-001', 'CBC-061', 'CBC-005', 'CBC-002', 'COM-003'}",
-        "violations_ctr.c": "{'CBC-001', 'CTR-004', 'COM-003', 'COM-002', 'CTR-LEA-006', 'CTR-003', 'COM-001', 'CTR-LEA-001', 'CTR-001', 'COM-004', 'CTR-002'}",
-        "violations_lea_round.c": "{'LEA-013', 'LEA-027', 'LEA-044', 'LEA-031', 'LEA-026', 'LEA-009', 'LEA-029', 'LEA-040', 'LEA-032', 'LEA-011', 'LEA-038', 'LEA-061', 'LEA-036', 'LEA-019', 'LEA-002', 'LEA-022', 'LEA-043', 'LEA-033', 'LEA-053', 'LEA-016', 'LEA-018', 'LEA-020', 'LEA-017', 'LEA-028'}"
+        "violations_cbc.c": "{'CBC-001', 'CBC-003', 'CBC-LEA-005', 'COM-001', 'COM-002', 'CBC-061', 'CBC-005', 'CBC-002', 'CBC-004', 'COM-003'}",
+        "violations_ctr.c": "{'CBC-001', 'CTR-003', 'COM-001', 'COM-002', 'CTR-002', 'CTR-LEA-006', 'COM-004', 'CTR-LEA-001', 'CTR-001', 'CTR-004', 'COM-003'}",
+        "violations_lea_round.c": "{'LEA-038', 'LEA-027', 'LEA-002', 'LEA-020', 'LEA-011', 'LEA-013', 'LEA-022', 'LEA-018', 'LEA-016', 'LEA-061', 'LEA-019', 'LEA-017', 'LEA-026', 'LEA-053', 'LEA-028', 'LEA-029', 'LEA-040', 'LEA-043', 'LEA-031', 'LEA-033', 'LEA-032', 'LEA-044', 'LEA-036', 'LEA-009'}"
       }
     },
     {
@@ -1074,14 +1074,6 @@
       "tp_list": [
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-023"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-022"
-        },
-        {
-          "file": "lea_block.c",
           "rule_id": "LEA-034"
         },
         {
@@ -1093,20 +1085,12 @@
           "rule_id": "LEA-035"
         },
         {
-          "file": "lea_cbc.c",
-          "rule_id": "CBC-004"
+          "file": "lea_block.c",
+          "rule_id": "LEA-023"
         },
         {
-          "file": "lea_cbc.c",
-          "rule_id": "LEA-046"
-        },
-        {
-          "file": "lea_cbc.c",
-          "rule_id": "CBC-LEA-005"
-        },
-        {
-          "file": "lea_cbc.c",
-          "rule_id": "LEA-047"
+          "file": "lea_block.c",
+          "rule_id": "LEA-022"
         },
         {
           "file": "lea_cbc.c",
@@ -1114,11 +1098,23 @@
         },
         {
           "file": "lea_cbc.c",
-          "rule_id": "COM-001"
+          "rule_id": "LEA-046"
         },
         {
           "file": "lea_cbc.c",
           "rule_id": "LEA-056"
+        },
+        {
+          "file": "lea_cbc.c",
+          "rule_id": "CBC-LEA-005"
+        },
+        {
+          "file": "lea_cbc.c",
+          "rule_id": "COM-001"
+        },
+        {
+          "file": "lea_cbc.c",
+          "rule_id": "LEA-047"
         },
         {
           "file": "lea_cbc.c",
@@ -1126,23 +1122,19 @@
         },
         {
           "file": "lea_cbc.c",
+          "rule_id": "COM-004"
+        },
+        {
+          "file": "lea_cbc.c",
           "rule_id": "LEA-057"
         },
         {
           "file": "lea_cbc.c",
-          "rule_id": "COM-004"
+          "rule_id": "CBC-004"
         },
         {
           "file": "lea_ctr.c",
-          "rule_id": "CTR-004"
-        },
-        {
-          "file": "lea_ctr.c",
-          "rule_id": "LEA-047"
-        },
-        {
-          "file": "lea_ctr.c",
-          "rule_id": "CTR-LEA-006"
+          "rule_id": "LEA-046"
         },
         {
           "file": "lea_ctr.c",
@@ -1154,22 +1146,26 @@
         },
         {
           "file": "lea_ctr.c",
-          "rule_id": "LEA-046"
+          "rule_id": "CTR-002"
         },
         {
           "file": "lea_ctr.c",
-          "rule_id": "CTR-002"
+          "rule_id": "CTR-LEA-006"
+        },
+        {
+          "file": "lea_ctr.c",
+          "rule_id": "LEA-047"
+        },
+        {
+          "file": "lea_ctr.c",
+          "rule_id": "CTR-004"
         }
       ],
       "fn_list": [],
       "fp_list": [
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-002"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-028"
+          "rule_id": "LEA-045"
         },
         {
           "file": "lea_block.c",
@@ -1177,35 +1173,7 @@
         },
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-006"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-044"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-025"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-031"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-009"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-016"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-029"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-018"
+          "rule_id": "LEA-002"
         },
         {
           "file": "lea_block.c",
@@ -1217,27 +1185,19 @@
         },
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-045"
+          "rule_id": "LEA-006"
         },
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-061"
+          "rule_id": "LEA-028"
         },
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-017"
+          "rule_id": "LEA-029"
         },
         {
           "file": "lea_block.c",
-          "rule_id": "LEA-030"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-010"
-        },
-        {
-          "file": "lea_block.c",
-          "rule_id": "LEA-036"
+          "rule_id": "LEA-018"
         },
         {
           "file": "lea_block.c",
@@ -1245,7 +1205,47 @@
         },
         {
           "file": "lea_block.c",
+          "rule_id": "LEA-016"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-061"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-031"
+        },
+        {
+          "file": "lea_block.c",
           "rule_id": "LEA-019"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-025"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-044"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-036"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-017"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-009"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-010"
+        },
+        {
+          "file": "lea_block.c",
+          "rule_id": "LEA-030"
         },
         {
           "file": "lea_cbc.c",
@@ -1253,19 +1253,23 @@
         },
         {
           "file": "lea_cbc.c",
-          "rule_id": "LEA-032"
+          "rule_id": "COM-002"
         },
         {
           "file": "lea_cbc.c",
-          "rule_id": "COM-002"
+          "rule_id": "CBC-002"
+        },
+        {
+          "file": "lea_cbc.c",
+          "rule_id": "LEA-032"
         },
         {
           "file": "lea_cbc.c",
           "rule_id": "LEA-010"
         },
         {
-          "file": "lea_cbc.c",
-          "rule_id": "CBC-002"
+          "file": "lea_ctr.c",
+          "rule_id": "LEA-040"
         },
         {
           "file": "lea_ctr.c",
@@ -1277,22 +1281,18 @@
         },
         {
           "file": "lea_ctr.c",
-          "rule_id": "LEA-040"
-        },
-        {
-          "file": "lea_ctr.c",
           "rule_id": "COM-002"
         }
       ],
       "timing": {
-        "l1_s": 5.7,
+        "l1_s": 5.9,
         "l3_s": 0.0,
-        "total_s": 5.7
+        "total_s": 5.9
       },
       "detected": {
-        "lea_cbc.c": "{'CBC-001', 'CBC-005', 'LEA-032', 'CBC-004', 'COM-002', 'CBC-LEA-005', 'LEA-047', 'LEA-010', 'CBC-003', 'COM-001', 'LEA-056', 'LEA-046', 'CBC-002', 'LEA-057', 'COM-004'}",
-        "lea_ctr.c": "{'LEA-040', 'LEA-032', 'CTR-004', 'COM-002', 'LEA-047', 'CTR-LEA-006', 'CTR-003', 'COM-001', 'LEA-056', 'LEA-046', 'CTR-002'}",
-        "lea_block.c": "{'LEA-027', 'LEA-021', 'LEA-034', 'LEA-044', 'LEA-031', 'LEA-009', 'LEA-029', 'LEA-061', 'LEA-030', 'LEA-036', 'LEA-019', 'LEA-002', 'LEA-022', 'LEA-006', 'LEA-043', 'LEA-025', 'LEA-016', 'LEA-018', 'LEA-020', 'LEA-023', 'LEA-024', 'LEA-045', 'LEA-017', 'LEA-010', 'LEA-035', 'LEA-028'}"
+        "lea_cbc.c": "{'CBC-001', 'CBC-003', 'LEA-046', 'LEA-056', 'CBC-LEA-005', 'COM-001', 'COM-002', 'CBC-004', 'LEA-047', 'CBC-005', 'COM-004', 'LEA-057', 'CBC-002', 'LEA-032', 'LEA-010'}",
+        "lea_ctr.c": "{'LEA-046', 'LEA-056', 'CTR-003', 'COM-001', 'COM-002', 'LEA-040', 'LEA-047', 'CTR-002', 'CTR-LEA-006', 'LEA-032', 'CTR-004'}",
+        "lea_block.c": "{'LEA-035', 'LEA-027', 'LEA-002', 'LEA-020', 'LEA-024', 'LEA-022', 'LEA-018', 'LEA-016', 'LEA-061', 'LEA-019', 'LEA-017', 'LEA-045', 'LEA-034', 'LEA-006', 'LEA-028', 'LEA-029', 'LEA-043', 'LEA-021', 'LEA-031', 'LEA-025', 'LEA-044', 'LEA-036', 'LEA-009', 'LEA-023', 'LEA-010', 'LEA-030'}"
       }
     }
   ],
@@ -1443,7 +1443,7 @@
         }
       ],
       "timing": {
-        "prep_s": 0.6,
+        "prep_s": 0.7,
         "l1_s": 0.1,
         "l3_s": 0.0,
         "total_s": 0.7
@@ -1606,7 +1606,7 @@
         "prep_s": 0.3,
         "l1_s": 0.1,
         "l3_s": 0.0,
-        "total_s": 0.3
+        "total_s": 0.4
       }
     },
     {
@@ -1886,9 +1886,9 @@
       ],
       "timing": {
         "prep_s": 0.8,
-        "l1_s": 0.7,
+        "l1_s": 0.8,
         "l3_s": 0.0,
-        "total_s": 1.5
+        "total_s": 1.6
       }
     }
   ],

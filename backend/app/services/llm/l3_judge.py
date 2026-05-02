@@ -52,6 +52,16 @@ _PRECONDITION_PATTERNS: Dict[str, re.Pattern] = {
     # MCT 규칙: 파일에 MCT 구현 필요
     "LEA-047": re.compile(r"(mct|MCT|monte.?carlo|MonteCarloTest)", re.IGNORECASE),
     "LEA-057": re.compile(r"(mct|MCT|monte.?carlo|MonteCarloTest)", re.IGNORECASE),
+    # Phase 4 추가: 구현 맥락 전제조건
+    # 레지스터 스필링: 성능 최적화 코드에만 적용 (register 키워드 또는 volatile 사용 없으면 FP)
+    "LEA-043": re.compile(r"(register\s|volatile\s|__attribute__|restrict\b|inline\s)", re.IGNORECASE),
+    # 라운드 역함수: 복호화 함수가 있는 파일에만 적용
+    "LEA-035": re.compile(r"(decrypt|decode|inv.*round|reverse.*round|decipher)", re.IGNORECASE),
+    "LEA-034": re.compile(r"(decrypt|decode|lea_dec|block_dec|inv.*cipher)", re.IGNORECASE),
+    # 라운드트립 검증: 테스트 코드에만 유의미
+    "LEA-039": re.compile(r"(test|assert|verify|check|compare|memcmp)", re.IGNORECASE),
+    # COM-001 보완: 키를 직접 처리하는 파일에만 엄격 적용
+    "COM-001": re.compile(r"(key|rk|mk|iv|nonce|secret|cipher|encrypt|decrypt|drbg|kdf)", re.IGNORECASE),
 }
 
 
