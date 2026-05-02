@@ -3819,6 +3819,9 @@ def com003_libclang_is_fp(content: str, filename: str, line_num: int, var_name: 
 
 def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
     """CBC-001: CBC 암호화 XOR 연쇄 확인 (libclang)."""
+    # P3-A1: KISA 템플릿 파일(MAKE_FUNC 매크로) — 실제 함수 본체 없음 → pycparser fallback
+    if any(kw in (filename or "").lower() for kw in ("t_generic", "_generic")):
+        return None
     all_funcs = _lc_func_defs(tu)
     enc_funcs = [fd for fd in _lc_funcs_matching(tu, _CBC_ENC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
@@ -3848,6 +3851,9 @@ def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
 
 def _lc_check_cbc_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
     """CBC-002: CBC 복호화 XOR 연쇄 확인 (libclang)."""
+    # P3-A1: KISA 템플릿 파일(MAKE_FUNC 매크로) — 실제 함수 본체 없음 → pycparser fallback
+    if any(kw in (filename or "").lower() for kw in ("t_generic", "_generic")):
+        return None
     all_funcs = _lc_func_defs(tu)
     dec_funcs = [fd for fd in _lc_funcs_matching(tu, _CBC_DEC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
@@ -4453,6 +4459,9 @@ def _lc_check_lea_003(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
 
 def _lc_check_lea_010(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     """LEA-010: 키 스케줄 ARX 구조 확인 (libclang)."""
+    # P3-A1: lea_set_key_generic.c — 제네릭 키 스케줄 템플릿, 매크로 전개 전 → FP 유발
+    if "_generic" in (filename or "").lower():
+        return []
     _DERIVED_KEY_EXCL = {"cmac", "subkey", "gcm", "ghash", "gmac"}
     key_funcs = [
         fd for fd in _lc_funcs_matching(tu, _KEY_KW)
@@ -4564,11 +4573,14 @@ def _lc_check_lea_022(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
         if not t_refs:
             continue
         has_mod8 = False
+        idx_var_names: set = set()
         for ref in t_refs:
             kids = list(ref.get_children())
             if len(kids) < 2:
                 continue
-            for bop in kids[-1].walk_preorder():
+            idx_node = kids[-1]
+            # 직접 %8 탐지
+            for bop in idx_node.walk_preorder():
                 if bop.kind == _ci.CursorKind.BINARY_OPERATOR and _lc_op_str(bop) == "%":
                     bkids = list(bop.get_children())
                     if len(bkids) >= 2 and _lc_const_int(bkids[-1]) == 8:
@@ -4576,6 +4588,22 @@ def _lc_check_lea_022(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
                         break
             if has_mod8:
                 break
+            # P3-A2: idx가 변수인 경우 변수명 수집 (역추적용)
+            for _c in idx_node.walk_preorder():
+                if _c.kind == _ci.CursorKind.DECL_REF_EXPR:
+                    idx_var_names.add(_c.spelling)
+        # P3-A2: idx 변수 선언/대입에서 %8 탐지 (T[idx] 패턴)
+        if not has_mod8 and idx_var_names:
+            for var_decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL):
+                if var_decl.spelling in idx_var_names:
+                    for bop_inner in _lc_collect(var_decl, _ci.CursorKind.BINARY_OPERATOR):
+                        if _lc_op_str(bop_inner) == "%":
+                            bkids = list(bop_inner.get_children())
+                            if len(bkids) >= 2 and _lc_const_int(bkids[-1]) == 8:
+                                has_mod8 = True
+                                break
+                if has_mod8:
+                    break
         if not has_mod8:
             violations.append({
                 "line": _lc_line(fd),
@@ -4710,6 +4738,19 @@ def _lc_check_lea_021(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
             outer_name = ""
             if outer_base.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR:
                 outer_name = (_lc_array_base(outer_base) or "").lower()
+                # P3-A2: ctx->rk[i][j] 패턴 — MEMBER_REF_EXPR 처리
+                if not outer_name:
+                    ib_kids = list(outer_base.get_children())
+                    if ib_kids:
+                        _fc = ib_kids[0]
+                        if _fc.kind == _ci.CursorKind.MEMBER_REF_EXPR:
+                            outer_name = (_fc.spelling or "").lower()
+                        elif _fc.kind in (_ci.CursorKind.IMPLICIT_CAST_EXPR,
+                                          _ci.CursorKind.UNEXPOSED_EXPR):
+                            for _c in _fc.walk_preorder():
+                                if _c.kind == _ci.CursorKind.MEMBER_REF_EXPR:
+                                    outer_name = (_c.spelling or "").lower()
+                                    break
             elif outer_base.kind == _ci.CursorKind.DECL_REF_EXPR:
                 outer_name = outer_base.spelling.lower()
             if outer_name and ("rk" in outer_name or "round" in outer_name):
@@ -4730,13 +4771,14 @@ def _lc_check_lea_021(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     return violations
 
 
-def _lc_check_lea_023(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
+def _lc_check_lea_023(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
     """LEA-023: 복호화 라운드키 역순 관계 확인 (libclang)."""
     _DEC_KEY_KW = ["dec_key", "set_dec", "decrypt_key", "dec_schedule",
                    "lea_set_dec", "inv_key", "deckey"]
     dec_funcs = _lc_funcs_matching(tu, _DEC_KEY_KW)
     if not dec_funcs:
-        return []
+        # P3-A2: 복호화 키 스케줄 함수 없음 → fallback으로 넘김 (None)
+        return None
     violations = []
     for fd in dec_funcs:
         fname = _lc_func_name(fd)
@@ -4811,40 +4853,39 @@ def _lc_check_lea_034(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
 def _lc_check_lea_031(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     """LEA-031: 라운드 함수 XOR→ADD 순서 확인 (libclang).
 
-    ADD(+) 의 직계 자식이 XOR(^) 이어야 올바른 순서.
+    올바른 순서: (X^rk) + (X^rk) → ADD의 자식이 XOR
+    위반 순서:   X ^ (rk + (X^rk)) → XOR의 자식이 ADD
     """
     enc_funcs = [fd for fd in _lc_funcs_matching(tu, _ENC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
     if not enc_funcs:
         return []
-    type_aliases = (sg or {}).get("type_aliases") or {}
-    _INT32_TYPES = {"unsigned int", "unsigned long", "uint32_t", "u32",
-                    "uint_least32_t", "uint_fast32_t"}
     wrong_order: List[int] = []
 
     for fd in enc_funcs:
         if _lc_is_macro_based_round_func(fd):
             continue
+        # P3-A2 수정: ADD(+)가 XOR(^)의 직계 자식 → 잘못된 순서 (위반)
         for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
-            if _lc_op_str(bop) != "^":
+            if _lc_op_str(bop) != "+":
                 continue
-            # ^가 + 의 직계 자식인지 확인
+            # +가 ^ 의 직계 자식인지 확인
             for parent in fd.walk_preorder():
                 if parent.kind != _ci.CursorKind.BINARY_OPERATOR:
                     continue
-                if _lc_op_str(parent) != "+":
+                if _lc_op_str(parent) != "^":
                     continue
                 pkids = list(parent.get_children())
                 if any(k.location == bop.location for k in pkids):
-                    # ADD의 자식이 XOR → 잘못된 순서
+                    # XOR의 자식이 ADD → 잘못된 순서 (위반)
                     ln = _lc_line(parent)
                     if ln not in wrong_order:
                         wrong_order.append(ln)
                     break
 
     return [{"line": ln,
-             "message": "라운드 함수: ADD(+) 내부에 XOR(^) — 올바른 순서는 XOR 후 ADD",
-             "ast_evidence": "BINARY_OPERATOR('+', child=BINARY_OPERATOR('^')). libclang."}
+             "message": "라운드 함수: XOR(^) 내부에 ADD(+) — 위반 순서: X^(rk+(X^rk)), 올바른 순서: (X^rk)+(X^rk)",
+             "ast_evidence": "BINARY_OPERATOR('^', child=BINARY_OPERATOR('+')). libclang."}
             for ln in wrong_order[:3]]  # 최대 3건
 
 
@@ -5036,35 +5077,35 @@ def _lc_check_lea_032(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
 
 _LC_CHECKERS = {
     # 검증된 libclang 체커만 포함 (세트 코드 FN 유발 또는 KISA FP 유발 체커 제외)
-    # "CBC-001":  _lc_check_cbc_001,  # lea_t_generic.c FP → pycparser 사용
-    # "CBC-002":  _lc_check_cbc_002,  # lea_t_generic.c FP → pycparser 사용
+    "CBC-001":  _lc_check_cbc_001,  # P3-A1: lea_t_generic.c 제외 조건 추가됨
+    "CBC-002":  _lc_check_cbc_002,  # P3-A1: lea_t_generic.c 제외 조건 추가됨
     "ECB-002":  _lc_check_ecb_002,
     "GCM-001":  _lc_check_gcm_001,
     "CCM-001":  _lc_check_ccm_001,
     "CTR-001":  _lc_check_ctr_001,
-    # "CTR-002":  _lc_check_ctr_002,  # 세트 4 FN 유발 → pycparser 사용
+    # "CTR-002":  _lc_check_ctr_002,  # FN유발: s_tls_ctr _CTR_NAMES_RE 미매칭 → fallback 차단
     "CTR-005":  _lc_check_ctr_005,
     "OFB-002":  _lc_check_ofb_002,
     "CFB-002":  _lc_check_cfb_002,
     "LEA-005":  _lc_check_lea_005,
-    # "LEA-006":  _lc_check_lea_006,  # KISA FP → pycparser 사용
-    # "LEA-010":  _lc_check_lea_010,  # KISA lea_set_key_generic FP → pycparser 사용
+    # "LEA-006":  _lc_check_lea_006,  # FP 4건 증가 확인 → 비활성화 유지
+    "LEA-010":  _lc_check_lea_010,  # P3-A1: lea_set_key_generic.c 제외 조건 추가됨
     "LEA-014":  _lc_check_lea_014,
     "LEA-015":  _lc_check_lea_015,
-    # "LEA-021":  _lc_check_lea_021,  # 세트 4 FN 유발 → pycparser 사용
-    # "LEA-022":  _lc_check_lea_022,  # 세트 4 FN 유발 → pycparser 사용
-    # "LEA-023":  _lc_check_lea_023,  # 세트 4 FN 유발 → pycparser 사용
+    # "LEA-021":  _lc_check_lea_021,  # FN유발: ctx->rk[] 탐지 실패 → fallback 차단
+    # "LEA-022":  _lc_check_lea_022,  # FN유발: T[idx] 탐지 실패 → fallback 차단
+    # "LEA-023":  _lc_check_lea_023,  # FP +2건 유발 → 비활성화 (pycparser fallback 직접 실행)
     "LEA-030":  _lc_check_lea_030,
-    # "LEA-031":  _lc_check_lea_031,  # 세트 2/3 FN 유발 → pycparser 사용
+    # "LEA-031":  _lc_check_lea_031,  # FN유발: 위반 패턴 탐지 실패 → fallback 차단
     "LEA-032":  _lc_check_lea_032,
     "LEA-034":  _lc_check_lea_034,
     "LEA-035":  _lc_check_lea_035,
-    # "LEA-040":  _lc_check_lea_040,  # 세트 3 FN 유발 → pycparser 사용
+    # "LEA-040":  _lc_check_lea_040,  # FN유발: <=ctx->rounds 탐지 실패 → fallback 차단
     "LEA-042":  _lc_check_lea_042,
     "LEA-043":  _lc_check_lea_043,
     "LEA-046":  _lc_check_lea_046,
     "LEA-056":  _lc_check_lea_046,
-    # "LEA-057":  _lc_check_lea_057,  # 세트 4 FN 유발 → pycparser 사용
+    # "LEA-057":  _lc_check_lea_057,  # FN유발: MCT 키 갱신 탐지 실패 → fallback 차단
     "LEA-047":  _lc_check_lea_047,
     "CMAC-001": _lc_check_cmac_001,
     "LEA-003":  _lc_check_lea_003,  # 전략 7/8 추가로 세트 2 FN 해결 — libclang 활성화
