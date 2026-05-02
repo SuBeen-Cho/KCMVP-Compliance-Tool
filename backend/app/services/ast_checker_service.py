@@ -410,6 +410,25 @@ def _find_array_swaps(root, lhs_idx: int, rhs_idx: int) -> List[int]:
     return result
 
 
+def _find_cross_array_assigns(root, lhs_idx: int, rhs_idx: int) -> List[int]:
+    """array_a[lhs] = array_b[rhs] 형태 대입문의 줄 번호 목록 (배열 이름 달라도 OK).
+
+    smart-crypto 처럼 입력/출력 배열이 분리된 구현 지원:
+      tmp[3] = tmp_input[0]  →  lhs_idx=3, rhs_idx=0 → 탐지
+    """
+    result: List[int] = []
+    for assign in _collect(root, c_ast.Assignment):
+        if assign.op != "=":
+            continue
+        lv, rv = assign.lvalue, assign.rvalue
+        if not (_is_array_subscript(lv, lhs_idx) and _is_array_subscript(rv, rhs_idx)):
+            continue
+        coord = getattr(assign, "coord", None)
+        if coord:
+            result.append(getattr(coord, "line", 0))
+    return result
+
+
 def _find_var_swaps(root, var_names: List[str]) -> bool:
     """var[i] = var[j] 형태 아닌, 로컬 변수 간 단순 대입 존재.
     예: x3 = x0, t = x0 후 x3 = t 등.
@@ -760,8 +779,10 @@ def _check_lea_030(root, offset: int, filename: str) -> Optional[List[Dict[str, 
 
     has_limitation = False  # 매크로/인라인 회전으로 분석 제한 여부
     for fd in enc_funcs:
-        # 배열 인덱스 패턴: array[3] = array[0] — 제한 조건보다 먼저 확인
-        if _find_array_swaps(fd, lhs_idx=3, rhs_idx=0):
+        # 배열 인덱스 패턴: array[3] = array[0] (같은 배열) 또는
+        # array_a[3] = array_b[0] (입출력 배열 분리, smart-crypto 스타일) — 제한 조건보다 먼저 확인
+        if _find_array_swaps(fd, lhs_idx=3, rhs_idx=0) or \
+                _find_cross_array_assigns(fd, lhs_idx=3, rhs_idx=0):
             return []
 
         # 로컬 변수 패턴 (x0/x1/x2/x3) — 파라미터 + 함수 내 로컬 선언 모두 검사
@@ -1015,7 +1036,9 @@ def _check_lea_035(root, offset: int, filename: str) -> Optional[List[Dict[str, 
     has_limitation = False
     for fd in dec_funcs:
         # 스왑 패턴 확인을 제한 조건보다 먼저 수행
-        if _find_array_swaps(fd, lhs_idx=0, rhs_idx=3):
+        # array[0] = array[3] (같은 배열) 또는 array_a[0] = array_b[3] (분리된 배열) 모두 탐지
+        if _find_array_swaps(fd, lhs_idx=0, rhs_idx=3) or \
+                _find_cross_array_assigns(fd, lhs_idx=0, rhs_idx=3):
             return []
 
         # 로컬 변수 패턴 (x0/x1/x2/x3) — 파라미터 + 함수 내 로컬 선언
@@ -2202,7 +2225,10 @@ def _check_lea_043(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """
     if not _HAS_PYCPARSER:
         return []
-    enc_funcs = _funcs_matching(root, _ENC_KW + _DEC_KW)
+    # 키 스케줄 함수(set_key, key_init 등)는 중간 상태 배열 사용이 정상 — 제외
+    _KEY_SCHED_KW_043 = frozenset({"key", "sched", "schedule", "set_key", "setkey", "expand", "keygen", "init_key"})
+    enc_funcs = [fd for fd in _funcs_matching(root, _ENC_KW + _DEC_KW)
+                 if not any(kw in _func_name(fd).lower() for kw in _KEY_SCHED_KW_043)]
     if not enc_funcs:
         return []
 
@@ -3619,6 +3645,25 @@ def _lc_array_index_int(cursor) -> Optional[int]:
     return _lc_const_int(children[-1])
 
 
+def _lc_unwrap_expr(cursor):
+    """UNEXPOSED_EXPR / IMPLICIT_CAST_EXPR 래퍼를 최대 4단계까지 벗겨 실제 표현식 반환.
+
+    libclang이 단순 배열 참조(tmp_input[0])도 UNEXPOSED_EXPR로 감싸는 경우가 있어
+    ARRAY_SUBSCRIPT_EXPR 탐지 전에 반드시 벗겨야 한다.
+    """
+    _WRAP_KINDS = (_ci.CursorKind.UNEXPOSED_EXPR, _ci.CursorKind.IMPLICIT_CAST_EXPR)
+    for _ in range(4):
+        if cursor.kind in _WRAP_KINDS:
+            children = list(cursor.get_children())
+            if children:
+                cursor = children[0]
+            else:
+                break
+        else:
+            break
+    return cursor
+
+
 def _lc_has_static_array(func_cursor) -> Optional[str]:
     """함수 내 static 배열 선언 이름 반환. 없으면 None."""
     for decl in _lc_collect(func_cursor, _ci.CursorKind.VAR_DECL):
@@ -4005,7 +4050,11 @@ def _lc_check_lea_042(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
 
 def _lc_check_lea_043(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
     """LEA-043: 암호화 함수 내 중간 상태 스택 배열 탐지 (libclang)."""
-    enc_funcs = _lc_funcs_matching(tu, _ENC_KW + _DEC_KW)
+    # 키 스케줄 함수(set_key, key_init 등)는 T[] 배열 사용이 정상 → 제외
+    _KEY_SCHED_KW_043 = frozenset({"key", "sched", "schedule", "set_key", "setkey",
+                                   "expand", "keygen", "init_key"})
+    enc_funcs = [fd for fd in _lc_funcs_matching(tu, _ENC_KW + _DEC_KW)
+                 if not any(kw in (_lc_func_name(fd) or "").lower() for kw in _KEY_SCHED_KW_043)]
     if not enc_funcs:
         return []
     _STATE_NAMES = {"X", "T", "S", "STATE", "BLK", "BLOCK", "W"}
@@ -4041,26 +4090,34 @@ def _lc_check_lea_030(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
     핵심 이점: MAKE_FUNC 매크로로 정의된 함수 본체를 완전히 파싱하여
     pycparser 실패 시 발생하던 7건 FP 제거.
     """
+    # 비-LEA 알고리즘 파일 제외 (None 반환 시 fallback FP 유발 방지)
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac", "hash",
+                        "utils", "pbkdf", "kbkdf", "gfp", "gf2n", "cipher", "drbg")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
     enc_funcs = [fd for fd in _lc_funcs_matching(tu, _ENC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
     if not enc_funcs:
         return []
 
     for fd in enc_funcs:
-        # 배열 인덱스 패턴: array[3] = array[0]
+        # 배열 인덱스 패턴: array[3] = array[0] (같은 배열) 또는
+        # array_a[3] = array_b[0] (입출력 배열 분리, smart-crypto 스타일)
+        # libclang이 단순 배열 참조도 UNEXPOSED_EXPR로 감싸므로 반드시 unwrap 필요
         for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
             if _lc_op_str(bop) != "=":
                 continue
             kids = list(bop.get_children())
             if len(kids) < 2:
                 continue
-            lv, rv = kids[0], kids[1]
+            lv, rv = kids[0], _lc_unwrap_expr(kids[1])
             if (lv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR and
                     rv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR):
                 if (_lc_array_index_int(lv) == 3 and
-                        _lc_array_index_int(rv) == 0 and
-                        _lc_array_base(lv) == _lc_array_base(rv)):
-                    return []  # 스왑 패턴 발견 → 준수
+                        _lc_array_index_int(rv) == 0):
+                    return []  # 스왑 패턴 발견 → 준수 (같은/다른 배열 무관)
 
         # 로컬 변수 스왑: x3 = x0 등
         local_vars: List[str] = []
@@ -4090,26 +4147,33 @@ def _lc_check_lea_030(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
 
 def _lc_check_lea_035(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
     """LEA-035: 복호화 역 워드 스왑 패턴 확인 — libclang 버전."""
+    # 비-LEA 알고리즘 파일 제외 (aria.c/cipher.c 등에서 None 반환 시 fallback FP 유발 방지)
+    _NON_LEA_FILE_KW = ("aria", "ecdsa", "kcdsa", "ec_", "ecc", "sha", "hmac", "hash",
+                        "utils", "pbkdf", "kbkdf", "gfp", "gf2n", "cipher", "drbg")
+    fn_lower = filename.lower()
+    if any(kw in fn_lower for kw in _NON_LEA_FILE_KW) and "lea" not in fn_lower:
+        return []
+
     dec_funcs = [fd for fd in _lc_funcs_matching(tu, _DEC_KW)
                  if not _lc_is_thin_wrapper(fd) and not _lc_is_benchmark_func(fd)]
     if not dec_funcs:
         return []
 
     for fd in dec_funcs:
-        # 배열 인덱스 패턴: array[0] = array[3]
+        # 배열 인덱스 패턴: array[0] = array[3] (같은 배열) 또는
+        # array_a[0] = array_b[3] (입출력 배열 분리) — UNEXPOSED_EXPR unwrap 포함
         for bop in _lc_collect(fd, _ci.CursorKind.BINARY_OPERATOR):
             if _lc_op_str(bop) != "=":
                 continue
             kids = list(bop.get_children())
             if len(kids) < 2:
                 continue
-            lv, rv = kids[0], kids[1]
+            lv, rv = kids[0], _lc_unwrap_expr(kids[1])
             if (lv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR and
                     rv.kind == _ci.CursorKind.ARRAY_SUBSCRIPT_EXPR):
                 if (_lc_array_index_int(lv) == 0 and
-                        _lc_array_index_int(rv) == 3 and
-                        _lc_array_base(lv) == _lc_array_base(rv)):
-                    return []
+                        _lc_array_index_int(rv) == 3):
+                    return []  # 역 스왑 패턴 발견 → 준수 (같은/다른 배열 무관)
 
         # 로컬 변수 스왑
         local_vars: List[str] = []
@@ -4623,6 +4687,11 @@ def _lc_check_lea_034(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
             continue
         fname = _lc_func_name(fd)
         if not _lc_has_op(fd, "-"):
+            # 다른 복호화 함수를 호출하는 위임 래퍼는 직접 뺄셈 없어도 정상
+            # 예: lea_decrypt() → lea_dec() 패턴
+            calls = {(c.spelling or "").lower() for c in _lc_collect(fd, _ci.CursorKind.CALL_EXPR)}
+            if any(any(kw in c for kw in _DEC_KW) for c in calls):
+                continue  # 다른 복호화 함수 위임 → 직접 뺄셈 불필요
             violations.append({
                 "line": _lc_line(fd),
                 "message": (f"함수 '{fname}': 복호화 함수에 모듈러 뺄셈(-) 미발견 — "

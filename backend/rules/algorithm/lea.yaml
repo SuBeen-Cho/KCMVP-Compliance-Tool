@@ -71,7 +71,7 @@ rules:
   algorithm: LEA
   name: 내부 상태 변수(Xi) 4개 워드 배열 구성
   pattern_type: missing
-  pattern: (?i)(uint32_t|unsigned\s+int)\s+(X|state|block)\s*\[\s*4\s*\]
+  pattern: (?i)(uint32_t|unsigned\s+int)\s+(X|state|block|tmp|tmp_input|t\b|w\b|word)\s*\[\s*4\s*\]
   severity: medium
   description: 라운드 중간값 Xi는 반드시 4개의 32비트 워드 배열로 구성되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -129,7 +129,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄 내부 상태 T 초기화(T ← K)
   pattern_type: missing
-  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K|\*\s*\(\s*(unsigned\s+int|uint32_t)\s*\*\s*\)\s*\w*mk|rk\s*\[\s*\d+\s*\]\s*=\s*ROL\s*\(
+  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K|\*\s*\(\s*(unsigned\s+int|uint32_t)\s*\*\s*\)\s*\w*mk|rk\s*\[\s*\d+\s*\]\s*=\s*ROL\s*\(|CONCAT_UINT32\s*\(\s*T
   severity: high
   description: 키 스케줄링 시작 시 내부 상태 T는 마스터키 K로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -157,7 +157,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL1 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL1\b|ROL\s*\([^,]+,\s*1\s*\)|<<\s*1\s*\)\s*\|\s*\(.*>>\s*31|_lrotl\s*\([^,]+,\s*1\s*\))
+  pattern: (?i)(\bROL1\b|ROL\s*\([^,]+,\s*1\s*\)|ROTL\s*\(\s*1\s*,|<<\s*1\s*\)\s*\|\s*\(.*>>\s*31|_lrotl\s*\([^,]+,\s*1\s*\))
   severity: high
   description: 키 스케줄 T[0] 업데이트 수식 내 1비트 좌측 순환이동(ROL1) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -167,7 +167,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL3 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL3\b|ROL\s*\([^,]+,\s*3\s*\)|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29|_lrotl\s*\([^,]+,\s*3\s*\))
+  pattern: (?i)(\bROL3\b|ROL\s*\([^,]+,\s*3\s*\)|ROTL\s*\(\s*3\s*,|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29|_lrotl\s*\([^,]+,\s*3\s*\))
   severity: high
   description: 키 스케줄 T[1] 업데이트 수식 내 3비트 좌측 순환이동(ROL3) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -177,7 +177,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL6 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL6\b|ROL\s*\([^,]+,\s*6\s*\)|<<\s*6\s*\)\s*\|\s*\(.*>>\s*26|_lrotl\s*\([^,]+,\s*6\s*\))
+  pattern: (?i)(\bROL6\b|ROL\s*\([^,]+,\s*6\s*\)|ROTL\s*\(\s*6\s*,|<<\s*6\s*\)\s*\|\s*\(.*>>\s*26|_lrotl\s*\([^,]+,\s*6\s*\))
   severity: high
   description: 키 스케줄 T[2] 업데이트 수식 내 6비트 좌측 순환이동(ROL6) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -187,7 +187,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄링 ROL11 회전 연산 검증
   pattern_type: missing
-  pattern: (?i)(\bROL11\b|ROL\s*\([^,]+,\s*11\s*\)|<<\s*11\s*\)\s*\|\s*\(.*>>\s*21|_lrotl\s*\([^,]+,\s*11\s*\))
+  pattern: (?i)(\bROL11\b|ROL\s*\([^,]+,\s*11\s*\)|ROTL\s*\(\s*11\s*,|<<\s*11\s*\)\s*\|\s*\(.*>>\s*21|_lrotl\s*\([^,]+,\s*11\s*\))
   severity: high
   description: 키 스케줄 T[3] 업데이트 수식 내 11비트 좌측 순환이동(ROL11) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -197,7 +197,7 @@ rules:
   algorithm: LEA
   name: LEA-192/256 전용 ROL13/17 회전 검증
   pattern_type: missing
-  pattern: (?i)(\bROL13\b|\bROL17\b|ROL\s*\([^,]+,\s*1[37]\s*\)|<<\s*13\s*\)\s*\|\s*\(.*>>\s*19|<<\s*17\s*\)\s*\|\s*\(.*>>\s*15|_lrotl\s*\([^,]+,\s*1[37]\s*\))
+  pattern: (?i)(\bROL13\b|\bROL17\b|ROL\s*\([^,]+,\s*1[37]\s*\)|ROTL\s*\(\s*1[37]\s*,|<<\s*13\s*\)\s*\|\s*\(.*>>\s*19|<<\s*17\s*\)\s*\|\s*\(.*>>\s*15|_lrotl\s*\([^,]+,\s*1[37]\s*\))
   severity: high
   description: LEA-192/256 키 스케줄에서 추가되는 ROL13(T[4]) 및 ROL17(T[5]) 연산 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 4, 5
@@ -252,7 +252,7 @@ rules:
   algorithm: LEA
   name: 암호화 초기화 단계(X0 ← P) 준수
   pattern_type: missing
-  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P|X[0-3]\s*=\s*(loadU32|load32|ntohl|bswap)|state\s*\[\s*[0-3]\s*\]\s*=.*\bpt\b)
+  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P|X[0-3]\s*=\s*(loadU32|load32|ntohl|bswap)|state\s*\[\s*[0-3]\s*\]\s*=.*\bpt\b|CONCAT_UINT32\s*\(\s*\w+\s*\[)
   severity: high
   description: 암호화 시작 시 내부 상태 변수 X0는 평문 P로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
@@ -262,7 +262,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROL9 적용
   pattern_type: missing
-  pattern: (?i)(\bROL9\b|ROL\s*\([^,]+,\s*9\b|<<\s*9\s*\)\s*\|\s*\(.*>>\s*23)
+  pattern: (?i)(\bROL9\b|ROL\s*\([^,]+,\s*9\b|ROTL\s*\(\s*9\s*,|<<\s*9\s*\)\s*\|\s*\(.*>>\s*23)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[0] 계산 시 9비트 좌측 순환이동(ROL9) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -272,7 +272,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROR5 적용
   pattern_type: missing
-  pattern: (?i)(\bROR5\b|ROR\s*\([^,]+,\s*5\b|>>\s*5\s*\)\s*\|\s*\(.*<<\s*27)
+  pattern: (?i)(\bROR5\b|ROR\s*\([^,]+,\s*5\b|ROTR\s*\(\s*5\s*,|>>\s*5\s*\)\s*\|\s*\(.*<<\s*27)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[1] 계산 시 5비트 우측 순환이동(ROR5) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -282,7 +282,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROR3 적용
   pattern_type: missing
-  pattern: (?i)(\bROR3\b|ROR\s*\([^,]+,\s*3\b|>>\s*3\s*\)\s*\|\s*\(.*<<\s*29)
+  pattern: (?i)(\bROR3\b|ROR\s*\([^,]+,\s*3\b|ROTR\s*\(\s*3\s*,|>>\s*3\s*\)\s*\|\s*\(.*<<\s*29)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[2] 계산 시 3비트 우측 순환이동(ROR3) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -319,7 +319,7 @@ rules:
   algorithm: LEA
   name: 복호화 초기화 단계(X0 ← C) 준수
   pattern_type: missing
-  pattern: (?i)(\bX\s*=\s*C\b|\bX0\s*=\s*C\b|memcpy\s*\(\s*X\s*,\s*C|loadU32\s*\(_ct\b)
+  pattern: (?i)(\bX\s*=\s*C\b|\bX0\s*=\s*C\b|memcpy\s*\(\s*X\s*,\s*C|loadU32\s*\(_ct\b|CONCAT_UINT32\s*\(\s*\w+\s*\[)
   severity: high
   description: 복호화 시작 시 내부 상태 변수 X0는 암호문 C로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 6
@@ -347,7 +347,7 @@ rules:
   algorithm: LEA
   name: 복호화 라운드 역 회전(ROR9, ROL5, ROL3) 검증
   pattern_type: missing
-  pattern: (?i)(\bROR9\b|ROR\s*\([^,]+,\s*9\b|>>\s*9\s*\)\s*\|\s*\(.*<<\s*23)|(\bROL5\b|ROL\s*\([^,]+,\s*5\b|<<\s*5\s*\)\s*\|\s*\(.*>>\s*27)|(\bROL3\b|ROL\s*\([^,]+,\s*3\b|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
+  pattern: (?i)(\bROR9\b|ROR\s*\([^,]+,\s*9\b|ROTR\s*\(\s*9\s*,|>>\s*9\s*\)\s*\|\s*\(.*<<\s*23)|(\bROL5\b|ROL\s*\([^,]+,\s*5\b|ROTL\s*\(\s*5\s*,|<<\s*5\s*\)\s*\|\s*\(.*>>\s*27)|(\bROL3\b|ROL\s*\([^,]+,\s*3\b|ROTL\s*\(\s*3\s*,|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
   severity: high
   description: 복호화 라운드에서 암호화의 역 회전 연산(ROR9, ROL5, ROL3)이 정확히 적용되었는지 확인
   kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 7
