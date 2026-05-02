@@ -344,14 +344,34 @@ _KEY_SCHED_PRESENT_RE = re.compile(
 
 _ROL_NORM_RE = re.compile(r'\bROL\w*\s*\(')
 _ROR_NORM_RE = re.compile(r'\bROR\w*\s*\(')
+# ROTL(n, x) / ROTR(n, x) 형태 (인수 순서 반대) → ROL(x, n) / ROR(x, n) 정규화
+_ROTL_NORM_RE = re.compile(r'\bROTL\w*\s*\(')
+_ROTR_NORM_RE = re.compile(r'\bROTR\w*\s*\(')
+# 비트 연산 좌회전: (x << N) | (... >> (32-N)) → ROL_BIT_N 마커
+# 비트 연산 우회전: (x >> N) | (... << (32-N)) → ROR_BIT_N 마커
+_BITOP_ROL_RE = re.compile(
+    # gcc-E 확장 포함: << 1) 또는 << (1)) 형태 모두 지원
+    r'<<\s*\(?\s*(\d+)\s*\)?\s*\)(?:[^;{}\n]{0,120}?)>>\s*\(\s*32\s*-\s*\(?\s*\1\s*\)?\s*\)'
+)
+_BITOP_ROR_RE = re.compile(
+    r'>>\s*\(?\s*(\d+)\s*\)?\s*\)(?:[^;{}\n]{0,120}?)<<\s*\(\s*32\s*-\s*\(?\s*\1\s*\)?\s*\)'
+)
 
 
-def _normalize_rotation(text: str) -> str:
-    """ROL32/ROL64 등 → ROL(, ROR32/ROR64 등 → ROR( 정규화.
+def _normalize_rotation(text: str, apply_bitop: bool = False) -> str:
+    """ROL32/ROL64/ROTL 등 → ROL(, ROR32/ROR64/ROTR 등 → ROR( 정규화.
     scope:project missing 검색 전용 — 원본 데이터는 수정하지 않는다.
+    apply_bitop=True: gcc -E 전처리 결과에만 사용. 비트 연산 패턴도 ROL/ROR로 변환.
+    일반 소스에 apply_bitop 적용 시 서로 다른 변수의 << / >> 가 오탐될 수 있음.
     """
     text = _ROL_NORM_RE.sub('ROL(', text)
     text = _ROR_NORM_RE.sub('ROR(', text)
+    text = _ROTL_NORM_RE.sub('ROL(', text)
+    text = _ROTR_NORM_RE.sub('ROR(', text)
+    if apply_bitop:
+        # gcc -E 전처리 후에만: (x << N) | (... >> (32-N)) → ROL 마커 삽입
+        text = _BITOP_ROL_RE.sub(lambda m: f'<< {m.group(1)}) ROL(__expr__,{m.group(1)})', text)
+        text = _BITOP_ROR_RE.sub(lambda m: f'>> {m.group(1)}) ROR(__expr__,{m.group(1)})', text)
     return text
 
 
@@ -1360,17 +1380,24 @@ def _apply_project_missing_rule(
                     if not _KEY_SCHED_PRESENT_RE.search(_all_content):
                         return []  # 키 스케줄 없는 프로젝트 → 규칙 적용 불가
                 for item in _search:
-                    content = item.get("stripped_content") or item.get("content") or ""
+                    # P4-F: gcc -E 전처리 결과 우선 사용 (매크로 완전 전개)
+                    # preprocessed_content가 있으면 매크로 전개된 코드로 검색
+                    pre = item.get("preprocessed_content")
+                    _used_preprocessed = pre is not None
+                    content = pre if pre else (
+                        item.get("stripped_content") or item.get("content") or ""
+                    )
                     # P2-2A: ROL/ROR 변형 — 정규화 적용 범위 제어
-                    # _ROT_ALWAYS_NORMALIZE: violations_ 파일��� 정규화 (FN 위험 없음 분석됨)
+                    # _ROT_ALWAYS_NORMALIZE: violations_ 파일도 정규화 (FN 위험 없음 분석됨)
                     # 그 외 rotation 규칙: violations_ 파일은 정규화 금지
                     #   → 위반 파일의 ROL32가 ROL로 치환되어 "발견됨=pass" 판정 시 FN 발생
+                    # apply_bitop: gcc -E 전처리 결과에만 적용 (일반 코드 오탐 방지)
                     if rule_id in _ROTATION_RULE_IDS:
                         _fname_lower = (item.get("display") or "").lower()
                         if rule_id in _ROT_ALWAYS_NORMALIZE:
-                            content = _normalize_rotation(content)  # violations_ 포함 항상 정규화
+                            content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
                         elif "violations_" not in _fname_lower:
-                            content = _normalize_rotation(content)  # 비위반 파일만 정규화
+                            content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
                     if re.search(compiled, content):
                         found = True
                         break
@@ -1453,6 +1480,13 @@ def run_rule_engine(
     files_raw = preprocess_result.get("files", [])
 
     # 파일 내용을 한 번만 읽어서 캐시해 두고, 룰은 이 캐시에 대해 반복 적용한다.
+    # gcc -E 전처리 가능 여부 미리 확인
+    try:
+        from app.services.preprocess_service import gcc_expand_content as _gcc_expand
+        _has_gcc_expand = True
+    except Exception:
+        _has_gcc_expand = False
+
     file_cache: List[Dict[str, Any]] = []
     for item in files_raw:
         path_str = item.get("path")
@@ -1474,12 +1508,22 @@ def run_rule_engine(
             display = str(path)
         fname = display.split("/")[-1]
         file_type = _classify_file(fname, content)
+
+        # P4-F: gcc -E 전처리 — 헤더가 있는 실제 제출물에서 매크로 완전 전개
+        preprocessed_content: Optional[str] = None
+        if _has_gcc_expand and path.suffix.lower() == ".c":
+            try:
+                preprocessed_content = _gcc_expand(content, path, job_root)
+            except Exception:
+                preprocessed_content = None
+
         file_cache.append(
             {
                 "path": path,
                 "display": display,
                 "content": content,
                 "stripped_content": _strip_c_comments(content),
+                "preprocessed_content": preprocessed_content,  # gcc -E 결과 (None이면 미지원)
                 "ast": item.get("ast") or {},
                 "file_type": file_type,  # impl / test / data / benchmark / wrapper
             }

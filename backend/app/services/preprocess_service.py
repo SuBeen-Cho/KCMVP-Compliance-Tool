@@ -374,6 +374,81 @@ def _parse_c_with_gcc(
     return None
 
 
+def gcc_expand_content(
+    content: str,
+    file_path: Path,
+    job_root: Path,
+) -> Optional[str]:
+    """clang/gcc -E로 매크로를 전개한 프로젝트 코드만 반환.
+
+    헤더가 있는 실제 KCMVP 제출물(smart-crypto 등)에서 ROTL/ROL32 등
+    다양한 매크로 이름을 비트 연산으로 완전 전개하여 룰 엔진이 패턴 매칭을
+    더 신뢰성 있게 수행할 수 있도록 한다.
+    gcc/clang 미설치 또는 전처리 실패 시 None 반환 → 기존 방식 fallback.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+    import os
+
+    compiler = shutil.which("gcc") or shutil.which("clang")
+    if not compiler:
+        return None
+
+    # 헤더 경로 수집 (job_root 내 모든 .h 파일의 디렉토리)
+    include_dirs: List[str] = []
+    if file_path:
+        include_dirs.append(str(file_path.parent))
+    if job_root:
+        seen: set = set()
+        for h in job_root.rglob("*.h"):
+            d = str(h.parent)
+            if d not in seen:
+                seen.add(d)
+                include_dirs.append(d)
+
+    with tempfile.NamedTemporaryFile(suffix=".c", mode="w", encoding="utf-8", delete=False) as f:
+        f.write(content)
+        tmp_path = f.name
+
+    try:
+        cmd = [
+            compiler, "-E", "-x", "c",
+            "-D__attribute__(x)=", "-D__asm__(x)=",
+            "-D__inline=", "-D__restrict=", "-D__extension__=",
+        ]
+        for d in include_dirs:
+            cmd += [f"-I{d}"]
+        cmd.append(tmp_path)
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        if result.returncode != 0:
+            return None
+
+        # 시스템 경로(stdlib 등) 제외, 프로젝트 코드만 추출
+        _SYS = ("/usr/", "/Library/", "/Applications/", "<built-in>", "<command")
+        lines_out = result.stdout.splitlines()
+        in_project = True
+        extracted: List[str] = []
+        for ln in lines_out:
+            if ln.startswith("#"):
+                m = re.match(r'^# \d+ "([^"]+)"', ln)
+                if m:
+                    in_project = not any(m.group(1).startswith(p) for p in _SYS)
+            elif in_project:
+                extracted.append(ln)
+
+        project_code = "\n".join(extracted)
+        return project_code if project_code.strip() else None
+    except Exception:
+        return None
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
 def _parse_c_file(
     content: str,
     filename: str,

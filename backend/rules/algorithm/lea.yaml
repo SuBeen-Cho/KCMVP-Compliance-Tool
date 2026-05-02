@@ -82,7 +82,7 @@ rules:
   name: 라운드키(RKi) 6개 워드(192비트) 구성
   pattern_type: missing
   scope: project
-  pattern: (?i)(uint32_t|unsigned\s+int)\s+(rk|round_?key|RK)\s*\[\s*6\s*\]
+  pattern: (?i)(uint32_t|unsigned\s+int)\s+(rk|round_?key|RK)\s*(?:\[\s*\w+\s*\])?\s*\[\s*6\s*\]
   severity: medium
   description: 각 라운드키는 반드시 192비트(32비트 워드 6개) 배열이어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
