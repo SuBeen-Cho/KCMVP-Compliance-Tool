@@ -304,9 +304,43 @@ def _has_uncleared_key_var(content: str) -> bool:
 # P1-B: ROL/ROR 매크로 변형 정규화 대상 규칙 (scope:project missing 검색 전 적용)
 # ROL32/ROR32 등 접미사 변형을 ROL/ROR로 통일하여 패턴 매칭 정확도 향상
 _ROTATION_RULE_IDS = frozenset({
-    "LEA-017", "LEA-018", "LEA-019", "LEA-020",
+    "LEA-016", "LEA-017", "LEA-018", "LEA-019", "LEA-020",
     "LEA-027", "LEA-028", "LEA-029", "LEA-036",
 })
+
+# P3-B: violations_ 파일도 정규화 허용하는 규칙 목록
+# 분석 결과: 아래 규칙은 violations_ 파일에 "우연히 올바른" 회전 값이 없으므로
+# 정규화해도 FN 발생 없음. (LEA-018/019/027/028/029는 violations_ 파일에 올바른 값이
+# 섞여 있어 정규화 시 FN 위험 → P2-2A 유지)
+_ROT_ALWAYS_NORMALIZE = frozenset({
+    "LEA-016",  # violations_lea.c: ROL2/ROL4만 존재, ROL1 없음 → 정규화 안전
+    "LEA-017",  # violations_lea.c: ROL4만 존재, ROL3 없음 → 정규화 안전
+    "LEA-020",  # violations_lea.c: ROL13/17 없음 → 정규화 안전
+    "LEA-036",  # 복호화 역회전(ROR9/ROL5/ROL3): violations_lea_round.c에 LEA-036 위반 없음
+})
+
+# P3-B: 키 스케줄이 존재할 때만 적용할 규칙 (프로젝트에 키 스케줄 함수가 없으면 스킵)
+# lea_block.c 전용 세트처럼 키 스케줄 없이 암복호화만 있는 경우 FP 방지
+_KEY_SCHEDULE_ONLY_RULES = frozenset({
+    "LEA-009",   # RK[6] 배열 구조 — 키 스케줄에만 존재
+    "LEA-016",   # ROL1 — 키 스케줄 T[0] 갱신
+    "LEA-017",   # ROL3 — 키 스케줄 T[1] 갱신
+    "LEA-018",   # ROL6 — 키 스케줄 T[2] 갱신
+    "LEA-019",   # ROL11 — 키 스케줄 T[3] 갱신
+    "LEA-020",   # ROL13/17 — 키 스케줄 T[4]/T[5] 갱신 (LEA-192/256)
+})
+
+# P3-B: 키 스케줄 존재 탐지 패턴
+# T[0]/T0 등 키 스케줄 상태 변수를 ROL로 갱신하거나, lea_set_key/KeyExpand 호출/정의가 있으면 적용
+_KEY_SCHED_PRESENT_RE = re.compile(
+    r'(?i)(?:T\[?[0-7]\]?\s*=.*\bROL|'          # T[0] = ROL32(...) 형태 (ROL, ROL32 등 포함)
+    r'\bROL\w*\s*\(.*T\[?[0-7]\]?|'             # ROL32(T[0], ...) 형태
+    r'\blea_set_key\s*\(|'                       # lea_set_key 호출/정의
+    r'\bkey_?schedule\b|\bKeyExpand\b|'          # 키 스케줄 함수명
+    r'\bkey_?setup\b|\bset_?enc_?key\b|'         # 키 초기화 함수명
+    r'T\[?[0-7]\]?\s*\+=.*delta|'               # T[0] += delta 갱신 패턴
+    r'rk\s*\[.*\]\s*\[.*\]\s*=.*T\[)'           # rk[i][j] = T[k] 라운드키 배열 대입
+)
 
 _ROL_NORM_RE = re.compile(r'\bROL\w*\s*\(')
 _ROR_NORM_RE = re.compile(r'\bROR\w*\s*\(')
@@ -1317,15 +1351,26 @@ def _apply_project_missing_rule(
             except re.error:
                 compiled = None
             if compiled:
+                # P3-B: 키 스케줄 전용 규칙은 프로젝트에 키 스케줄이 없으면 스킵
+                # (lea_block.c 전용 세트 등 암복호화만 있는 경우 FP 방지)
+                if rule_id in _KEY_SCHEDULE_ONLY_RULES:
+                    _all_content = "\n".join(
+                        item.get("content") or "" for item in _search
+                    )
+                    if not _KEY_SCHED_PRESENT_RE.search(_all_content):
+                        return []  # 키 스케줄 없는 프로젝트 → 규칙 적용 불가
                 for item in _search:
                     content = item.get("stripped_content") or item.get("content") or ""
-                    # P2-2A: ROL/ROR 변형 — violations_ 파일 외에만 정규화 적용
-                    # violations_ 파일 정규화 시 위반 파일의 ROL32가 ROL로 치환되어
-                    # scope:project "발견됨=pass" 판정 → GT 위반 억제(FN) 발생
+                    # P2-2A: ROL/ROR 변형 — 정규화 적용 범위 제어
+                    # _ROT_ALWAYS_NORMALIZE: violations_ 파일��� 정규화 (FN 위험 없음 분석됨)
+                    # 그 외 rotation 규칙: violations_ 파일은 정규화 금지
+                    #   → 위반 파일의 ROL32가 ROL로 치환되어 "발견됨=pass" 판정 시 FN 발생
                     if rule_id in _ROTATION_RULE_IDS:
                         _fname_lower = (item.get("display") or "").lower()
-                        if "violations_" not in _fname_lower:
-                            content = _normalize_rotation(content)
+                        if rule_id in _ROT_ALWAYS_NORMALIZE:
+                            content = _normalize_rotation(content)  # violations_ 포함 항상 정규화
+                        elif "violations_" not in _fname_lower:
+                            content = _normalize_rotation(content)  # 비위반 파일만 정규화
                     if re.search(compiled, content):
                         found = True
                         break

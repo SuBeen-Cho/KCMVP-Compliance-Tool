@@ -3719,6 +3719,14 @@ _COM003_KEY_NAMES = frozenset({
     "kek", "dek", "salt", "secret", "mkey", "skey",
 })
 
+# P3-C: IV/nonce 계열 이름 (키가 아닌 IV로 판단할 때 사용)
+# "iv"/"nonce"만 있고 "key" 계열 단어가 없으면 IV 변수로 간주 → COM-003 FP
+_COM003_IV_ONLY_NAMES = frozenset({"iv", "nonce", "ctr_block", "counter_block"})
+# key 의미가 있는 강한 키워드 (iv 와 구분)
+_COM003_STRICT_KEY_NAMES = frozenset({
+    "key", "mk", "sk", "kek", "dek", "pw", "pass", "secret", "mkey", "skey",
+})
+
 # COM-003 S-box/LUT 제외 이름 패턴
 _COM003_SBOX_NAMES = frozenset({
     "sbox", "s_box", "lut", "table", "lookup", "delta", "sigma",
@@ -3809,6 +3817,19 @@ def com003_libclang_is_fp(content: str, filename: str, line_num: int, var_name: 
             if not has_key_name:
                 return True  # 이름에 key 의미 없음 → FP
 
+            # P3-C: 1-hop 인터프로시저 분석 — IV/nonce 변수 구분
+            # 이름에 "iv"/"nonce" 등 IV 지시어만 있고 "key" 강-지시어가 없으면:
+            #   → 해당 배열은 IV이지, 암호 키가 아님 → COM-003 FP
+            # 예: session_iv, short_iv_8 → IV 변수 (CBC-003 대상이지 COM-003 아님)
+            # 예외: key_iv, iv_key → key 지시어 포함 → TP 유지
+            has_strict_key = any(kw in name_lower for kw in _COM003_STRICT_KEY_NAMES)
+            has_iv_only = (
+                any(kw in name_lower for kw in _COM003_IV_ONLY_NAMES)
+                and not has_strict_key
+            )
+            if has_iv_only:
+                return True  # IV/nonce 변수이지 키가 아님 → FP
+
             # 상수 배열 + key-like 이름 → TP 유지
             return False
 
@@ -3816,6 +3837,19 @@ def com003_libclang_is_fp(content: str, filename: str, line_num: int, var_name: 
 
 
 # ── libclang 체커 함수 ────────────────────────────────────────────
+
+def _lc_has_xor_helper_call(fd) -> bool:
+    """P3-D: 함수 내 XOR 헬퍼 함수 호출 감지 (xor16, block_xor, memxor 등).
+
+    KISA lea_cbc.c처럼 XOR을 직접 ^ 연산자 대신 헬퍼 함수로 수행하는 경우를 감지.
+    Examples: xor16(dst, a, b), block_xor(buf, iv), memxor(out, in, 16)
+    """
+    for cursor in _lc_collect(fd, _ci.CursorKind.CALL_EXPR):
+        callee = (cursor.spelling or "").lower()
+        if callee and ("xor" in callee or "memxor" in callee or "buf_xor" in callee):
+            return True
+    return False
+
 
 def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:
     """CBC-001: CBC 암호화 XOR 연쇄 확인 (libclang)."""
@@ -3836,12 +3870,14 @@ def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
     for fd in enc_funcs:
         real_checked += 1
         fname = _lc_func_name(fd)
-        if not _lc_has_op(fd, "^"):
+        # P3-D: XOR(^) 직접 연산 또는 xor16/block_xor 등 헬퍼 함수 호출로도 XOR 연쇄 인정
+        has_xor = _lc_has_op(fd, "^") or _lc_has_xor_helper_call(fd)
+        if not has_xor:
             violations.append({
                 "line": _lc_line(fd),
                 "message": (f"함수 '{fname}': CBC 암호화에서 XOR(^) 연산 미발견 — "
                             "CT[i]=ENC(PT[i]⊕CT[i-1]) 수식의 XOR 연쇄 누락"),
-                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건.",
+                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건, XOR 헬퍼 호출 0건.",
             })
     if not violations and real_checked == 0:
         if _lc_has_unchecked_real_mode_funcs(tu, enc_funcs, "cbc", filename):
@@ -3868,12 +3904,14 @@ def _lc_check_cbc_002(tu, filename: str, sg: dict) -> Optional[List[Dict[str, An
     for fd in dec_funcs:
         real_checked += 1
         fname = _lc_func_name(fd)
-        if not _lc_has_op(fd, "^"):
+        # P3-D: XOR(^) 직접 연산 또는 xor16/block_xor 등 헬퍼 함수 호출로도 XOR 연쇄 인정
+        has_xor = _lc_has_op(fd, "^") or _lc_has_xor_helper_call(fd)
+        if not has_xor:
             violations.append({
                 "line": _lc_line(fd),
                 "message": (f"함수 '{fname}': CBC 복호화에서 XOR(^) 연산 미발견 — "
                             "PT[i]=DEC(CT[i])⊕CT[i-1] 수식의 XOR 연쇄 누락"),
-                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건.",
+                "ast_evidence": f"함수 '{fname}' 전체 AST 탐색(libclang): BinaryOp('^') 0건, XOR 헬퍼 호출 0건.",
             })
     if not violations and real_checked == 0:
         if _lc_has_unchecked_real_mode_funcs(tu, dec_funcs, "cbc", filename):
