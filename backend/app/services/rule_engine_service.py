@@ -339,6 +339,9 @@ _COM003_FP_KEYWORDS = frozenset({
     "round key", "round_key",  # 컨텍스트 설명 키워드
     # 기타 블록 암호 공개 상수
     "const_", "_const", "coeffs", "coeff", "prime",
+    # 암호문(ciphertext) 상태 변수 — 출력값이므로 키 아님
+    # "_ct" 제외: _ctr(counter) 이름도 매칭되어 FN 유발
+    "last_ct", "prev_ct", "session_last",
 })
 
 
@@ -666,6 +669,19 @@ def _apply_rule_to_file(
             stripped_line = line_text.strip()
             if stripped_line.startswith('//') or stripped_line.startswith('*') or stripped_line.startswith('/*'):
                 continue
+
+            # COM-002: MCT/test/init 함수 내 lea_set_key 호출은 FP
+            # void cbc_mct_no_iv_update(...) { lea_set_key(...) } → 테스트 함수 → FP
+            if rule.get("id") == "COM-002":
+                _fn_match = re.search(r'void\s+(\w+)\s*\(', match.group(0))
+                if _fn_match:
+                    _fn_name = _fn_match.group(1).lower()
+                    _COM002_FP_NAMES = (
+                        "mct", "test_", "_test", "run_", "bench",
+                        "sample", "init_", "_init", "setup", "prepare",
+                    )
+                    if any(kw in _fn_name for kw in _COM002_FP_NAMES):
+                        continue
 
             # COM-004: rand()/clock()/time() 가 단순 인덱스/비교/테스트용이면 제외
             # clock()/time()은 non-crypto 용도가 많으므로 crypto 컨텍스트 확인 필요
@@ -999,10 +1015,17 @@ def _apply_ast_rule(
 
         if compiled:
             scan_items = fallback_targets if fallback_targets is not None else file_cache
+            _MODE_NAMES_SET = frozenset({"cbc", "ctr", "ecb", "gcm", "ccm", "cmac", "cfb", "ofb"})
             for item in scan_items:
                 # 테스트/벤치마크/데이터/wrapper 파일은 fallback regex 스캔 제외
                 if item.get("file_type", "impl") in ("test", "data", "benchmark", "wrapper"):
                     continue
+                # P2-4: 모드 규칙 — 다른 모드 파일 건너뜀 (예: CBC 규칙이 CTR 파일 FP 방지)
+                if mode_kw:
+                    _fname_base = (item.get("display") or "").lower().split("/")[-1].rsplit(".", 1)[0]
+                    _other_modes = _MODE_NAMES_SET - {mode_kw}
+                    if any(m in _fname_base for m in _other_modes) and mode_kw not in _fname_base:
+                        continue
                 # 참고: per-file 알고리즘 필터는 FN 위험으로 미적용
                 # (프로젝트 레벨 필터만 사용)
                 content = item.get("content") or ""
@@ -1296,6 +1319,13 @@ def _apply_project_missing_rule(
             if compiled:
                 for item in _search:
                     content = item.get("stripped_content") or item.get("content") or ""
+                    # P2-2A: ROL/ROR 변형 — violations_ 파일 외에만 정규화 적용
+                    # violations_ 파일 정규화 시 위반 파일의 ROL32가 ROL로 치환되어
+                    # scope:project "발견됨=pass" 판정 → GT 위반 억제(FN) 발생
+                    if rule_id in _ROTATION_RULE_IDS:
+                        _fname_lower = (item.get("display") or "").lower()
+                        if "violations_" not in _fname_lower:
+                            content = _normalize_rotation(content)
                     if re.search(compiled, content):
                         found = True
                         break
