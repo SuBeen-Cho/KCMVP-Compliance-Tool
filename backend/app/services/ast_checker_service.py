@@ -843,7 +843,10 @@ def _check_lea_031(root, offset: int, filename: str,
     if not _HAS_PYCPARSER:
         return []
 
-    enc_funcs = [fd for fd in _funcs_matching(root, _ENC_KW)
+    # LEA-031은 라운드 함수 XOR→ADD 순서를 검사. enc 외에 round/block/arx/lea 등
+    # 다양한 함수명으로 구현될 수 있으므로 LEA-040과 동일하게 확장 키워드 사용.
+    _LEA031_KW = _ENC_KW + _DEC_KW + ["round", "block", "arx", "lea"]
+    enc_funcs = [fd for fd in _funcs_matching(root, _LEA031_KW)
                  if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
     if not enc_funcs:
         return []

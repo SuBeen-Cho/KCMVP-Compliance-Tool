@@ -69,6 +69,17 @@ def _is_lea_related_file(fname_lower: str) -> bool:
     return True  # cipher.c, addmac.c 등 공통/모드 파일은 포함
 
 
+def _is_lea_impl_file(fname_lower: str) -> bool:
+    """파일이 LEA 알고리즘 내부 구현 파일인지 판별 (algorithm 카테고리 전용).
+
+    algorithm 카테고리 규칙(키스케줄, 라운드함수, ROL/ROR 등 내부 구조)은
+    파일명에 'lea'가 포함된 구현 파일에만 적용.
+    violations_cbc.c, violations_ctr.c 등 모드 위반 시연 파일은 LEA 내부
+    구조를 구현하지 않으므로 algorithm 규칙 적용 제외.
+    """
+    return "lea" in fname_lower
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 파일 분류: impl / test / data / benchmark / wrapper
 # 테스트/벤치마크/데이터/wrapper 파일에는 missing 규칙을 적용하지 않음.
@@ -1365,7 +1376,15 @@ def run_rule_engine(
         _rc = rule.get("category", "")
         _ri = rule.get("id", "").upper()
         _is_lea_scoped = _rc == "algorithm" or _rc == "mode"
-        if _is_lea_scoped:
+        if _rc == "algorithm":
+            # algorithm 카테고리: LEA 내부 구현 파일(파일명에 'lea' 포함)에만 적용
+            # violations_cbc.c, violations_ctr.c 등 모드 시연 파일 제외
+            _active_cache = [
+                item for item in file_cache
+                if _is_lea_impl_file((item.get("display") or "").lower())
+            ]
+        elif _rc == "mode":
+            # mode 카테고리: LEA 관련 파일 모두 포함 (cipher.c, violations_cbc.c 등)
             _active_cache = [
                 item for item in file_cache
                 if _is_lea_related_file((item.get("display") or "").lower())
