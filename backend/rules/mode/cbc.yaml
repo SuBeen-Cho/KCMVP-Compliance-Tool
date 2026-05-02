@@ -74,15 +74,7 @@ rules:
     description: "LEA의 블록 크기인 128비트에 맞추어 IV의 길이는 반드시 16바이트여야 함. iv, short_iv_8, iv_6 등 IV 역할 배열 모두 포함"
     kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §2.2.2"
 
-  - id: CBC-LEA-004
-    category: mode
-    mode: CBC
-    name: "C API 'lea_cbc_enc/dec' 전용 명칭 사용"
-    pattern_type: regex
-    pattern: "\\b(?:int|void|static\\s+int|static\\s+void)\\s+(?!lea_)\\w*(?:cbc|CBC)\\w*\\s*\\("
-    severity: medium
-    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 표준 인터페이스 함수명(lea_cbc_enc/dec)이 아닌 비표준 명칭(my_cbc_encrypt, encrypt_cbc, run_cbc_enc 등)으로 함수가 정의됨"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.4, §4.3.5"
+  # CBC-LEA-004 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 
   - id: CBC-LEA-005
     category: mode

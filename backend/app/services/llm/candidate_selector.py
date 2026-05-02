@@ -91,12 +91,12 @@ def _select_l3_candidates(
     forced_in_ids = {id(v) for v in forced_in}
 
     # Strategy F: needs_ai_review=True인 위반을 L3 대상에 포함
-    # 단, missing 타입은 L3를 거치지 않고 직접 위반 확정 (L3 비결정성 방지)
-    # missing 규칙은 패턴 부재 = 즉시 위반 확정이므로 AI 재판정 불필요
+    # missing 타입도 L3 판정 대상에 포함 (②관련함수발췌 + ③역방향탐색 컨텍스트 활용)
     eligible = [
         v for v in l1_violations
         if (v.get("pattern_type") in needs_l3
-            or (v.get("needs_ai_review") and v.get("pattern_type") != "missing"))
+            or v.get("needs_ai_review")
+            or v.get("pattern_type") == "missing")
         and id(v) not in forced_out_ids
     ]
     print(f"[L1.5] 강제포함={len(forced_in)}건, 강제제외={len(forced_out_ids)}건")
@@ -138,7 +138,7 @@ def _select_l3_candidates(
     )
     selected_keys = {id(v) for v in bucket_ast}
 
-    # 버킷 2: high severity regex/semantic (missing 제외 — missing은 L3 미전송)
+    # 버킷 2: high severity regex/semantic (missing 제외)
     high_pool = [
         v for v in eligible
         if id(v) not in selected_keys
@@ -148,15 +148,31 @@ def _select_l3_candidates(
     bucket_high = _fill_bucket(high_pool, max_items=b2_cap, per_rule_max=8)
     selected_keys.update(id(v) for v in bucket_high)
 
-    # 버킷 3: 나머지
-    other_pool = [v for v in eligible if id(v) not in selected_keys]
+    # 버킷 3: 나머지 non-missing
+    other_pool = [
+        v for v in eligible
+        if id(v) not in selected_keys
+        and v.get("pattern_type") != "missing"
+    ]
     bucket_other = _fill_bucket(other_pool, max_items=b3_cap, per_rule_max=4)
+    selected_keys.update(id(v) for v in bucket_other)
 
-    result = bucket_ast + bucket_high + bucket_other
+    # 버킷 4: missing 타입 — ②관련함수발췌 + ③역방향탐색 컨텍스트로 FP 판별
+    # high severity 우선, rule당 2건, 전체 cap = min(20, total_cap//3)
+    missing_pool = [
+        v for v in eligible
+        if id(v) not in selected_keys
+        and v.get("pattern_type") == "missing"
+    ]
+    b4_cap = min(20, max(5, total_cap // 3))
+    bucket_missing = _fill_bucket(missing_pool, max_items=b4_cap, per_rule_max=2)
+
+    result = bucket_ast + bucket_high + bucket_other + bucket_missing
     ast_fb_in_bucket = sum(1 for v in bucket_ast if v.get("confidence") == "후보")
     print(
         f"[L3] 대상 선정: N={n_total}, cap={total_cap}, "
         f"ast={len(bucket_ast)}(fallback={ast_fb_in_bucket}/{ast_fallback_count}), "
-        f"high={len(bucket_high)}, other={len(bucket_other)}, 합계={len(result)}건"
+        f"high={len(bucket_high)}, other={len(bucket_other)}, "
+        f"missing={len(bucket_missing)}, 합계={len(result)}건"
     )
     return result

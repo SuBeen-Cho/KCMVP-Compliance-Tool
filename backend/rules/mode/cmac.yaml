@@ -38,13 +38,4 @@ rules:
     description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s, smc_zeroize 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
     kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
 
-  - id: CMAC-LEA-001
-    category: mode
-    mode: CMAC
-    name: "LEA 전용 CMAC API 3종 명칭 사용"
-    pattern_type: missing
-    scope: project
-    pattern: "\\blea_cmac_(init|update|final)\\b"
-    severity: medium
-    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 CMAC 인터페이스 3종(lea_cmac_init, lea_cmac_update, lea_cmac_final)을 사용해야 하며, init→update→final 호출 순서를 준수해야 함"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.24~§4.3.26"
+  # CMAC-LEA-001 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행

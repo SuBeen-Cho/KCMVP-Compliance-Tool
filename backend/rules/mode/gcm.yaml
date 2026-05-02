@@ -67,16 +67,7 @@ rules:
   # [PART 2] LEA 전용 GCM 구현 규칙
   # ─────────────────────────────────────────────────
 
-  - id: GCM-LEA-001
-    name: "LEA 전용 GCM API 6종 명칭 사용"
-    category: mode
-    mode: GCM
-    pattern_type: missing
-    scope: project
-    pattern: "\\blea_gcm_(init|set_ctr|set_aad|encrypt|decrypt|final)\\b"
-    severity: medium
-    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 GCM 인터페이스 6종(lea_gcm_init, lea_gcm_set_ctr, lea_gcm_set_aad, lea_gcm_encrypt, lea_gcm_decrypt, lea_gcm_final)을 사용해야 함"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.18~§4.3.23"
+  # GCM-LEA-001 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 
   - id: GCM-LEA-002
     name: "PCLMULQDQ GHASH 가속 권고"

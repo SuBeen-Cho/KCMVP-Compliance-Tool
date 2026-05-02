@@ -25,6 +25,12 @@ _AST_TP_PROTECT = frozenset({
     "CBC-LEA-005",          # CBC-LEA 키 갱신 패턴 (lea_cbc.c)
     "CTR-LEA-006",          # CTR-LEA 카운터 갱신 패턴 (lea_ctr.c)
 })
+
+# L3 FP 제거 정확도 57% 미달 규칙 — FP 제거를 완전 차단하여 Recall 보호.
+# CBC-001: 7건 제거 시 4건 정확, 3건 오판(43% FN 유발) → 잔류 FP 4건 < FN 3건
+_L3_NEVER_REMOVE = frozenset({
+    "CBC-001",
+})
 from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
 from app.services.llm.prompt_builder import (
@@ -255,7 +261,7 @@ def run_l3_contextualizer(
             if cache_key in _l3_cache:
                 print(f"[L3] 캐시 히트: {rule_id} @ {file_path}:{line}")
                 obj = _l3_cache[cache_key]
-                if obj.get("is_real_issue"):
+                if obj.get("is_real_issue") or rule_id in _L3_NEVER_REMOVE:
                     results.append(_make_l3_result(v, obj))
             else:
                 entry = {
@@ -264,7 +270,8 @@ def run_l3_contextualizer(
                     "cache_key": cache_key,
                     "guideline_text": v.get("rag_guideline_text", ""),
                 }
-                if rule_id in _HIGH_ISOLATION_RULES:
+                # missing 타입도 단독 처리 — 배치 파싱 시 score=0 문제 방지
+                if rule_id in _HIGH_ISOLATION_RULES or v.get("pattern_type") == "missing":
                     isolated_items.append(entry)
                 else:
                     batch_items.append(entry)
@@ -312,6 +319,10 @@ def run_l3_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                elif rule_id in _L3_NEVER_REMOVE:
+                    # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
                     # FP 제거 전 비대칭 재검증
                     if _verify_fp_removal(v, obj, entry["code_block"], file_path):
@@ -360,9 +371,10 @@ def run_l3_contextualizer(
                         # _AST_TP_PROTECT 규칙은 95로 보수적 처리 (방안 2: 90→95)
                         _fp_high = (95 if _v_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                         # is_real_issue=false + score ≥ _fp_high → 확신있는 FP → 제거
+                        # _L3_NEVER_REMOVE 규칙은 FP 제거 차단
                         if obj.get("is_real_issue") or (
                             _fp_threshold < _score_int < _fp_high
-                        ):
+                        ) or _v_rule_id in _L3_NEVER_REMOVE:
                             results.append(_make_l3_result(v, obj))
                 continue
 
@@ -393,6 +405,10 @@ def run_l3_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                elif _batch_rule_id in _L3_NEVER_REMOVE:
+                    # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
                 elif _score_int <= _fp_threshold or _score_int >= _fp_high:
                     # FP 제거 전 비대칭 재검증
                     if _verify_fp_removal(v, obj, entry["code_block"], file_path):

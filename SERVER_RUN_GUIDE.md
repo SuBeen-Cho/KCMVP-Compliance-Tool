@@ -61,7 +61,7 @@ npm run dev
 ```
 
 - **접속 정보**
-  - 프론트엔드: `http://localhost:5173`
+  - 프론트엔드: `http://localhost:5174`
   - 프록시 설정: `/api` 요청은 자동으로 `http://localhost:8000` (백엔드)로 프록시됨.
 
 ---
@@ -72,7 +72,7 @@ npm run dev
   1. **백엔드**: `cd /Users/subeen/Desktop/Kcmvp_main/backend && uvicorn app.main:app --reload`
   2. **프론트엔드**: `cd /Users/subeen/Desktop/Kcmvp_main/frontend && npm run dev`
 - **포트 충돌**
-  - 백엔드 기본 포트는 `8000`, 프론트엔드 기본 포트는 `5173` 입니다.
+  - 백엔드 기본 포트는 `8000`, 프론트엔드 기본 포트는 `5174` 입니다.
   - 이미 사용 중이면 Vite가 다른 포트를 제안할 수 있으니, 터미널 메시지를 확인하세요.
 - **가상환경(venv) 사용 시**
   - 이미 `backend/venv` 가 구성되어 있다면:

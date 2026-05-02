@@ -15,6 +15,181 @@ _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
 }
 
 
+# ─────────────────────────────────────────────────────────────────
+# missing 위반 전용 컨텍스트 빌더 (② 관련 함수 발췌 + ③ 역방향 탐색)
+# ─────────────────────────────────────────────────────────────────
+
+# ② 관련 함수 키워드: missing 규칙이 요구하는 기능과 관련된 함수명 키워드
+_MISSING_RULE_FUNC_KEYWORDS: Dict[str, List[str]] = {
+    # 제로화
+    "ctr-004":      ["ctr", "key", "counter", "free", "clear", "zeroize", "cleanup"],
+    "gcm-005":      ["gcm", "tag", "auth", "free", "clear", "zeroize", "cleanup"],
+    "cmac-003":     ["cmac", "mac", "free", "clear", "zeroize", "cleanup"],
+    "ccm-005":      ["ccm", "free", "clear", "zeroize", "cleanup"],
+    # 상수시간 비교
+    "cmac-002":     ["cmac", "verify", "compare", "mac", "final"],
+    # SIMD 가속
+    "ctr-lea-005":  ["ctr", "lea_ctr"],
+    # API 명칭 (대안 API 탐색)
+    "gcm-lea-001":  ["gcm", "cipher", "encrypt", "enc"],
+    "gcm-lea-002":  ["gcm", "cipher", "decrypt", "dec"],
+    "cmac-lea-001": ["cmac", "cipher", "mac"],
+    "ccm-lea-001":  ["ccm", "cipher"],
+    "ecb-001":      ["ecb", "cipher", "encrypt", "enc"],
+    # 난수 생성
+    "ctr-003":      ["ctr", "nonce", "iv", "init", "random", "drbg"],
+    "gcm-002":      ["gcm", "iv", "nonce", "init", "random"],
+}
+
+# ③ 역방향 패턴: missing 규칙의 "요구 패턴" 대신 쓰일 수 있는 대안 구현 탐색
+_MISSING_INVERSE_PATTERNS: Dict[str, List[str]] = {
+    # 제로화: 표준 함수 대신 쓰이는 것들
+    "ctr-004":      [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
+    "gcm-005":      [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
+    "cmac-003":     [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
+    "ccm-005":      [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
+    # 상수시간 비교: 일반 memcmp로 대체한 경우
+    "cmac-002":     [r"\bmemcmp\b", r"\bstrcmp\b", r"compare", r"verify"],
+    # SIMD: 관련 매크로/인클루드
+    "ctr-lea-005":  [r"simd", r"sse2", r"avx", r"neon", r"_mm_"],
+    # API 명칭: KISA 비표준 래퍼 함수명
+    "gcm-lea-001":  [r"gcm_enc", r"gcm_encrypt", r"cipher_gcm"],
+    "gcm-lea-002":  [r"gcm_dec", r"gcm_decrypt", r"cipher_gcm"],
+    "cmac-lea-001": [r"cmac", r"cipher_cmac"],
+    "ccm-lea-001":  [r"ccm", r"cipher_ccm"],
+    "ecb-001":      [r"ecb_enc", r"ecb_dec", r"cipher_ecb", r"ecb"],
+    # 난수: 비표준 RNG 사용 탐색
+    "ctr-003":      [r"\brand\b", r"\brandom\b", r"\bprng\b", r"\brng\b"],
+    "gcm-002":      [r"\brand\b", r"\brandom\b", r"\bprng\b", r"\brng\b"],
+}
+
+
+def _find_related_functions(
+    lines: List[str],
+    keywords: List[str],
+    max_funcs: int = 3,
+    max_lines_per_func: int = 60,
+) -> str:
+    """② 키워드 포함 함수 본체 발췌 (최대 max_funcs개)."""
+    from app.services.code_slicer import _find_function_boundary
+
+    if not keywords:
+        return ""
+
+    pattern = "|".join(re.escape(k) for k in keywords)
+    found: List[str] = []
+    seen_starts: set = set()
+
+    for i, raw_line in enumerate(lines):
+        stripped = raw_line.strip()
+        if (
+            "(" in stripped
+            and re.search(pattern, stripped, re.IGNORECASE)
+            and not stripped.startswith("//")
+            and not stripped.startswith("*")
+            and not stripped.startswith("#")
+        ):
+            s, e = _find_function_boundary(lines, i + 1)
+            if s != -1 and s not in seen_starts:
+                seen_starts.add(s)
+                func_lines = lines[s - 1: e]
+                if len(func_lines) > max_lines_per_func:
+                    func_lines = func_lines[:max_lines_per_func]
+                found.append(f"/* 관련 함수 (줄 {s}~{e}) */\n" + "\n".join(func_lines))
+                if len(found) >= max_funcs:
+                    break
+
+    return "\n\n".join(found)
+
+
+def _search_inverse_patterns(
+    lines: List[str],
+    patterns: List[str],
+    context_window: int = 5,
+    max_hits: int = 4,
+) -> str:
+    """③ 역방향 패턴 탐색: 대안 구현이 있는 줄 주변 컨텍스트 반환."""
+    if not patterns:
+        return ""
+
+    hits: List[str] = []
+    seen_lines: set = set()
+
+    for pattern in patterns:
+        try:
+            compiled = re.compile(pattern, re.IGNORECASE)
+        except re.error:
+            continue
+        for i, raw_line in enumerate(lines):
+            if compiled.search(raw_line) and i not in seen_lines:
+                start = max(0, i - context_window)
+                end = min(len(lines), i + context_window + 1)
+                for ln in range(start, end):
+                    seen_lines.add(ln)
+                snippet = "\n".join(
+                    f"  {j + 1:4d}: {lines[j]}" for j in range(start, end)
+                )
+                hits.append(f"// 패턴 '{pattern}' 발견 (줄 {i + 1}):\n{snippet}")
+                if len(hits) >= max_hits:
+                    return "\n\n".join(hits)
+
+    return "\n\n".join(hits)
+
+
+def _build_missing_context(
+    lines: List[str],
+    violation: Optional[Dict[str, Any]],
+    symbol_graph: Optional[Dict[str, Any]],
+) -> str:
+    """missing 위반용 풍부한 컨텍스트 빌드.
+
+    ② 규칙 관련 함수 본체 발췌 (symbol_graph 활용)
+    ③ 역방향 패턴 탐색 (대안 구현 탐지)
+    + 파일 전역 스켈레톤 (함수 목록)
+    """
+    from app.services.code_slicer import extract_global_skeleton
+
+    rid = ((violation or {}).get("rule_id") or "").lower()
+
+    # ② 관련 함수 키워드
+    func_kws = _MISSING_RULE_FUNC_KEYWORDS.get(rid, [])
+    if not func_kws:
+        # fallback: rule_id 분해
+        parts = rid.replace("-", "_").split("_")
+        func_kws = [p for p in parts if len(p) > 2 and not p.isdigit()]
+
+    related_funcs = _find_related_functions(lines, func_kws, max_funcs=3)
+
+    # ③ 역방향 패턴 탐색
+    inv_patterns = _MISSING_INVERSE_PATTERNS.get(rid, [])
+    # rule_id에 매핑이 없으면 violation의 pattern 필드를 역방향 힌트로 활용
+    if not inv_patterns and violation:
+        raw_pattern = violation.get("pattern") or ""
+        # pattern 문자열에서 파이프 분리된 각 토큰을 역방향 탐색 패턴으로 사용
+        alt_tokens = [t.strip() for t in raw_pattern.split("|") if t.strip()]
+        inv_patterns = [rf"\b{re.escape(t)}\b" for t in alt_tokens[:6]]
+    inverse_hits = _search_inverse_patterns(lines, inv_patterns)
+
+    skeleton = extract_global_skeleton(lines)
+
+    sections: List[str] = []
+    if skeleton:
+        sections.append(f"// === 파일 구조 요약 (함수 목록) ===\n{skeleton}")
+    if related_funcs:
+        sections.append(f"// === 관련 함수 본체 (②관련함수발췌) ===\n{related_funcs}")
+    if inverse_hits:
+        sections.append(
+            f"// === 대안 구현 탐색 결과 (③역방향탐색) ===\n"
+            f"// 아래는 요구 패턴 대신 사용된 것으로 보이는 코드입니다:\n"
+            f"{inverse_hits}"
+        )
+
+    if sections:
+        return "\n\n".join(sections)
+    # fallback: 파일 앞 150줄
+    return "\n".join(lines[:150])
+
+
 def _find_func_boundary_from_sg(
     line: int,
     symbol_graph: Dict[str, Any],
@@ -88,13 +263,9 @@ def _get_code_context(
     if pattern_type not in ("ast", "semantic", "missing"):
         return ""
 
-    # missing 타입(project-scope): 대표 파일 전체 구조를 컨텍스트로 제공
+    # missing 타입: 관련 함수 발췌(②) + 역방향 패턴 탐색(③) 조합 컨텍스트
     if pattern_type == "missing":
-        from app.services.code_slicer import extract_global_skeleton
-        skeleton = extract_global_skeleton(lines)
-        if skeleton:
-            return skeleton
-        return "\n".join(lines[:150])
+        return _build_missing_context(lines, violation, symbol_graph)
 
     from app.services.code_slicer import extract_global_skeleton, _find_function_boundary
     import re as _re

@@ -76,15 +76,7 @@ rules:
     description: "LEA의 블록 크기인 128비트에 맞추어 초기 카운터(CTR)의 길이는 반드시 16바이트여야 함. ctr, short_ctr_8, ctr_10, ctr_24 등 카운터 역할 배열 모두 포함"
     kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §2.2.3"
 
-  - id: CTR-LEA-004
-    category: mode
-    mode: CTR
-    name: "LEA 전용 API 'lea_ctr_enc/dec' 명칭 사용"
-    pattern_type: regex
-    pattern: "\\b(?:int|void|static\\s+int|static\\s+void)\\s+(?!lea_)\\w*(?:ctr|CTR)\\w*\\s*\\("
-    severity: medium
-    description: "국가보안기술연구소 배포 매뉴얼에서 정의한 LEA 전용 CTR 표준 인터페이스 함수명(lea_ctr_enc/dec)이 아닌 비표준 명칭(my_ctr_encrypt, ctr_encrypt, do_ctr_enc 등)으로 함수가 정의됨"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.6, §4.3.7"
+  # CTR-LEA-004 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 
   - id: CTR-LEA-005
     category: mode

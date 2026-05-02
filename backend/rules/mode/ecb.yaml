@@ -2,16 +2,7 @@
 # 2.2.1 운영모드별 입출력 규격 - 블록 독립 암호화
 
 rules:
-  - id: ECB-001
-    category: mode
-    mode: ECB
-    name: "ECB 필수 API 선언 확인"
-    pattern_type: "missing"
-    scope: project
-    pattern: '\blea_ecb_(enc|dec)\b'
-    severity: medium
-    description: "LEA ECB 모드를 사용하기 위한 암호화(lea_ecb_enc) 및 복호화(lea_ecb_dec) 함수가 명세되어야 함"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.2, §4.3.3"
+  # ECB-001 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 
   - id: ECB-002
     category: mode

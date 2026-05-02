@@ -47,6 +47,21 @@ if not L3_AVAILABLE:
 # 1. 코드 GT 자동 추출: C 파일 내 [위반: RULE-ID] 주석 파싱
 # ═══════════════════════════════════════════════════════════════════
 
+# KISA API 명칭 강제 룰 — 실제 KCMVP 요건이 아님, GT에서 제외
+_GT_EXCLUDE_RULES = frozenset({
+    "CBC-LEA-004",   # lea_cbc_enc/dec 명칭 강제
+    "CTR-LEA-004",   # lea_ctr_enc/dec 명칭 강제
+    "GCM-LEA-001",   # lea_gcm_* 명칭 강제
+    "CMAC-LEA-001",  # lea_cmac_* 명칭 강제
+    "CCM-LEA-001",   # lea_ccm_enc/dec 명칭 강제
+    "ECB-001",       # lea_ecb_enc/dec 명칭 강제
+    "OFB-LEA-001",   # lea_ofb_enc/dec 명칭 강제
+    "CFB-LEA-001",   # lea_cfb128_enc/dec 명칭 강제
+    "COM-006",       # lea_* 접두사 함수명 강제
+    "LEA-051",       # lea_set_key 명칭 강제
+})
+
+
 def extract_code_gt_from_zip(zip_path: Path) -> Dict[str, List[Dict]]:
     """
     ZIP 내 C 파일의 [위반: RULE-ID] 주석을 파싱.
@@ -66,6 +81,8 @@ def extract_code_gt_from_zip(zip_path: Path) -> Dict[str, List[Dict]]:
                 # 한 줄에 여러 [위반: RULE-ID] 주석이 있을 수 있음 → findall 사용
                 matches = pattern.findall(line)
                 for rid in matches:
+                    if rid in _GT_EXCLUDE_RULES:
+                        continue  # API 명칭 강제 룰 제외
                     if rid not in seen[fname]:
                         seen[fname].add(rid)
                         gt[fname].append({

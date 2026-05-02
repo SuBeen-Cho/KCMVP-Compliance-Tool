@@ -25,13 +25,4 @@ rules:
     fallback_pattern: '(?i)(ofb_enc|ofb_dec|lea_ofb|OFB_encrypt|output_block\s*\[|keystream\s*\[|ofb_block)'
     kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.10, §4.3.11"
 
-  - id: OFB-LEA-001
-    category: mode
-    mode: OFB
-    name: "LEA 전용 OFB API 명칭 사용"
-    pattern_type: missing
-    scope: project
-    pattern: "\\blea_ofb_(enc|dec)\\b"
-    severity: medium
-    description: "국보연 배포 매뉴얼에서 정의한 LEA 전용 OFB 인터페이스 함수명(lea_ofb_enc, lea_ofb_dec)을 사용해야 함"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.10, §4.3.11"
+  # OFB-LEA-001 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행

@@ -486,16 +486,7 @@ rules:
   severity: high
   description: 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Text KAT를 구현해야 함
   kcmvp_ref: LEA 검증시스템 §6.2
-- id: LEA-051
-  category: algorithm
-  algorithm: LEA
-  name: 표준 API 'lea_set_key' 명칭 및 인자 준수
-  pattern_type: missing
-  pattern: \blea_set_key\b
-  severity: high
-  description: 국보연 배포 매뉴얼에서 정의한 표준 키 설정 인터페이스(lea_set_key)를 사용해야 함
-  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.1
-  scope: project
+# LEA-051 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 - id: LEA-052
   category: algorithm
   algorithm: LEA
