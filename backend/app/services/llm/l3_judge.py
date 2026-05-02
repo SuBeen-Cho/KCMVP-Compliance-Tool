@@ -30,6 +30,11 @@ _AST_TP_PROTECT = frozenset({
 # CBC-001: 7건 제거 시 4건 정확, 3건 오판(43% FN 유발) → 잔류 FP 4건 < FN 3건
 _L3_NEVER_REMOVE = frozenset({
     "CBC-001",
+    # L3 평가(2026-05-03)에서 GT 위반을 오탐으로 제거해 FN을 만든 규칙.
+    # CBC 복호화 XOR 순서/체이닝과 CTR-LEA MCT 카운터 갱신은 L1/AST 발견을
+    # Recall 우선으로 유지한다.
+    "CBC-002",
+    "CTR-LEA-006",
 })
 from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
