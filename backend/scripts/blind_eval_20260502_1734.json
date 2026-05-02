@@ -1,0 +1,287 @@
+{
+  "timestamp": "20260502_1734",
+  "source": "blind_set",
+  "total_loc": 14511,
+  "total_violations": 29,
+  "violations_per_kloc": 2.0,
+  "l1_violations": 29,
+  "l3_removed": 0,
+  "by_rule": {
+    "COM-001": 9,
+    "COM-004": 3,
+    "COM-003": 2,
+    "LEA-009": 1,
+    "LEA-012": 1,
+    "LEA-039": 1,
+    "LEA-044": 1,
+    "LEA-048": 1,
+    "LEA-049": 1,
+    "LEA-050": 1,
+    "LEA-052": 1,
+    "LEA-054": 1,
+    "LEA-055": 1,
+    "LEA-058": 1,
+    "LEA-062": 1,
+    "GCM-LEA-002": 1,
+    "CMAC-002": 1,
+    "CTR-LEA-005": 1
+  },
+  "by_file": {
+    "lea.c": 12,
+    "aria.c": 3,
+    "ec_kcdsa.c": 3,
+    "common.c": 3,
+    "ctrdrbg.c": 1,
+    "hmacdrbg.c": 1,
+    "mpz.c": 1,
+    "pbkdf.c": 1,
+    "sha.c": 1,
+    "sha2.c": 1,
+    "addmac.c": 1,
+    "test_module.c": 1
+  },
+  "by_severity": {
+    "high": 23,
+    "medium": 1,
+    "low": 5
+  },
+  "by_pattern": {
+    "missing": 23,
+    "regex": 5,
+    "ast": 1
+  },
+  "details": [
+    {
+      "rule_id": "COM-001",
+      "file": "aria.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "ctrdrbg.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "hmacdrbg.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "mpz.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "pbkdf.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "sha.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "sha2.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-001",
+      "file": "addmac.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "잔존 정보 제거(Zeroization)"
+    },
+    {
+      "rule_id": "COM-003",
+      "file": "aria.c",
+      "line": 3,
+      "severity": "high",
+      "pattern_type": "regex",
+      "message": "하드코딩된 키/IV 금지"
+    },
+    {
+      "rule_id": "COM-003",
+      "file": "aria.c",
+      "line": 78,
+      "severity": "high",
+      "pattern_type": "regex",
+      "message": "하드코딩된 키/IV 금지"
+    },
+    {
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 143,
+      "severity": "high",
+      "pattern_type": "regex",
+      "message": "CSPRNG 사용 의무화"
+    },
+    {
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 398,
+      "severity": "high",
+      "pattern_type": "regex",
+      "message": "CSPRNG 사용 의무화"
+    },
+    {
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 1066,
+      "severity": "high",
+      "pattern_type": "regex",
+      "message": "CSPRNG 사용 의무화"
+    },
+    {
+      "rule_id": "LEA-009",
+      "file": "lea.c",
+      "line": null,
+      "severity": "medium",
+      "pattern_type": "missing",
+      "message": "라운드키(RKi) 6개 워드(192비트) 구성"
+    },
+    {
+      "rule_id": "LEA-012",
+      "file": "lea.c",
+      "line": null,
+      "severity": "low",
+      "pattern_type": "missing",
+      "message": "상수 δ의 유도 근거(√766995) 주석 확인"
+    },
+    {
+      "rule_id": "LEA-039",
+      "file": "test_module.c",
+      "line": 1,
+      "severity": "high",
+      "pattern_type": "ast",
+      "message": "테스트 파일 'test_module.c': 암호화+복호화 함수 쌍 호출 없음 — Decrypt(Encrypt(P,K),K)=P 라운드트립 검증 누락 (KS X 3246 부록 Ⅰ)"
+    },
+    {
+      "rule_id": "LEA-044",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "중요 보안매개변수(비밀키) 메모리 제거"
+    },
+    {
+      "rule_id": "LEA-048",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "KAT/MMT/MCT REQUEST 파일 형식 규격"
+    },
+    {
+      "rule_id": "LEA-049",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "Variable Key KAT 수행 구현"
+    },
+    {
+      "rule_id": "LEA-050",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "Variable Text KAT 수행 구현"
+    },
+    {
+      "rule_id": "LEA-052",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "LEA_KEY 구조체 정의 확인"
+    },
+    {
+      "rule_id": "LEA-054",
+      "file": "lea.c",
+      "line": null,
+      "severity": "low",
+      "pattern_type": "missing",
+      "message": "헤더 파일 분리(lea.h / lea_locl.h) 구조"
+    },
+    {
+      "rule_id": "LEA-055",
+      "file": "lea.c",
+      "line": null,
+      "severity": "low",
+      "pattern_type": "missing",
+      "message": "SIMD 가속용 구현 파일 구성 여부"
+    },
+    {
+      "rule_id": "LEA-058",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "KAT용 REQUEST/RESPONSE 파일 명칭 준수"
+    },
+    {
+      "rule_id": "LEA-062",
+      "file": "lea.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "기지 답안 검사(KAT) REQUEST/RESPONSE 파일 처리"
+    },
+    {
+      "rule_id": "GCM-LEA-002",
+      "file": "common.c",
+      "line": null,
+      "severity": "low",
+      "pattern_type": "missing",
+      "message": "PCLMULQDQ GHASH 가속 권고"
+    },
+    {
+      "rule_id": "CMAC-002",
+      "file": "common.c",
+      "line": null,
+      "severity": "high",
+      "pattern_type": "missing",
+      "message": "CMAC 검증 실패 시 Invalid 반환 및 상수 시간 비교"
+    },
+    {
+      "rule_id": "CTR-LEA-005",
+      "file": "common.c",
+      "line": null,
+      "severity": "low",
+      "pattern_type": "missing",
+      "message": "LEA CTR 모드 SIMD 가속 적용 권고"
+    }
+  ]
+}
