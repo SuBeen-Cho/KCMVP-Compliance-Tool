@@ -1411,6 +1411,14 @@ def run_rule_engine(
             effective_scope = "project"
 
         if pattern_type in ("missing", "semantic") and effective_scope == "project":
+            # ── check_in 필터: scope:project missing 규칙도 check_in 존중 ──
+            # check_in: ["test", "benchmark"] → 해당 파일 타입이 없으면 skip
+            _ci = rule.get("check_in")
+            if _ci:
+                _ci_files = [f for f in file_cache if f.get("file_type", "impl") in _ci]
+                if not _ci_files:
+                    return  # 대상 파일 타입 없음 → KAT/MCT 규칙이 구현 파일에 불필요하게 발화 방지
+
             # ── [GPTScan 앵커] project-scope missing 규칙에도 모드 필터 적용 ──
             # mode 필드가 있는 규칙은 해당 모드를 구현하는 파일이 프로젝트에 없으면 skip.
             # 예: CTR missing 규칙이 CBC-only 프로젝트에 firing하는 FP 방지.

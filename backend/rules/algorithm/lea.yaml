@@ -129,7 +129,7 @@ rules:
   algorithm: LEA
   name: 키 스케줄 내부 상태 T 초기화(T ← K)
   pattern_type: missing
-  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K|\*\s*\(\s*(unsigned\s+int|uint32_t)\s*\*\s*\)\s*\w*mk|rk\s*\[\s*\d+\s*\]\s*=\s*ROL\s*\(|CONCAT_UINT32\s*\(\s*T
+  pattern: (?i)\bT\s*=\s*K\b|memcpy\s*\(\s*T\s*,\s*K|\*\s*\(\s*(unsigned\s+int|uint32_t)\s*\*\s*\)\s*\w*mk|rk\s*\[\s*\d+\s*\]\s*=\s*ROL\w*\s*\(|CONCAT_UINT32\s*\(\s*T|LD32\w*\s*\(\s*k
   severity: high
   description: 키 스케줄링 시작 시 내부 상태 T는 마스터키 K로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.2 알고리즘 3
@@ -252,7 +252,7 @@ rules:
   algorithm: LEA
   name: 암호화 초기화 단계(X0 ← P) 준수
   pattern_type: missing
-  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P|X[0-3]\s*=\s*(loadU32|load32|ntohl|bswap)|state\s*\[\s*[0-3]\s*\]\s*=.*\bpt\b|CONCAT_UINT32\s*\(\s*\w+\s*\[)
+  pattern: (?i)(\bX\s*=\s*P\b|\bX0\s*=\s*P\b|memcpy\s*\(\s*X\s*,\s*P|X[0-3]\s*=\s*(loadU32|load32|ntohl|bswap|LD32\w*)|state\s*\[\s*[0-3]\s*\]\s*=.*\bpt\b|CONCAT_UINT32\s*\(\s*\w+\s*\[|LD32\w*\s*\(pt)
   severity: high
   description: 암호화 시작 시 내부 상태 변수 X0는 평문 P로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
@@ -262,7 +262,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROL9 적용
   pattern_type: missing
-  pattern: (?i)(\bROL9\b|ROL\s*\([^,]+,\s*9\b|ROTL\s*\(\s*9\s*,|<<\s*9\s*\)\s*\|\s*\(.*>>\s*23)
+  pattern: (?i)(\bROL9\b|ROL\s*\([^,]+,\s*9\s*\)|ROTL\s*\(\s*9\s*,|<<\s*9\s*\)\s*\|\s*\(.*>>\s*23)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[0] 계산 시 9비트 좌측 순환이동(ROL9) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -272,7 +272,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROR5 적용
   pattern_type: missing
-  pattern: (?i)(\bROR5\b|ROR\s*\([^,]+,\s*5\b|ROTR\s*\(\s*5\s*,|>>\s*5\s*\)\s*\|\s*\(.*<<\s*27)
+  pattern: (?i)(\bROR5\b|ROR\s*\([^,]+,\s*5\s*\)|ROTR\s*\(\s*5\s*,|>>\s*5\s*\)\s*\|\s*\(.*<<\s*27)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[1] 계산 시 5비트 우측 순환이동(ROR5) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -282,7 +282,7 @@ rules:
   algorithm: LEA
   name: 암호화 라운드 함수 내 ROR3 적용
   pattern_type: missing
-  pattern: (?i)(\bROR3\b|ROR\s*\([^,]+,\s*3\b|ROTR\s*\(\s*3\s*,|>>\s*3\s*\)\s*\|\s*\(.*<<\s*29)
+  pattern: (?i)(\bROR3\b|ROR\s*\([^,]+,\s*3\s*\)|ROTR\s*\(\s*3\s*,|>>\s*3\s*\)\s*\|\s*\(.*<<\s*29)
   severity: high
   description: 암호화 라운드 함수에서 Xi+1[2] 계산 시 3비트 우측 순환이동(ROR3) 적용 확인
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 2
@@ -319,7 +319,7 @@ rules:
   algorithm: LEA
   name: 복호화 초기화 단계(X0 ← C) 준수
   pattern_type: missing
-  pattern: (?i)(\bX\s*=\s*C\b|\bX0\s*=\s*C\b|memcpy\s*\(\s*X\s*,\s*C|loadU32\s*\(_ct\b|CONCAT_UINT32\s*\(\s*\w+\s*\[)
+  pattern: (?i)(\bX\s*=\s*C\b|\bX0\s*=\s*C\b|memcpy\s*\(\s*X\s*,\s*C|loadU32\s*\(_ct\b|CONCAT_UINT32\s*\(\s*\w+\s*\[|LD32\w*\s*\(ct)
   severity: high
   description: 복호화 시작 시 내부 상태 변수 X0는 암호문 C로 초기화되어야 함
   kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 6
@@ -347,7 +347,7 @@ rules:
   algorithm: LEA
   name: 복호화 라운드 역 회전(ROR9, ROL5, ROL3) 검증
   pattern_type: missing
-  pattern: (?i)(\bROR9\b|ROR\s*\([^,]+,\s*9\b|ROTR\s*\(\s*9\s*,|>>\s*9\s*\)\s*\|\s*\(.*<<\s*23)|(\bROL5\b|ROL\s*\([^,]+,\s*5\b|ROTL\s*\(\s*5\s*,|<<\s*5\s*\)\s*\|\s*\(.*>>\s*27)|(\bROL3\b|ROL\s*\([^,]+,\s*3\b|ROTL\s*\(\s*3\s*,|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
+  pattern: (?i)(\bROR9\b|ROR\s*\([^,]+,\s*9\s*\)|ROTR\s*\(\s*9\s*,|>>\s*9\s*\)\s*\|\s*\(.*<<\s*23)|(\bROL5\b|ROL\s*\([^,]+,\s*5\s*\)|ROTL\s*\(\s*5\s*,|<<\s*5\s*\)\s*\|\s*\(.*>>\s*27)|(\bROL3\b|ROL\s*\([^,]+,\s*3\s*\)|ROTL\s*\(\s*3\s*,|<<\s*3\s*\)\s*\|\s*\(.*>>\s*29)
   severity: high
   description: 복호화 라운드에서 암호화의 역 회전 연산(ROR9, ROL5, ROL3)이 정확히 적용되었는지 확인
   kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 7
@@ -357,7 +357,7 @@ rules:
   algorithm: LEA
   name: 최종 암호문 대입(C ← XNr) 준수
   pattern_type: missing
-  pattern: (?i)(\bC\s*=\s*X|memcpy\s*\(\s*C\s*,\s*X|_ct\s*\[)
+  pattern: (?i)(\bC\s*=\s*X|memcpy\s*\(\s*C\s*,\s*X|_ct\s*\[|ST32\w*\s*\(ct)
   severity: high
   description: Nr번 라운드 수행 후의 최종 상태값을 암호문 배열 C에 대입해야 함
   kcmvp_ref: LEA 표준 규격서 §5.2.1 알고리즘 1
@@ -367,7 +367,7 @@ rules:
   algorithm: LEA
   name: 복호화 최종 평문 대입(P ← X_Nr) 준수
   pattern_type: missing
-  pattern: (?i)(\bP\s*=\s*X|memcpy\s*\(\s*P\s*,\s*X|_pt\s*\[)
+  pattern: (?i)(\bP\s*=\s*X|memcpy\s*\(\s*P\s*,\s*X|_pt\s*\[|ST32\w*\s*\(pt)
   severity: high
   description: 복호화 Nr번 라운드 수행 후의 최종 상태값을 평문 배열 P에 대입해야 함 (암호화의 C←X_Nr에 대응)
   kcmvp_ref: LEA 표준 규격서 §5.3.1 알고리즘 6
@@ -466,6 +466,7 @@ rules:
   description: REQUEST 파일(.req)은 키, IV(ECB 제외), 평문 또는 암호문을 포함하며, LEA[키길이][모드명][시험유형].req 형식의 파일명을 따라야 함
   kcmvp_ref: LEA 검증시스템 §6.2
   scope: project
+  check_in: ["test", "benchmark"]
 - id: LEA-049
   category: algorithm
   algorithm: LEA
@@ -476,6 +477,7 @@ rules:
   severity: high
   description: 고정 평문에 대해 키 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Key KAT를 구현해야 함
   kcmvp_ref: LEA 검증시스템 §6.2
+  check_in: ["test", "benchmark"]
 - id: LEA-050
   category: algorithm
   algorithm: LEA
@@ -486,6 +488,7 @@ rules:
   severity: high
   description: 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Text KAT를 구현해야 함
   kcmvp_ref: LEA 검증시스템 §6.2
+  check_in: ["test", "benchmark"]
 # LEA-051 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 # LEA-052 제거: LEA_KEY 구조체 명칭 강제 — 다른 구현체에서 FP 발생
 - id: LEA-053
@@ -528,6 +531,7 @@ rules:
   description: LEA[키길이][모드명][시험유형].[확장자] 형식의 표준 파일 명칭 체계를 준수해야 함
   kcmvp_ref: LEA 검증시스템 §6.2
   scope: project
+  check_in: ["test", "benchmark"]
 - id: LEA-059
   category: algorithm
   algorithm: LEA
@@ -548,6 +552,7 @@ rules:
   severity: high
   description: 고정된 입력값에 대해 표준 규격서 부록 I의 참조구현값과 출력이 일치하는지 확인
   kcmvp_ref: LEA 표준 규격서 부록 Ⅰ
+  check_in: ["test", "benchmark"]
 - id: LEA-061
   category: algorithm
   algorithm: LEA
@@ -567,3 +572,4 @@ rules:
   severity: high
   description: LEA 세부 구성요소 확인을 위해 Variable Key KAT 및 Variable Text KAT의 입력값(.req)을 읽고 결과값(.rsp)을 생성하는 기능이 구현되어야 함
   kcmvp_ref: LEA 검증시스템 §6.2
+  check_in: ["test", "benchmark"]
