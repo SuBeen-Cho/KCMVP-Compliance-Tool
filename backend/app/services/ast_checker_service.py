@@ -3711,6 +3711,110 @@ def _lc_get_for_bound(for_cursor) -> Optional[int]:
     return None
 
 
+# ── libclang COM-003 보조 함수 ────────────────────────────────────
+
+# COM-003 backward-slice: 키/IV 이름 패턴
+_COM003_KEY_NAMES = frozenset({
+    "key", "iv", "nonce", "seed", "mk", "rk", "sk", "pw", "pass",
+    "kek", "dek", "salt", "secret", "mkey", "skey",
+})
+
+# COM-003 S-box/LUT 제외 이름 패턴
+_COM003_SBOX_NAMES = frozenset({
+    "sbox", "s_box", "lut", "table", "lookup", "delta", "sigma",
+    "rcon", "round_const", "rc", "krk", "kc", "sb",
+})
+
+
+def com003_libclang_is_fp(content: str, filename: str, line_num: int, var_name: str) -> bool:
+    """COM-003 regex 히트가 FP인지 libclang으로 검증.
+
+    CryptoGuard backward-slicing 방식:
+      1. 해당 라인 변수가 PARM_DECL(함수 파라미터)이면 → 외부 주입 → FP
+      2. VAR_DECL + INIT_LIST_EXPR 이고:
+         a. 모든 자식이 INTEGER_LITERAL → 상수 배열 확정
+            - 크기 ≥ 256 이면 S-box → FP
+            - 이름에 key/iv 없으면 → FP
+         b. 일부 비정수 자식 → 동적 값 포함 → FP (진짜 키는 동적 생성해야 함)
+      3. 판단 불가 → False (기존 필터 따름, TP 보존)
+
+    Returns:
+        True  → FP 확정, 이 위반 제거해도 됨
+        False → TP 유지 또는 판단 불가
+    """
+    if not _HAS_LIBCLANG:
+        return False
+    try:
+        tu = _parse_c_libclang(content, filename)
+    except Exception:
+        return False
+    if tu is None:
+        return False
+
+    name_lower = var_name.lower() if var_name else ""
+
+    # S-box/LUT 이름 키워드 → 즉시 FP
+    if any(kw in name_lower for kw in _COM003_SBOX_NAMES):
+        return True
+
+    for cursor in tu.cursor.walk_preorder():
+        loc_line = cursor.location.line if cursor.location else 0
+        if abs(loc_line - line_num) > 5:
+            continue
+
+        # Case 1: 함수 파라미터 선언 → 외부 주입 → FP
+        if cursor.kind == _ci.CursorKind.PARM_DECL:
+            cur_name = (cursor.spelling or "").lower()
+            if cur_name == name_lower or (name_lower and name_lower in cur_name):
+                return True
+
+        # Case 2: 변수 선언 + 초기화 리스트 분석
+        if cursor.kind == _ci.CursorKind.VAR_DECL:
+            cur_name = (cursor.spelling or "").lower()
+            if cur_name != name_lower and not (name_lower and name_lower in cur_name):
+                continue
+
+            init = next((c for c in cursor.get_children()
+                         if c.kind == _ci.CursorKind.INIT_LIST_EXPR), None)
+            if init is None:
+                return False  # 초기화 없음 → 판단 불가
+
+            children = list(init.get_children())
+            if not children:
+                return False
+
+            # 배열 총 원소 수
+            arr_size = len(children)
+            if arr_size >= 256:
+                return True  # S-box 크기 → FP
+
+            # 모든 자식이 INTEGER_LITERAL(또는 UNEXPOSED_EXPR 래핑)인지 확인
+            def _is_int_lit(c) -> bool:
+                k = c.kind
+                if k == _ci.CursorKind.INTEGER_LITERAL:
+                    return True
+                if k in (_ci.CursorKind.UNEXPOSED_EXPR, _ci.CursorKind.IMPLICIT_CAST_EXPR):
+                    inner = list(c.get_children())
+                    return bool(inner) and _is_int_lit(inner[0])
+                return False
+
+            all_int = all(_is_int_lit(c) for c in children)
+            if not all_int:
+                # 동적 값 포함 → 이 배열은 상수가 아님
+                # 그러나 이미 regex가 히트한 상황 → FP로 처리 (진짜 키는 동적이어야 함)
+                return True
+
+            # 순수 상수 배열이지만 이름에 key/iv 없으면 → 공개 상수 → FP
+            has_key_name = any(kw in name_lower for kw in _COM003_KEY_NAMES)
+            if not has_key_name:
+                return True  # 이름에 key 의미 없음 → FP
+
+            # 상수 배열 + key-like 이름 → TP 유지
+            return False
+
+    return False  # 커서 못 찾음 → 판단 불가, 기존 필터 따름
+
+
 # ── libclang 체커 함수 ────────────────────────────────────────────
 
 def _lc_check_cbc_001(tu, filename: str, sg: dict) -> Optional[List[Dict[str, Any]]]:

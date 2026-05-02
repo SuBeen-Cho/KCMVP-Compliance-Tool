@@ -301,6 +301,26 @@ def _has_uncleared_key_var(content: str) -> bool:
                     return True
     return False
 
+# P1-B: ROL/ROR 매크로 변형 정규화 대상 규칙 (scope:project missing 검색 전 적용)
+# ROL32/ROR32 등 접미사 변형을 ROL/ROR로 통일하여 패턴 매칭 정확도 향상
+_ROTATION_RULE_IDS = frozenset({
+    "LEA-017", "LEA-018", "LEA-019", "LEA-020",
+    "LEA-027", "LEA-028", "LEA-029", "LEA-036",
+})
+
+_ROL_NORM_RE = re.compile(r'\bROL\w*\s*\(')
+_ROR_NORM_RE = re.compile(r'\bROR\w*\s*\(')
+
+
+def _normalize_rotation(text: str) -> str:
+    """ROL32/ROL64 등 → ROL(, ROR32/ROR64 등 → ROR( 정규화.
+    scope:project missing 검색 전용 — 원본 데이터는 수정하지 않는다.
+    """
+    text = _ROL_NORM_RE.sub('ROL(', text)
+    text = _ROR_NORM_RE.sub('ROR(', text)
+    return text
+
+
 # COM-003: 하드코딩 키 탐지에서 제외할 변수명/컨텍스트 키워드 (S-box, 룩업테이블, 테스트벡터 등)
 _COM003_FP_KEYWORDS = frozenset({
     "sbox", "s_box", "delta", "lookup", "table", "lut",
@@ -626,8 +646,21 @@ def _apply_rule_to_file(
                 # 256-entry 룩업 테이블 (S-box 크기) — 공개 알고리즘 상수
                 if re.search(r'\[\s*256\s*\]', line_text):
                     continue  # 256개 원소 배열은 S-box 등 공개 상수 → FP
-                # 3×16 이하 소형 배열이 아닌 한 단일 소문자 1자 변수는 테이블 인덱스 가능
-                # (키는 통상 key/mk/K/iv 등 의미 있는 이름을 가짐)
+                # P0: 다차원 배열 총 원소 수 ≥ 256 → S-box/LUT 공개 상수 → FP
+                _dims = re.findall(r'\[\s*(\d+)\s*\]', line_text)
+                if _dims:
+                    _total = 1
+                    for _d in _dims:
+                        _total *= int(_d)
+                    if _total >= 256:
+                        continue
+                # P0: libclang InitListExpr/PARM_DECL 기반 FP 검증 (CryptoGuard backward slicing)
+                try:
+                    from app.services.ast_checker_service import com003_libclang_is_fp as _c003_lc_fp
+                    if _c003_lc_fp(content, str(file_path), start_line, var_name):
+                        continue
+                except Exception:
+                    pass  # libclang 실패 → 기존 필터 결과 따름
 
             # 주석 줄 매칭 제거 (/* ... */ 또는 // ... 주석에서 함수명 매칭 방지)
             stripped_line = line_text.strip()
