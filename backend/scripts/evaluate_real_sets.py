@@ -63,6 +63,11 @@ _GT_EXCLUDE_RULES = frozenset({
     "LEA-054",       # lea_locl.h 헤더 명칭 강제
     "LEA-055",       # lea_t_sse2 등 SIMD 파일명 강제
     "CTR-LEA-005",   # lea_ctr SIMD 함수명 강제
+    # Phase 2-A 제거된 규칙 (GT 제외 — 제거/통합 처리)
+    "LEA-012",       # 주석 요구 (low severity FP) — 제거
+    "LEA-049",       # Variable Key KAT — LEA-062로 통합
+    "LEA-050",       # Variable Text KAT — LEA-062로 통합
+    "LEA-058",       # KAT 파일 명칭 — LEA-048 중복 제거
 })
 
 

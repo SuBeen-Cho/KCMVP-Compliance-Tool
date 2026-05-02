@@ -311,6 +311,14 @@ _COM003_FP_KEYWORDS = frozenset({
     "reduction", "gf_mul", "galois", "ghash_table",
     # SHA 라운드 상수 (FIPS 180-4 공개 상수 — 하드코딩 키 아님)
     "sha256_k", "sha512_k", "sha1_k", "sha_k", "sha256", "sha512",
+    # ARIA 알고리즘 공개 상수 (S-box, 라운드 상수 — 하드코딩 키 아님)
+    "sb1", "sb2", "sb3", "sb4", "aria_sb", "aria_s",
+    "aria_c", "aria_kc", "ks1", "ks2",  # ARIA 키 스케줄 상수
+    "s-box",  # 주석에 "S-box" (하이픈 포함)로 표기된 경우
+    "krk", "krk_",  # ARIA Key Round Konstant 테이블
+    "round key", "round_key",  # 컨텍스트 설명 키워드
+    # 기타 블록 암호 공개 상수
+    "const_", "_const", "coeffs", "coeff", "prime",
 })
 
 
@@ -611,10 +619,15 @@ def _apply_rule_to_file(
                     continue
                 name_match = re.search(r'\b(\w+)\s*[\[=]', line_text)
                 var_name = name_match.group(1).lower() if name_match else ""
-                ctx_lines = lines[max(0, start_line - 3):start_line + 1]
+                ctx_lines = lines[max(0, start_line - 3):start_line + 2]
                 ctx_text = " ".join(ctx_lines).lower()
-                if any(kw in var_name or kw in ctx_text[:200] for kw in _COM003_FP_KEYWORDS):
+                if any(kw in var_name or kw in ctx_text[:300] for kw in _COM003_FP_KEYWORDS):
                     continue  # 알려진 FP 패턴 — 스킵
+                # 256-entry 룩업 테이블 (S-box 크기) — 공개 알고리즘 상수
+                if re.search(r'\[\s*256\s*\]', line_text):
+                    continue  # 256개 원소 배열은 S-box 등 공개 상수 → FP
+                # 3×16 이하 소형 배열이 아닌 한 단일 소문자 1자 변수는 테이블 인덱스 가능
+                # (키는 통상 key/mk/K/iv 등 의미 있는 이름을 가짐)
 
             # 주석 줄 매칭 제거 (/* ... */ 또는 // ... 주석에서 함수명 매칭 방지)
             stripped_line = line_text.strip()

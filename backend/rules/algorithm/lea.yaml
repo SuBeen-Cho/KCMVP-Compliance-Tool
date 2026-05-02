@@ -114,16 +114,7 @@ rules:
   severity: high
   description: 표준에 정의된 8개의 델타 상수(δ[0]~δ[7])가 누락 없이 포함되어야 함. 하나라도 변조/누락 시 위반.
   kcmvp_ref: LEA 표준 규격서 §5.2.2
-- id: LEA-012
-  category: algorithm
-  algorithm: LEA
-  name: 상수 δ의 유도 근거(√766995) 주석 확인
-  pattern_type: missing
-  pattern: '766995'
-  severity: low
-  description: 상수 δ가 'L','E','A'의 ASCII 코드(76,69,95)와 √766995에서 유도되었음을 주석으로 명시 권장
-  kcmvp_ref: LEA 논문 §2.3
-  scope: project
+# LEA-012 제거: 주석 요구사항 (low severity) — 블라인드 FP확정. 구현 코드에서 주석 부재는 위반 아님
 - id: LEA-013
   category: algorithm
   algorithm: LEA
@@ -467,28 +458,8 @@ rules:
   kcmvp_ref: LEA 검증시스템 §6.2
   scope: project
   check_in: ["test", "benchmark"]
-- id: LEA-049
-  category: algorithm
-  algorithm: LEA
-  name: Variable Key KAT 수행 구현
-  pattern_type: missing
-  scope: project
-  pattern: "Variable Key|VariableKey|variable_key"
-  severity: high
-  description: 고정 평문에 대해 키 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Key KAT를 구현해야 함
-  kcmvp_ref: LEA 검증시스템 §6.2
-  check_in: ["test", "benchmark"]
-- id: LEA-050
-  category: algorithm
-  algorithm: LEA
-  name: Variable Text KAT 수행 구현
-  pattern_type: missing
-  scope: project
-  pattern: "Variable Text|VariableText|variable_text"
-  severity: high
-  description: 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Text KAT를 구현해야 함
-  kcmvp_ref: LEA 검증시스템 §6.2
-  check_in: ["test", "benchmark"]
+# LEA-049 제거: LEA-062로 통합 (Variable Key KAT — VariableKey/variable_key 변형 포함)
+# LEA-050 제거: LEA-062로 통합 (Variable Text KAT — VariableText/variable_text 변형 포함)
 # LEA-051 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 # LEA-052 제거: LEA_KEY 구조체 명칭 강제 — 다른 구현체에서 FP 발생
 - id: LEA-053
@@ -521,17 +492,7 @@ rules:
   description: MCT 수행 중 이전 키와 마지막 암호문 블록을 XOR하여 다음 키를 갱신하는 로직 검증
   fallback_pattern: '(?i)(key\s*\[.*\]\s*\^=|key_update|KeyUpdate|key\s*\^=\s*ct|\bkey\b.*\^.*cipher|xor_key_ct)'
   kcmvp_ref: LEA 검증시스템 §6.4
-- id: LEA-058
-  category: algorithm
-  algorithm: LEA
-  name: KAT용 REQUEST/RESPONSE 파일 명칭 준수
-  pattern_type: missing
-  pattern: (?i)LEA(128|192|256)(ECB|CBC|CTR|OFB|CFB\d*)(KAT|MMT|MCT)\.(req|rsp|fax)
-  severity: high
-  description: LEA[키길이][모드명][시험유형].[확장자] 형식의 표준 파일 명칭 체계를 준수해야 함
-  kcmvp_ref: LEA 검증시스템 §6.2
-  scope: project
-  check_in: ["test", "benchmark"]
+# LEA-058 제거: LEA-048과 동일 패턴 중복 — "KAT 파일 형식"과 "파일 명칭" 규칙이 사실상 동일
 - id: LEA-059
   category: algorithm
   algorithm: LEA
@@ -568,8 +529,8 @@ rules:
   name: 기지 답안 검사(KAT) REQUEST/RESPONSE 파일 처리
   pattern_type: missing
   scope: project
-  pattern: Variable Key|Variable Text|KAT\.(req|rsp|fax)
+  pattern: Variable Key|VariableKey|variable_key|Variable Text|VariableText|variable_text|KAT\.(req|rsp|fax)
   severity: high
-  description: LEA 세부 구성요소 확인을 위해 Variable Key KAT 및 Variable Text KAT의 입력값(.req)을 읽고 결과값(.rsp)을 생성하는 기능이 구현되어야 함
+  description: LEA 세부 구성요소 확인을 위해 Variable Key KAT 및 Variable Text KAT의 입력값(.req)을 읽고 결과값(.rsp)을 생성하는 기능이 구현되어야 함 (LEA-049/050 통합)
   kcmvp_ref: LEA 검증시스템 §6.2
   check_in: ["test", "benchmark"]
