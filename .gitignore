@@ -14,6 +14,16 @@ backend/.env
 
 # Storage (분석 결과물)
 backend/storage/jobs/
+backend/data/chroma/
+
+# Sensitive local inputs
+0_KCMVP.zip
+
+# Generated evaluation outputs
+backend/scripts/*_eval_*.json
+backend/scripts/blind_eval_*.json
+backend/scripts/ablation_v2_*.json
+backend/testdata/accuracy_test_v13.zip
 
 # OS
 .DS_Store
