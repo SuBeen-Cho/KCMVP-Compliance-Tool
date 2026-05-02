@@ -23,6 +23,7 @@ backend/data/chroma/
 backend/scripts/*_eval_*.json
 backend/scripts/blind_eval_*.json
 backend/scripts/ablation_v2_*.json
+backend/scripts/evaluation_results.json
 backend/testdata/accuracy_test_v13.zip
 
 # OS

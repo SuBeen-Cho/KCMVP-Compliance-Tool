@@ -59,7 +59,7 @@ def _confidence(v: Dict[str, Any]) -> str:
     - confidence 필드가 있으면 그대로 사용
     - l3_confirmed=True  → "확정" (L3 검증 통과)
     - needs_ai_review=True → "후보"
-    - pattern_type=missing  → "확정" (부재 여부는 이진 판정)
+    - pattern_type=missing  → "후보" (실제 제출물에서는 동등 구현/별도 래퍼 가능성 검토 필요)
     - 나머지 regex/semantic/ast without L3 → "후보" (L1 단독 판정, 미검토)
     """
     if "confidence" in v:
@@ -70,7 +70,7 @@ def _confidence(v: Dict[str, Any]) -> str:
         return "후보"
     pt = (v.get("pattern_type") or "").lower()
     if pt == "missing":
-        return "확정"   # missing 룰은 이진 판정 — L3 불필요
+        return "후보"
     return "후보"       # regex/semantic/ast 는 L3 미검토 상태 → 후보
 
 
@@ -149,6 +149,14 @@ def post_process_violations(
             result.append(merged)
             matched_l3_keys.add(key)
         else:
+            if (
+                (v.get("pattern_type") or "").lower() == "missing"
+                and not v.get("l3_confirmed")
+                and v.get("confidence") == "확정"
+            ):
+                # 과거 L1 missing 결과는 confidence="확정"으로 생성된 경우가 있다.
+                # 실제 제출물형 코드에서는 L3 확인 전까지 후보로 낮춰 보고한다.
+                v["confidence"] = "후보"
             if "confidence" not in v:
                 v["confidence"] = _confidence(v)
             result.append(v)

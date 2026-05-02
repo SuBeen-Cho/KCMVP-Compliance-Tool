@@ -158,14 +158,25 @@ def _select_l3_candidates(
     selected_keys.update(id(v) for v in bucket_other)
 
     # 버킷 4: missing 타입 — ②관련함수발췌 + ③역방향탐색 컨텍스트로 FP 판별
-    # high severity 우선, rule당 2건, 전체 cap = min(20, total_cap//3)
+    # 실제 제출물형 소규모 결과(N<=30)는 missing 전부를 L3로 보낸다.
+    # 0_KCMVP처럼 탐지 대부분이 "패턴 부재"일 때 rule당 2건 제한으로
+    # COM-001 후보가 잘리는 것을 막기 위함.
     missing_pool = [
         v for v in eligible
         if id(v) not in selected_keys
         and v.get("pattern_type") == "missing"
     ]
-    b4_cap = min(20, max(5, total_cap // 3))
-    bucket_missing = _fill_bucket(missing_pool, max_items=b4_cap, per_rule_max=2)
+    if n_total <= 30:
+        b4_cap = len(missing_pool)
+        missing_per_rule_max = len(missing_pool) or 1
+    else:
+        b4_cap = min(30, max(8, total_cap // 2))
+        missing_per_rule_max = 5
+    bucket_missing = _fill_bucket(
+        missing_pool,
+        max_items=b4_cap,
+        per_rule_max=missing_per_rule_max,
+    )
 
     result = bucket_ast + bucket_high + bucket_other + bucket_missing
     ast_fb_in_bucket = sum(1 for v in bucket_ast if v.get("confidence") == "후보")

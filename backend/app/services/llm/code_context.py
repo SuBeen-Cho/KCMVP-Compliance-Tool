@@ -21,6 +21,18 @@ _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
 
 # ② 관련 함수 키워드: missing 규칙이 요구하는 기능과 관련된 함수명 키워드
 _MISSING_RULE_FUNC_KEYWORDS: Dict[str, List[str]] = {
+    # 공통 보안
+    "com-001":      ["key", "rk", "mk", "secret", "cipher", "encrypt", "decrypt", "drbg", "kdf", "free", "clear", "zeroize", "cleanup"],
+    "com-004":      ["rand", "random", "rng", "drbg", "nonce", "k", "sign", "seed"],
+    # LEA 실제 제출물에서 자주 나오는 파일 수준 부재 후보
+    "lea-010":      ["delta", "key", "key_schedule", "roundkey", "round_key", "rk"],
+    "lea-013":      ["round", "encrypt", "decrypt", "block", "lea"],
+    "lea-026":      ["decrypt", "dec", "round", "lea"],
+    "lea-033":      ["decrypt", "dec", "round", "lea"],
+    "lea-044":      ["encrypt", "decrypt", "final", "cbc", "ctr", "gcm"],
+    "lea-048":      ["kat", "mmt", "mct", "request", "response", "test", "verify"],
+    "lea-062":      ["kat", "mmt", "mct", "request", "response", "test", "verify"],
+    "gcm-lea-002":  ["gcm", "ghash", "decrypt", "auth", "tag", "pclmul", "clmul"],
     # 제로화
     "ctr-004":      ["ctr", "key", "counter", "free", "clear", "zeroize", "cleanup"],
     "gcm-005":      ["gcm", "tag", "auth", "free", "clear", "zeroize", "cleanup"],
@@ -43,6 +55,18 @@ _MISSING_RULE_FUNC_KEYWORDS: Dict[str, List[str]] = {
 
 # ③ 역방향 패턴: missing 규칙의 "요구 패턴" 대신 쓰일 수 있는 대안 구현 탐색
 _MISSING_INVERSE_PATTERNS: Dict[str, List[str]] = {
+    # 공통 보안
+    "com-001":      [r"\bmemset_s\b", r"\bexplicit_bzero\b", r"\bSecureZeroMemory\b", r"\bOPENSSL_cleanse\b", r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b", r"cleanup"],
+    "com-004":      [r"\brand\b", r"\bsrand\b", r"\brandom\b", r"\bgetrandom\b", r"\bCryptGenRandom\b", r"\bBCryptGenRandom\b", r"\bRtlGenRandom\b", r"\bDRBG\b", r"\bCTR_DRBG\b"],
+    # LEA/모드 후보
+    "lea-010":      [r"0xc3efe9db", r"0x44626b02", r"0x79e27c8a", r"0x78df30ec", r"\bdelta\b", r"DELTA"],
+    "lea-013":      [r"\b24\b", r"\b28\b", r"\b32\b", r"round", r"NR"],
+    "lea-026":      [r"decrypt", r"\bdec\b", r"round", r"rk"],
+    "lea-033":      [r"decrypt", r"\bdec\b", r"round", r"rk"],
+    "lea-044":      [r"return\s+-?1", r"error", r"invalid", r"fail", r"verify"],
+    "lea-048":      [r"KAT", r"MMT", r"MCT", r"REQUEST", r"RESPONSE", r"\.req", r"\.rsp"],
+    "lea-062":      [r"KAT", r"MMT", r"MCT", r"REQUEST", r"RESPONSE", r"\.req", r"\.rsp"],
+    "gcm-lea-002":  [r"pclmul", r"clmul", r"ghash", r"gf_mul", r"carryless", r"software"],
     # 제로화: 표준 함수 대신 쓰이는 것들
     "ctr-004":      [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
     "gcm-005":      [r"\bmemset\b", r"\bbzero\b", r"zeroize", r"\bclear\b"],
