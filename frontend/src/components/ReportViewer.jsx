@@ -155,10 +155,15 @@ function getConfidence(v) {
   return "확정";
 }
 
-function Verdict({ confirmed, candidate }) {
+function Verdict({ confirmed, review = 0, candidate }) {
   if (confirmed > 0) return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-700 border border-red-200">
       ❌ 불합격
+    </span>
+  );
+  if (review > 0) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+      ⚠️ 검토 권고
     </span>
   );
   if (candidate > 0) return (
@@ -185,6 +190,12 @@ function ConfidenceBadge({ confidence, score, insufficientCtx }) {
     <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-300"
           title="AI 판정 시 코드 절삭이 불충분하여 재검토 필요">
       ? 증거부족
+    </span>
+  );
+  if (confidence === "검토권고") return (
+    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200"
+          title={score !== undefined ? `확신도: ${score}% (제출물 맥락 검토 필요)` : "정책상 검토 권고"}>
+      검토권고{scoreText && <span className="font-normal opacity-75">{scoreText}</span>}
     </span>
   );
   return (
@@ -258,11 +269,12 @@ export default function ReportViewer() {
   // 카테고리별 분류
   const catData = useMemo(() => {
     const data = Object.fromEntries(
-      CATEGORY_ORDER.map((c) => [c, { confirmed: [], candidate: [] }])
+      CATEGORY_ORDER.map((c) => [c, { confirmed: [], review: [], candidate: [] }])
     );
     for (const v of violations) {
       const cat    = getCategory(v.rule_id || "");
-      const bucket = getConfidence(v) === "확정" ? "confirmed" : "candidate";
+      const conf = getConfidence(v);
+      const bucket = conf === "확정" ? "confirmed" : conf === "검토권고" ? "review" : "candidate";
       data[cat][bucket].push(v);
     }
     return data;
@@ -273,6 +285,7 @@ export default function ReportViewer() {
   const trcViolations    = violations.filter(isTrc);
 
   const totalConfirmed = nonTrcViolations.filter((v) => getConfidence(v) === "확정").length;
+  const totalReview    = nonTrcViolations.filter((v) => getConfidence(v) === "검토권고").length;
   const totalCandidate = nonTrcViolations.filter((v) => getConfidence(v) === "후보").length;
   const trcCount       = trcViolations.length;
 
@@ -301,7 +314,7 @@ export default function ReportViewer() {
     );
   }
 
-  const overallVerdict = totalConfirmed > 0 ? "❌ 불합격" : totalCandidate > 0 ? "⚠️ 검토 필요" : "✅ 통과";
+  const overallVerdict = totalConfirmed > 0 ? "❌ 불합격" : totalReview > 0 ? "⚠️ 검토 권고" : totalCandidate > 0 ? "⚠️ 검토 필요" : "✅ 통과";
   // TRC는 판정에 포함하지 않음 — 별도 참고 정보로 표시
 
   const handlePrint = () => window.print();
@@ -323,6 +336,8 @@ export default function ReportViewer() {
             "px-3 py-1.5 rounded-lg text-sm font-semibold border",
             totalConfirmed > 0
               ? "bg-red-50 text-red-700 border-red-200"
+              : totalReview > 0
+              ? "bg-blue-50 text-blue-700 border-blue-200"
               : totalCandidate > 0
               ? "bg-amber-50 text-amber-700 border-amber-200"
               : "bg-green-50 text-green-700 border-green-200",
@@ -358,7 +373,7 @@ export default function ReportViewer() {
           </h3>
 
           {/* 상단 확정/후보 요약 카드 */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="rounded-xl border-2 border-red-200 bg-red-50 px-4 py-4 text-center shadow-sm">
               <p className="text-[11px] font-medium text-red-500 mb-1 uppercase tracking-wide">확정 위반</p>
               <p className="text-3xl font-black text-red-700">{totalConfirmed}</p>
@@ -367,8 +382,13 @@ export default function ReportViewer() {
               )}
             </div>
             <div className="rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-4 text-center shadow-sm">
+              <p className="text-[11px] font-medium text-amber-500 mb-1 uppercase tracking-wide">검토 권고</p>
+              <p className="text-3xl font-black text-amber-600">{totalReview}</p>
+              <p className="text-[10px] text-amber-400 mt-1">제출물 맥락 확인</p>
+            </div>
+            <div className="rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-4 text-center shadow-sm">
               <p className="text-[11px] font-medium text-amber-500 mb-1 uppercase tracking-wide">위반 후보</p>
-              <p className="text-3xl font-black text-amber-600">{totalCandidate}</p>
+              <p className="text-3xl font-black text-gray-700">{totalCandidate}</p>
               <p className="text-[10px] text-amber-400 mt-1">L2 재검토 필요</p>
             </div>
             <div className="rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-4 text-center shadow-sm">
@@ -392,6 +412,7 @@ export default function ReportViewer() {
                 <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
                   <th className="text-left px-3 py-2 font-medium">카테고리</th>
                   <th className="text-center px-3 py-2 font-medium w-20">확정</th>
+                  <th className="text-center px-3 py-2 font-medium w-20">권고</th>
                   <th className="text-center px-3 py-2 font-medium w-20">후보</th>
                   <th className="text-center px-3 py-2 font-medium w-28">판정</th>
                 </tr>
@@ -399,11 +420,12 @@ export default function ReportViewer() {
               <tbody className="divide-y divide-gray-100">
                 {CATEGORY_ORDER.map((cat) => {
                   const c = catData[cat].confirmed.length;
+                  const r = catData[cat].review.length;
                   const k = catData[cat].candidate.length;
-                  if (c === 0 && k === 0) return null;
+                  if (c === 0 && r === 0 && k === 0) return null;
                   const { label, abbr } = CATEGORY_META[cat];
                   return (
-                    <tr key={cat} className={["transition-colors", c > 0 ? "bg-red-50 hover:bg-red-100" : k > 0 ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"].join(" ")}>
+                    <tr key={cat} className={["transition-colors", c > 0 ? "bg-red-50 hover:bg-red-100" : r > 0 ? "bg-blue-50 hover:bg-blue-100" : k > 0 ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"].join(" ")}>
                       <td className="px-3 py-2 font-medium text-gray-800">
                         {label} <span className="text-gray-400">({abbr})</span>
                       </td>
@@ -413,9 +435,10 @@ export default function ReportViewer() {
                           : <span className="text-gray-400">0건</span>
                         }
                       </td>
+                      <td className="px-3 py-2 text-center text-blue-600">{r}건</td>
                       <td className="px-3 py-2 text-center text-gray-500">{k}건</td>
                       <td className="px-3 py-2 text-center">
-                        <Verdict confirmed={c} candidate={k} />
+                        <Verdict confirmed={c} review={r} candidate={k} />
                       </td>
                     </tr>
                   );
@@ -441,8 +464,9 @@ export default function ReportViewer() {
         {/* ── 카테고리별 상세 ── */}
         {CATEGORY_ORDER.map((cat) => {
           const c_list = catData[cat].confirmed;
+          const r_list = catData[cat].review;
           const k_list = catData[cat].candidate;
-          const all    = [...c_list, ...k_list];
+          const all    = [...c_list, ...r_list, ...k_list];
           if (!all.length) return null;
 
           const { label, abbr } = CATEGORY_META[cat];
@@ -458,7 +482,7 @@ export default function ReportViewer() {
                     {all.length}건
                   </span>
                 </div>
-                <Verdict confirmed={c_list.length} candidate={k_list.length} />
+                <Verdict confirmed={c_list.length} review={r_list.length} candidate={k_list.length} />
               </div>
 
               <div className="space-y-2">

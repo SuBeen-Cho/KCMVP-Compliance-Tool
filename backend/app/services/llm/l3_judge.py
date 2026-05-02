@@ -265,6 +265,13 @@ def run_l3_contextualizer(
                 )
                 code_block = lifecycle_block + code_block
                 print(f"[L3][KL] 키 생명주기 분석 추가: COM-001 @ {file_path}")
+            if v.get("project_artifact_evidence"):
+                artifact_block = (
+                    "=== 제출/시험 아티팩트 증거 (Submission/Test Artifact Evidence) ===\n"
+                    + v["project_artifact_evidence"]
+                    + "\n" + "=" * 50 + "\n\n"
+                )
+                code_block = artifact_block + code_block
             # Phase 2: GCFS — 전체 코드 흐름 요약을 code_block 맨 앞에 prepend
             # DOC 규칙(DOC-xxx)은 설계서 판정이므로 코드 흐름 요약 주입 제외
             _is_doc_rule = (v.get("rule_id") or "").startswith("DOC")

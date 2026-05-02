@@ -342,6 +342,36 @@ _KEY_SCHED_PRESENT_RE = re.compile(
     r'rk\s*\[.*\]\s*\[.*\]\s*=.*T\[)'           # rk[i][j] = T[k] 라운드키 배열 대입
 )
 
+_TEST_ARTIFACT_NAME_RE = re.compile(
+    r"(?i)(kat|mmt|mct|request|response|vector|test|req|rsp)"
+)
+_TEST_ARTIFACT_CONTENT_RE = re.compile(
+    r"(?i)(KAT|MMT|MCT|REQUEST|RESPONSE|Variable\s*Key|VariableKey|Variable\s*Text|VariableText|\.req|\.rsp)"
+)
+
+
+def _build_project_artifact_evidence(
+    rule_id: str,
+    files: List[Dict[str, Any]],
+) -> str:
+    """시험/제출 패키지 성격 missing 규칙의 프로젝트 증거 요약."""
+    if rule_id not in {"LEA-048", "LEA-062"}:
+        return ""
+    path_hits = []
+    content_hits = []
+    for item in files:
+        display = item.get("display") or ""
+        content = item.get("content") or ""
+        if _TEST_ARTIFACT_NAME_RE.search(display):
+            path_hits.append(display)
+        if _TEST_ARTIFACT_CONTENT_RE.search(content):
+            content_hits.append(display)
+    lines = ["[프로젝트 시험 아티팩트 증거]"]
+    lines.append(f"  파일명 기반 후보: {', '.join(path_hits[:8]) if path_hits else '미발견'}")
+    lines.append(f"  내용 기반 후보: {', '.join(content_hits[:8]) if content_hits else '미발견'}")
+    lines.append("  해석: 시험 벡터/REQUEST/RESPONSE 처리는 구현 파일 단독이 아니라 시험 도구, 시험서, 제출 패키지까지 함께 판단해야 함")
+    return "\n".join(lines)
+
 _ROL_NORM_RE = re.compile(r'\bROL\w*\s*\(')
 _ROR_NORM_RE = re.compile(r'\bROR\w*\s*\(')
 # ROTL(n, x) / ROTR(n, x) 형태 (인수 순서 반대) → ROL(x, n) / ROR(x, n) 정규화
@@ -457,6 +487,37 @@ _CRYPTO_USE_RE = re.compile(
     re.IGNORECASE,
 )
 
+_SSP_CONTEXT_RE = re.compile(
+    r"\b("
+    r"key|rk|mk|round_?key|subkey|private|secret|password|passwd|"
+    r"seed|entropy|drbg|nonce|iv|ctr|counter|session|"
+    r"hmac|cmac|mac|tag|sign|kcdsa|pbkdf|kdf|cipher|encrypt|decrypt"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_PUBLIC_HASH_ONLY_RE = re.compile(
+    r"\b(sha|sha1|sha2|sha224|sha256|sha384|sha512|hash|digest|compress)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_ssp_context(content: str) -> bool:
+    """COM-001 적용 전제조건.
+
+    특정 파일명을 예외 처리하지 않고, KCMVP SSP/CSP 정의에 맞는 데이터
+    또는 암호 서비스 역할 증거가 있을 때만 제로화 후보를 만든다.
+    공개 해시/다이제스트 처리만 보이고 SSP 지표가 없으면 COM-001 적용을 보류한다.
+    """
+    stripped = _strip_c_comments(content or "")
+    if _SSP_CONTEXT_RE.search(stripped):
+        return True
+    if _KEY_SETTER_RE.search(stripped) or _CRYPTO_USE_RE.search(stripped):
+        return True
+    if _PUBLIC_HASH_ONLY_RE.search(stripped):
+        return False
+    return False
+
 
 def _build_key_lifecycle(
     content: str,
@@ -500,6 +561,7 @@ def _build_key_lifecycle(
             zero_loop_lines.append((i, line.strip()[:80]))
 
     parts = ["[키 생명주기 분석]"]
+    parts.append(f"  SSP/CSP 적용 전제: {'충족' if _has_ssp_context(content) else '불충족/불명확'}")
     if key_decl_lines:
         for ln, text in key_decl_lines[:3]:
             parts.append(f"  선언: L{ln} {text}")
@@ -646,6 +708,8 @@ def _apply_rule_to_file(
 
         # 키 생명주기 분석 (COM-001 전용) — L3 AI에게 구체적 근거 제공
         key_lifecycle = _build_key_lifecycle(content, file_display, symbol_graph)
+        if rule.get("id") == "COM-001" and not _has_ssp_context(content):
+            return []
 
         violations.append({
             "rule_id": rule.get("id", ""),
@@ -655,10 +719,10 @@ def _apply_rule_to_file(
             "message": rule.get("name") or "잔존 정보 제거 필요",
             "severity": rule.get("severity", "high"),
             "pattern_type": rule.get("pattern_type", "missing"),
-            "confidence": "확정",
+            "confidence": "검토권고" if rule.get("id") == "COM-001" else "확정",
             "snippet": snippet,
             "key_lifecycle": key_lifecycle,
-            "needs_ai_review": False,  # COM-001은 L1 확정 위반이나 lifecycle 정보를 AI에게 제공
+            "needs_ai_review": rule.get("id") == "COM-001",
         })
         return violations
 
@@ -1228,6 +1292,8 @@ def _apply_project_missing_rule(
             # 비구현 파일(test/data/benchmark/wrapper)은 제로화 검사 불필요
             if item.get("file_type", "impl") not in ("impl",):
                 continue
+            if not _has_ssp_context(item.get("content") or ""):
+                continue
             ast = item.get("ast") or {}
             file_calls = ast.get("file_calls")
             if not isinstance(file_calls, list):
@@ -1262,7 +1328,8 @@ def _apply_project_missing_rule(
                         "scope": "file",
                         "message": rule.get("name") or "잔존 정보 제거 필요",
                         "severity": rule.get("severity", "high"),
-                        "confidence": "확정",
+                        "confidence": "검토권고",
+                        "needs_ai_review": True,
                         "snippet": "",
                         "pattern_type": rule.get("pattern_type", "missing"),
                         "key_lifecycle": _build_key_lifecycle(content, item.get("display", ""), symbol_graph),
@@ -1293,7 +1360,8 @@ def _apply_project_missing_rule(
                     "scope": "file",
                     "message": rule.get("name") or "잔존 정보 제거 필요",
                     "severity": rule.get("severity", "high"),
-                    "confidence": "확정",  # AST 직접 분석 결과
+                    "confidence": "검토권고",
+                    "needs_ai_review": True,
                     "snippet": "",
                     "pattern_type": rule.get("pattern_type", "missing"),
                     "key_lifecycle": _build_key_lifecycle(_content_for_lc, item.get("display", ""), symbol_graph),
@@ -1309,7 +1377,8 @@ def _apply_project_missing_rule(
                         "scope": "file",
                         "message": rule.get("name") or "잔존 정보 제거 필요",
                         "severity": rule.get("severity", "high"),
-                        "confidence": "확정",
+                        "confidence": "검토권고",
+                        "needs_ai_review": True,
                         "snippet": "",
                         "pattern_type": rule.get("pattern_type", "missing"),
                         "key_lifecycle": _build_key_lifecycle(_content_for_fn, item.get("display", ""), symbol_graph),
@@ -1457,6 +1526,7 @@ def _apply_project_missing_rule(
             "needs_ai_review": True,
             "pattern_type": rule.get("pattern_type", "missing"),
             "ai_context": rule.get("description", ""),
+            "project_artifact_evidence": _build_project_artifact_evidence(rule_id or "", _search),
         }
     ]
 

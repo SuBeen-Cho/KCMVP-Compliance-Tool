@@ -87,6 +87,77 @@ _MISSING_INVERSE_PATTERNS: Dict[str, List[str]] = {
     "gcm-002":      [r"\brand\b", r"\brandom\b", r"\bprng\b", r"\brng\b"],
 }
 
+_POLICY_EVIDENCE_PATTERNS: Dict[str, Dict[str, List[str]]] = {
+    "com-001": {
+        "ssp_indicators": [
+            r"\bkey\b", r"round_?key", r"\brk\b", r"private", r"secret",
+            r"seed", r"entropy", r"drbg", r"nonce", r"\biv\b", r"pbkdf",
+            r"hmac", r"cmac", r"\bmac\b", r"tag", r"encrypt", r"decrypt",
+        ],
+        "safe_controls": [
+            r"memset_s", r"explicit_bzero", r"SecureZeroMemory",
+            r"RtlSecureZeroMemory", r"zeroize", r"secure_clear", r"wipe",
+        ],
+        "weak_controls": [r"\bmemset\s*\(", r"\bbzero\s*\("],
+        "non_secret_hints": [r"\bsha\d*\b", r"\bhash\b", r"\bdigest\b", r"sbox", r"delta", r"kat", r"test_vector"],
+    },
+    "com-004": {
+        "forbidden_rng": [r"\brand\s*\(", r"\bsrand\s*\(", r"\brandom\s*\(", r"\bdrand48\s*\(", r"\bclock\s*\(", r"\btime\s*\("],
+        "crypto_purpose": [r"\biv\b", r"nonce", r"\bkey\b", r"seed", r"entropy", r"drbg", r"sign", r"kcdsa", r"private", r"session"],
+        "safe_rng": [r"getrandom", r"/dev/urandom", r"BCryptGenRandom", r"CryptGenRandom", r"RtlGenRandom", r"CTR_?DRBG", r"HMAC_?DRBG"],
+        "non_crypto_hints": [r"test", r"sample", r"index", r"loop", r"benchmark", r"printf"],
+    },
+    "cmac-002": {
+        "constant_time": [r"constant_?time", r"CRYPTO_memcmp", r"timingsafe_memcmp", r"timingsafe_bcmp", r"volatile\s+.*diff", r"diff\s*\|="],
+        "early_compare": [r"\bmemcmp\s*\(", r"\bstrcmp\s*\(", r"return\s+-?1[^;]*;", r"break\s*;"],
+        "mac_context": [r"cmac", r"\bmac\b", r"tag", r"verify", r"auth"],
+    },
+    "lea-048": {
+        "test_artifacts": [r"KAT", r"MMT", r"MCT", r"\.req", r"\.rsp", r"REQUEST", r"RESPONSE", r"test_vector"],
+        "implementation_only": [r"encrypt", r"decrypt", r"key_schedule", r"round", r"block"],
+    },
+    "lea-062": {
+        "test_artifacts": [r"Variable\s*Key", r"VariableKey", r"variable_key", r"Variable\s*Text", r"VariableText", r"variable_text", r"KAT", r"\.req", r"\.rsp"],
+        "implementation_only": [r"encrypt", r"decrypt", r"key_schedule", r"round", r"block"],
+    },
+    "gcm-lea-002": {
+        "ghash_impl": [r"ghash", r"gf_mul", r"galois", r"pclmul", r"clmul", r"_mm_clmulepi64_si128"],
+        "portable_fallback": [r"software", r"portable", r"fallback", r"no_?pclmul"],
+    },
+}
+
+
+def _collect_policy_evidence(lines: List[str], rule_id: str, max_hits: int = 5) -> str:
+    """정책 기준별 증거를 코드에서 수집한다.
+
+    특정 파일명/함수명 예외가 아니라 KCMVP 요구사항의 구성요소
+    (SSP 존재, 안전 제어, 금지 API, 시험 아티팩트)를 체크리스트화한다.
+    """
+    groups = _POLICY_EVIDENCE_PATTERNS.get(rule_id.lower())
+    if not groups:
+        return ""
+
+    parts: List[str] = ["// === 정책 기준별 증거 요약 ==="]
+    for label, patterns in groups.items():
+        hits: List[str] = []
+        for pattern in patterns:
+            try:
+                compiled = re.compile(pattern, re.IGNORECASE)
+            except re.error:
+                continue
+            for i, raw_line in enumerate(lines):
+                if compiled.search(raw_line):
+                    hits.append(f"L{i + 1}: {raw_line.strip()[:120]}")
+                    break
+            if len(hits) >= max_hits:
+                break
+        if hits:
+            parts.append(f"// [{label}]")
+            parts.extend(f"//   {hit}" for hit in hits[:max_hits])
+        else:
+            parts.append(f"// [{label}] 발견 없음")
+    return "\n".join(parts)
+
 
 def _find_related_functions(
     lines: List[str],
@@ -197,6 +268,9 @@ def _build_missing_context(
     skeleton = extract_global_skeleton(lines)
 
     sections: List[str] = []
+    policy_evidence = _collect_policy_evidence(lines, rid)
+    if policy_evidence:
+        sections.append(policy_evidence)
     if skeleton:
         sections.append(f"// === 파일 구조 요약 (함수 목록) ===\n{skeleton}")
     if related_funcs:

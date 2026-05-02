@@ -59,17 +59,17 @@ def _confidence(v: Dict[str, Any]) -> str:
     - confidence 필드가 있으면 그대로 사용
     - l3_confirmed=True  → "확정" (L3 검증 통과)
     - needs_ai_review=True → "후보"
-    - pattern_type=missing  → "후보" (실제 제출물에서는 동등 구현/별도 래퍼 가능성 검토 필요)
+    - pattern_type=missing  → "검토권고" (동등 구현/별도 래퍼/시험 아티팩트 가능성 검토 필요)
     - 나머지 regex/semantic/ast without L3 → "후보" (L1 단독 판정, 미검토)
     """
     if "confidence" in v:
         return v["confidence"]
     if v.get("l3_confirmed"):
         return "확정"
-    if v.get("needs_ai_review"):
-        return "후보"
     pt = (v.get("pattern_type") or "").lower()
     if pt == "missing":
+        return "검토권고"
+    if v.get("needs_ai_review"):
         return "후보"
     return "후보"       # regex/semantic/ast 는 L3 미검토 상태 → 후보
 
@@ -145,7 +145,11 @@ def post_process_violations(
             merged["l3_confirmed"] = True
             merged["l3_message"]   = l3_match.get("message", "")
             merged["suggestion"]   = l3_match.get("suggestion", v.get("suggestion", ""))
-            merged["confidence"]   = "확정"
+            merged["confidence"]   = l3_match.get("confidence", "확정")
+            if "confidence_score" in l3_match:
+                merged["confidence_score"] = l3_match.get("confidence_score")
+            if "l3_is_real_issue" in l3_match:
+                merged["l3_is_real_issue"] = l3_match.get("l3_is_real_issue")
             result.append(merged)
             matched_l3_keys.add(key)
         else:
@@ -155,8 +159,8 @@ def post_process_violations(
                 and v.get("confidence") == "확정"
             ):
                 # 과거 L1 missing 결과는 confidence="확정"으로 생성된 경우가 있다.
-                # 실제 제출물형 코드에서는 L3 확인 전까지 후보로 낮춰 보고한다.
-                v["confidence"] = "후보"
+                # 실제 제출물형 코드에서는 L3 확인 전까지 검토 권고로 낮춰 보고한다.
+                v["confidence"] = "검토권고"
             if "confidence" not in v:
                 v["confidence"] = _confidence(v)
             result.append(v)
@@ -182,6 +186,7 @@ def post_process_violations(
 def build_summary(violations: List[Dict[str, Any]]) -> Dict[str, Any]:
     """confidence × severity 교차 집계."""
     confirmed = sum(1 for v in violations if _confidence(v) == "확정")
+    review = sum(1 for v in violations if _confidence(v) == "검토권고")
     candidate = len(violations) - confirmed
 
     # severity 전체 집계
@@ -199,6 +204,7 @@ def build_summary(violations: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "total":           len(violations),
         "confirmed":       confirmed,
+        "review":          review,
         "candidate":       candidate,
         # 전체 severity (하위 호환)
         "high":            sev["high"],
@@ -233,7 +239,7 @@ def write_report_markdown(job_root: Path, report: Dict[str, Any]) -> Path:
 
     판정 기준:
       확정 위반 ≥ 1건  →  ❌ 불합격
-      위반 후보만       →  ⚠️  검토 필요
+      검토권고/후보만   →  ⚠️  검토 필요
       0건              →  ✅ 통과
     """
     violations = report.get("violations", [])
@@ -248,16 +254,18 @@ def write_report_markdown(job_root: Path, report: Dict[str, Any]) -> Path:
 
     # ── 카테고리별 분류 ──
     cat_data: Dict[str, Dict[str, list]] = {
-        cat: {"confirmed": [], "candidate": []}
+        cat: {"confirmed": [], "review": [], "candidate": []}
         for cat in _CATEGORY_ORDER
     }
     for v in violations:
         cat    = _get_category(v.get("rule_id", ""))
-        bucket = "confirmed" if _confidence(v) == "확정" else "candidate"
+        conf   = _confidence(v)
+        bucket = "confirmed" if conf == "확정" else ("review" if conf == "검토권고" else "candidate")
         cat_data[cat][bucket].append(v)
 
-    def _verdict(c: int, k: int) -> str:
+    def _verdict(c: int, r: int, k: int) -> str:
         if c:   return "❌ 불합격"
+        if r:   return "⚠️  검토 권고"
         if k:   return "⚠️  검토 필요"
         return "✅ 통과"
 
@@ -277,28 +285,31 @@ def write_report_markdown(job_root: Path, report: Dict[str, Any]) -> Path:
 
     # ━━ 종합 판정 테이블 ━━
     total_confirmed = summary.get("confirmed", 0)
+    total_review = summary.get("review", 0)
     total_candidate = summary.get("candidate", 0)
-    overall = _verdict(total_confirmed, total_candidate)
+    total_low_candidate = max(0, total_candidate - total_review)
+    overall = _verdict(total_confirmed, total_review, total_low_candidate)
 
     lines += [
         "## 종합 판정",
         "",
-        "| 카테고리 | 확정 위반 | 위반 후보 | 판정 |",
-        "|----------|:---------:|:---------:|:----:|",
+        "| 카테고리 | 확정 위반 | 검토 권고 | 낮은 신뢰도 후보 | 판정 |",
+        "|----------|:---------:|:---------:|:---------------:|:----:|",
     ]
     for cat in _CATEGORY_ORDER:
         c_n = len(cat_data[cat]["confirmed"])
+        r_n = len(cat_data[cat]["review"])
         k_n = len(cat_data[cat]["candidate"])
-        if c_n == 0 and k_n == 0:
+        if c_n == 0 and r_n == 0 and k_n == 0:
             continue
         label   = _CATEGORY_META[cat]["label"]
         abbr    = _CATEGORY_META[cat]["abbr"]
-        verdict = _verdict(c_n, k_n)
+        verdict = _verdict(c_n, r_n, k_n)
         c_str   = f"**{c_n}건**" if c_n else f"{c_n}건"
-        lines.append(f"| {label} ({abbr}) | {c_str} | {k_n}건 | {verdict} |")
+        lines.append(f"| {label} ({abbr}) | {c_str} | {r_n}건 | {k_n}건 | {verdict} |")
 
     lines += [
-        f"| **합계** | **{total_confirmed}건** | **{total_candidate}건** | **{overall}** |",
+        f"| **합계** | **{total_confirmed}건** | **{total_review}건** | **{total_low_candidate}건** | **{overall}** |",
         "",
         "---",
         "",
@@ -319,14 +330,15 @@ def write_report_markdown(job_root: Path, report: Dict[str, Any]) -> Path:
     section_num = 1
     for cat in _CATEGORY_ORDER:
         c_list = cat_data[cat]["confirmed"]
+        r_list = cat_data[cat]["review"]
         k_list = cat_data[cat]["candidate"]
-        all_v  = c_list + k_list
+        all_v  = c_list + r_list + k_list
         if not all_v:
             continue
 
         label   = _CATEGORY_META[cat]["label"]
         abbr    = _CATEGORY_META[cat]["abbr"]
-        verdict = _verdict(len(c_list), len(k_list))
+        verdict = _verdict(len(c_list), len(r_list), len(k_list))
 
         lines += [
             f"## {section_num}. {label} ({abbr})  {verdict}",
@@ -350,7 +362,7 @@ def write_report_markdown(job_root: Path, report: Dict[str, Any]) -> Path:
             for v in sorted(file_violations, key=lambda x: (x.get("line") or 0)):
                 rule_id    = v.get("rule_id", "")
                 conf       = _confidence(v)
-                conf_badge = "**확정**" if conf == "확정" else "후보"
+                conf_badge = "**확정**" if conf == "확정" else conf
                 line_no    = v.get("line")
                 pt_v       = (v.get("pattern_type") or "").lower()
                 if line_no:
@@ -529,13 +541,17 @@ def write_report_pdf(job_root: Path, report_obj: Dict[str, Any]) -> Path:
 
     # 판정 결과
     confirmed  = summary.get("confirmed", 0)
+    review     = summary.get("review", 0)
     candidate  = summary.get("candidate", 0)
+    low_candidate = max(0, candidate - review)
     high       = summary.get("confirmed_high", 0) or summary.get("high", 0)
     medium     = summary.get("confirmed_medium", 0) or summary.get("medium", 0)
     low        = summary.get("confirmed_low", 0) or summary.get("low", 0)
 
     if confirmed > 0:
         verdict_txt, verdict_color = "불합격 (FAIL)", C_RED
+    elif review > 0:
+        verdict_txt, verdict_color = "검토 권고 (REVIEW)", C_BLUE
     elif candidate > 0:
         verdict_txt, verdict_color = "검토 필요 (REVIEW)", C_AMBER
     else:
@@ -552,7 +568,8 @@ def write_report_pdf(job_root: Path, report_obj: Dict[str, Any]) -> Path:
     # 통계 카드
     stats = [
         ("확정 위반", confirmed, C_RED),
-        ("위반 후보", candidate, C_AMBER),
+        ("검토 권고", review, C_BLUE),
+        ("위반 후보", low_candidate, C_AMBER),
         ("HIGH",  high,   C_RED),
         ("MEDIUM", medium, C_AMBER),
         ("LOW",   low,    C_GRAY),

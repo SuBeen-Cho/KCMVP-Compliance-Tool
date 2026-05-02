@@ -71,9 +71,9 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
     rid = (rule_id or "").upper()
     guidance = {
         "COM-001": [
-            "파일이 실제 CSP/secret/key/round key/seed/DRBG state를 생성·보관·사용하는지 먼저 확인하라.",
+            "파일이 실제 CSP/SSP(secret key, round key, private key, password, seed, DRBG state, MAC key)를 생성·보관·사용하는지 먼저 확인하라.",
             "수명 종료 지점, error path, free/cleanup 함수, 호출자 cleanup에서 zeroize/clear가 수행되는지 확인하라.",
-            "단순 해시, 공개 상수, 공개 메시지 처리 파일이면 COM-001 확정 위반으로 보지 말라.",
+            "공개 해시/다이제스트, 공개 상수, 테스트 벡터만 처리하고 SSP 증거가 없으면 COM-001 확정 위반으로 보지 말라.",
         ],
         "COM-004": [
             "rand/srand/random이 보안 목적 난수인지, 테스트·인덱스·비보안 임시값인지 구분하라.",
@@ -86,12 +86,12 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
             "이 파일이 키 스케줄 구현 파일이 아니면 확정 위반으로 보지 말라.",
         ],
         "LEA-048": [
-            "KAT/MMT/MCT REQUEST/RESPONSE 처리 요구가 구현 파일에 적용되는지, 별도 시험 도구에 적용되는지 구분하라.",
-            "일반 암호 라이브러리 구현 파일만 있고 시험 벡터 처리기가 별도 제출물에 있을 수 있으면 후보로 낮춰라.",
+            "KAT/MMT/MCT REQUEST/RESPONSE는 구현 파일 자체보다 시험 도구/제출 패키지 아티팩트 요구사항인지 먼저 구분하라.",
+            "일반 암호 라이브러리 구현 파일만 보고 확정 위반으로 단정하지 말고, 시험 파일/벡터/문서가 별도 제출될 가능성이 있으면 검토 권고로 낮춰라.",
         ],
         "LEA-062": [
-            "KAT/MMT/MCT REQUEST/RESPONSE 처리 요구가 구현 파일에 적용되는지, 별도 시험 도구에 적용되는지 구분하라.",
-            "일반 암호 라이브러리 구현 파일만 있고 시험 벡터 처리기가 별도 제출물에 있을 수 있으면 후보로 낮춰라.",
+            "Variable Key/Text KAT 처리는 구현 라이브러리 함수가 아니라 시험 도구/자가시험/제출 패키지 구성요소일 수 있다.",
+            "시험 아티팩트가 없다는 증거가 프로젝트 전체에서 확인될 때만 위반으로 보고, 불확실하면 검토 권고로 낮춰라.",
         ],
         "GCM-LEA-002": [
             "PCLMULQDQ/GHASH 가속 부재가 필수 위반인지 성능 권고인지 구분하라.",
@@ -222,6 +222,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
         judgment_criteria = f"""{missing_rule_guidance}판정 지침 (엄격 적용):
 【이 위반은 "필수 보안 패턴의 부재"가 위반 — L1이 특정 패턴이 없음을 감지했음】
 【중요】missing 후보는 L1 단독으로 확정하지 말고, 코드 역할·동등 구현·별도 래퍼/시험 도구 존재 가능성을 함께 판단하라.
+【판정 강도】정책상 요구는 맞지만 현재 코드 증거만으로 제출물 전체 누락을 단정하기 어렵다면 is_real_issue=true를 유지하되 confidence를 65~84로 낮춰 "검토 권고"가 되게 하라.
 【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
   ① 변수명·배열명·주석이 S-box, delta, lookup_table, test_vector, KAT 등 공개 상수를 암시할 때
   ② L1 탐지 메시지의 필수 패턴이 다른 방식(동등한 구현)으로 이미 충족되어 있을 때
@@ -422,8 +423,15 @@ def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         score = 80
 
-    # 70점 이상 → 확정, 미만 → 후보 (is_real_issue=true이지만 확신도 낮음)
-    confidence_label = "확정" if score >= 70 else "후보"
+    pattern_type = (v.get("pattern_type") or "").lower()
+    if score >= 85:
+        confidence_label = "확정"
+    elif pattern_type == "missing" or obj.get("insufficient_context"):
+        confidence_label = "검토권고"
+    elif score >= 70:
+        confidence_label = "확정"
+    else:
+        confidence_label = "후보"
 
     result = {
         "source": "L3",
@@ -437,6 +445,7 @@ def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
         "confidence_score": score,
         "l3_confirmed": True,
         "pattern_type": v.get("pattern_type", ""),
+        "l3_is_real_issue": bool(obj.get("is_real_issue")),
     }
     # insufficient_context: 코드 절삭 부족 피드백 전달
     if obj.get("insufficient_context"):
