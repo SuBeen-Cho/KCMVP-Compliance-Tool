@@ -487,16 +487,7 @@ rules:
   description: 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록하는 Variable Text KAT를 구현해야 함
   kcmvp_ref: LEA 검증시스템 §6.2
 # LEA-051 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
-- id: LEA-052
-  category: algorithm
-  algorithm: LEA
-  name: LEA_KEY 구조체 정의 확인
-  pattern_type: missing
-  pattern: (?i)(struct|typedef).*LEA_KEY
-  severity: high
-  description: 라운드 키 및 라운드 수 정보를 저장하는 LEA_KEY 구조체가 정의되어야 함
-  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.1
-  scope: project
+# LEA-052 제거: LEA_KEY 구조체 명칭 강제 — 다른 구현체에서 FP 발생
 - id: LEA-053
   category: algorithm
   algorithm: LEA
@@ -507,26 +498,8 @@ rules:
   description: 에러 발생 시 규격대로 음수 값을 반환하여 호출부에 전달해야 함
   kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12
   scope: project
-- id: LEA-054
-  category: algorithm
-  algorithm: LEA
-  name: 헤더 파일 분리(lea.h / lea_locl.h) 구조
-  pattern_type: missing
-  pattern: (?i)#include.*lea_locl\.h
-  severity: low
-  description: 외부 공개용(lea.h)과 내부용(lea_locl.h) 헤더가 표준대로 분리되었는지 확인
-  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2
-  scope: project
-- id: LEA-055
-  category: algorithm
-  algorithm: LEA
-  name: SIMD 가속용 구현 파일 구성 여부
-  pattern_type: missing
-  pattern: (?i)lea_t_(sse2|avx2|xop|neon)
-  severity: low
-  description: SSE2, AVX2, NEON 등 고속화를 위한 별도 아키텍처 파일 포함 여부 확인
-  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2
-  scope: project
+# LEA-054 제거: lea_locl.h 헤더 명칭 강제 — KISA 참조구현 전용 명칭
+# LEA-055 제거: lea_t_sse2 등 SIMD 파일명 강제 — 구현체별 명칭 다양
 - id: LEA-056
   category: algorithm
   algorithm: LEA

@@ -59,6 +59,10 @@ _GT_EXCLUDE_RULES = frozenset({
     "CFB-LEA-001",   # lea_cfb128_enc/dec 명칭 강제
     "COM-006",       # lea_* 접두사 함수명 강제
     "LEA-051",       # lea_set_key 명칭 강제
+    "LEA-052",       # LEA_KEY 구조체 명칭 강제
+    "LEA-054",       # lea_locl.h 헤더 명칭 강제
+    "LEA-055",       # lea_t_sse2 등 SIMD 파일명 강제
+    "CTR-LEA-005",   # lea_ctr SIMD 함수명 강제
 })
 
 

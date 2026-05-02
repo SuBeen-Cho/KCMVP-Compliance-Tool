@@ -78,16 +78,7 @@ rules:
 
   # CTR-LEA-004 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
 
-  - id: CTR-LEA-005
-    category: mode
-    mode: CTR
-    name: "LEA CTR 모드 SIMD 가속 적용 권고"
-    pattern_type: missing
-    scope: project
-    pattern: "(?i)\\blea_ctr.*(sse2|avx2|neon|simd)"
-    severity: low
-    description: "병렬 처리가 가능한 LEA CTR 모드의 특성을 활용하여 암·복호화 시 SIMD 가속 구현을 권장함"
-    kcmvp_ref: "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §3"
+  # CTR-LEA-005 제거: lea_ctr 함수명 SIMD 명칭 강제 — 구현체별 명칭 다양
 
   - id: CTR-LEA-006
     category: mode
