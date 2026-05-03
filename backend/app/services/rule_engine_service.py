@@ -86,6 +86,8 @@ def _is_lea_impl_file(fname_lower: str) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 _TEST_FILENAME_PATTERNS = ("_test", "_vs", "test_", "kat", "_0tv", "vector", "selftest")
 _BENCH_FILENAME_PATTERNS = ("benchmark", "bench_", "_bench")
+_TEST_PATH_PARTS = frozenset({"test", "tests", "unittest", "unit_test", "regression"})
+_BENCH_PATH_PARTS = frozenset({"benchmark", "bench", "benchmarks"})
 # 인프라/유틸리티 파일: 암호 알고리즘 구현이 아닌 시스템 지원 코드
 # "_base": KISA 디스패처 파일(lea_base.c 등) — SIMD 함수 포인터 초기화, 실제 암호 구현 없음
 _INFRA_FILENAME_PATTERNS = ("cpu_info", "cpuinfo", "simd_detect", "platform_", "_base")
@@ -164,10 +166,20 @@ def _is_wrapper_file(content: str) -> bool:
 def _classify_file(filename: str, content: str) -> str:
     """파일을 impl/test/data/benchmark/wrapper로 분류.
 
-    - 파일명 패턴으로 먼저 판별 (빠르고 신뢰도 높음)
+    - 제출물 상대 경로와 파일명 패턴으로 먼저 판별 (빠르고 신뢰도 높음)
     - 패턴 미매치 시 코드 구조 분석
     """
     name_lower = filename.lower()
+    path_parts = [
+        part
+        for part in re.split(r"[\\/]+", name_lower)
+        if part and part not in {".", ".."}
+    ]
+
+    if any(part in _BENCH_PATH_PARTS for part in path_parts):
+        return "benchmark"
+    if any(part in _TEST_PATH_PARTS for part in path_parts):
+        return "test"
 
     for p in _BENCH_FILENAME_PATTERNS:
         if p in name_lower:
@@ -267,6 +279,7 @@ _COM001_KEY_ARRAY_DECL_RE = re.compile(
 _COM001_CRYPTO_ARRAY_KWS = frozenset(
     ["iv", "ctr", "ks", "key", "nonce", "block", "buf", "mac", "tag"]
 )
+_RETURN_RE = re.compile(r"\breturn\b")
 
 
 def _extract_top_level_blocks(content: str) -> list:
@@ -313,6 +326,47 @@ def _has_uncleared_key_var(content: str) -> bool:
                 )
                 if not clear_re.search(block):
                     return True
+    return False
+
+
+def _has_uncleared_sensitive_return_path(content: str) -> bool:
+    """민감값 생성/사용 뒤 안전 제거보다 먼저 빠지는 return 경로를 탐지한다.
+
+    파일 어딘가에 안전 제거 함수가 있더라도, KCMVP SSP/CSP 잔존 정보 제거는
+    실제 반환 경로별로 성립해야 한다. 과탐을 줄이기 위해 민감 배열 초기화,
+    키 설정, 암복호 사용 증거가 return 이전에 있는 경우만 후보로 본다.
+    """
+    stripped = _strip_c_comments(content)
+    blocks = _extract_top_level_blocks(stripped)
+    clear_func_ptn = "|".join(re.escape(f) for f in _COM001_ANY_CLEAR_FUNCS)
+    clear_re = re.compile(r"\b(?:" + clear_func_ptn + r")\s*\(")
+
+    for block in blocks:
+        clear_positions = [m.start() for m in clear_re.finditer(block)]
+        if not clear_positions:
+            continue
+        first_clear = min(clear_positions)
+
+        live_positions = []
+        for m in _COM001_KEY_ARRAY_DECL_RE.finditer(block):
+            varname = m.group(1)
+            line_end = block.find("\n", m.start())
+            if line_end == -1:
+                line_end = len(block)
+            decl_line = block[m.start():line_end]
+            if "=" in decl_line and any(kw in varname.lower() for kw in _COM001_CRYPTO_ARRAY_KWS):
+                live_positions.append(m.start())
+        live_positions.extend(m.start() for m in _KEY_SETTER_RE.finditer(block))
+        live_positions.extend(m.start() for m in _CRYPTO_USE_RE.finditer(block))
+        if not live_positions:
+            continue
+
+        first_live = min(live_positions)
+        for ret in _RETURN_RE.finditer(block):
+            ret_pos = ret.start()
+            if first_live < ret_pos < first_clear:
+                return True
+
     return False
 
 # P1-B: ROL/ROR 매크로 변형 정규화 대상 규칙 (scope:project missing 검색 전 적용)
@@ -1353,10 +1407,25 @@ def _apply_project_missing_rule(
                 # AST 없음: 원문 정규식 fallback (주석 오탐 가능성 있으나 어쩔 수 없음)
                 content = item.get("content") or ""
                 # CLEARING_PATTERN은 함수 호출 형식(name\s*\()을 요구 → 주석 내 언급 오탐 방지
-                if CLEARING_PATTERN.search(content):
+                if CLEARING_PATTERN.search(content) and not _has_uncleared_sensitive_return_path(content):
                     continue
                 # 직접 제로화 루프도 안전 제로화로 인정 (AST 없는 경우에도)
                 if _ZERO_FILL_LOOP_RE.search(content):
+                    continue
+                if _has_uncleared_sensitive_return_path(content):
+                    per_file_violations.append({
+                        "rule_id": rule_id,
+                        "file": item.get("display", ""),
+                        "line": None,
+                        "scope": "file",
+                        "message": rule.get("name") or "잔존 정보 제거 필요",
+                        "severity": rule.get("severity", "high"),
+                        "confidence": "검토권고",
+                        "needs_ai_review": True,
+                        "snippet": "",
+                        "pattern_type": rule.get("pattern_type", "missing"),
+                        "key_lifecycle": _build_key_lifecycle(content, item.get("display", ""), symbol_graph),
+                    })
                     continue
                 # memset이 원문에 있고 안전 함수 없으면 위반 후보 (AST 없으므로 확신 낮음)
                 if UNSAFE_CLEAR_PATTERN.search(content):
@@ -1404,8 +1473,22 @@ def _apply_project_missing_rule(
             # 컴파일러가 memset을 __builtin___memset_chk 등으로 확장하는 경우도 포함
             _UNSAFE_MEMSET_NAMES = {"memset", "__builtin___memset_chk", "__builtin_memset", "__memset_chk"}
             has_unsafe_memset = bool(call_names & _UNSAFE_MEMSET_NAMES)
-            if has_unsafe_memset and not has_safe_clear:
-                _content_for_lc = item.get("content") or ""
+            _content_for_lc = item.get("content") or ""
+            if _has_uncleared_sensitive_return_path(_content_for_lc):
+                per_file_violations.append({
+                    "rule_id": rule_id,
+                    "file": item.get("display", ""),
+                    "line": None,
+                    "scope": "file",
+                    "message": rule.get("name") or "잔존 정보 제거 필요",
+                    "severity": rule.get("severity", "high"),
+                    "confidence": "검토권고",
+                    "needs_ai_review": True,
+                    "snippet": "",
+                    "pattern_type": rule.get("pattern_type", "missing"),
+                    "key_lifecycle": _build_key_lifecycle(_content_for_lc, item.get("display", ""), symbol_graph),
+                })
+            elif has_unsafe_memset and not has_safe_clear:
                 per_file_violations.append({
                     "rule_id": rule_id,
                     "file": item.get("display", ""),
@@ -1643,7 +1726,7 @@ def run_rule_engine(
         except ValueError:
             display = str(path)
         fname = display.split("/")[-1]
-        file_type = _classify_file(fname, content)
+        file_type = _classify_file(display, content)
 
         # P4-F: gcc -E 전처리 — 헤더가 있는 실제 제출물에서 매크로 완전 전개
         preprocessed_content: Optional[str] = None

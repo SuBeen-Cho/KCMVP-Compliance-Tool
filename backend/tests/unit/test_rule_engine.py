@@ -96,6 +96,41 @@ class TestFileClassification:
         # data 파일에는 missing 규칙을 적용하지 않아야 함
         assert classification in ("data", "test", "benchmark")
 
+    @pytest.mark.rule_engine
+    def test_actual_classifier_uses_submission_path(self):
+        """제출물 상대 경로의 test/ 디렉터리를 테스트 파일로 분류."""
+        from app.services.rule_engine_service import _classify_file
+
+        code = "int main(void) { return 0; }"
+        assert _classify_file("test/addmac.c", code) == "test"
+        assert _classify_file("src/addmac.c", code) == "impl"
+
+    @pytest.mark.rule_engine
+    def test_com001_detects_return_before_zeroization(self):
+        """민감값 사용 뒤 zeroization보다 먼저 빠지는 return 경로를 탐지."""
+        from app.services.rule_engine_service import _has_uncleared_sensitive_return_path
+
+        unsafe_code = """
+int f(int fail) {
+    uint8_t key[16] = {0};
+    lea_encrypt(key, key);
+    if (fail) return -1;
+    memset_s(key, sizeof(key), 0, sizeof(key));
+    return 0;
+}
+"""
+        safe_code = """
+int f(int fail) {
+    uint8_t key[16] = {0};
+    lea_encrypt(key, key);
+    memset_s(key, sizeof(key), 0, sizeof(key));
+    if (fail) return -1;
+    return 0;
+}
+"""
+        assert _has_uncleared_sensitive_return_path(unsafe_code) is True
+        assert _has_uncleared_sensitive_return_path(safe_code) is False
+
 
 # ======================================================================
 # Fallback regex 과잉 매칭 테스트 (02 보고서 §2.2)
