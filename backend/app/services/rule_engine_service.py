@@ -363,10 +363,35 @@ _TEST_ARTIFACT_CONTENT_RE = re.compile(
     r"(?i)(KAT|MMT|MCT|REQUEST|RESPONSE|Variable\s*Key|VariableKey|Variable\s*Text|VariableText|\.req|\.rsp)"
 )
 _SUBMISSION_ARTIFACT_RULES = frozenset({"LEA-048", "LEA-062"})
+_ADVISORY_MISSING_RULES = frozenset({
+    "GCM-LEA-002",  # PCLMULQDQ is a performance recommendation, not a KCMVP correctness requirement.
+})
+_RAW_FALLBACK_MISSING_RULES = frozenset({
+    "LEA-013",  # CONCAT_UINT32(T[i], key, i) can disappear after gcc -E.
+    "LEA-026",  # Plaintext/ciphertext load macros can be fully expanded.
+    "LEA-033",
+})
+_CMAC_VERIFY_CONTEXT_RE = re.compile(
+    r"(?is)\bcmac\b.{0,240}\b(verify|check|final|tag|mac|memcmp|compare)\b|"
+    r"\b(verify|check|final|tag|mac|memcmp|compare)\b.{0,240}\bcmac\b"
+)
+_GCM_GHASH_CONTEXT_RE = re.compile(
+    r"(?is)\b(gcm|ghash)\b.{0,240}\b(pclmul|clmul|ghash|gf_?mul|galois|tag|auth)\b|"
+    r"\b(pclmul|clmul|gf_?mul|galois)\b.{0,240}\b(gcm|ghash)\b"
+)
+_LEA_KEY_SCHEDULE_ARX_RE = re.compile(
+    r"(?is)\b(delta|0xc3efe9db|0x44626b02|0x79e27c8a|0x78df30ec)\b"
+    r".{0,300}\b(ROTL?|ROTR?|ROL|ROR)\s*\("
+)
 
 
 def _is_submission_artifact_rule(rule_id: str) -> bool:
     return (rule_id or "").upper() in _SUBMISSION_ARTIFACT_RULES
+
+
+def _project_text(files: List[Dict[str, Any]], raw: bool = False) -> str:
+    key = "content" if raw else "stripped_content"
+    return "\n".join(item.get(key) or item.get("content") or "" for item in files)
 
 
 def _build_project_artifact_evidence(
@@ -1097,6 +1122,8 @@ def _apply_ast_rule(
             for finding in checker_result:
                 line = finding.get("line")
                 msg  = finding.get("message") or name
+                if rule_id == "LEA-010" and _LEA_KEY_SCHEDULE_ARX_RE.search(content_str):
+                    continue
                 # 줄 번호가 있으면 해당 줄 스니펫 추출
                 if line:
                     file_lines = content_str.splitlines()
@@ -1252,6 +1279,13 @@ def _apply_project_missing_rule(
     found = False
     # 존재 여부 검색 대상: search_files 우선, 없으면 files
     _search = search_files if search_files is not None else files
+
+    if rule_id in _ADVISORY_MISSING_RULES:
+        return []
+    if rule_id == "CMAC-002" and not _CMAC_VERIFY_CONTEXT_RE.search(_project_text(_search)):
+        return []
+    if rule_id == "GCM-LEA-002" and not _GCM_GHASH_CONTEXT_RE.search(_project_text(_search)):
+        return []
 
     # COM-005: 파일별 lea_online API 호출 순서 체크 (init→update→final)
     if rule_id == "COM-005":
@@ -1486,7 +1520,11 @@ def _apply_project_missing_rule(
                             content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
                         elif "violations_" not in _fname_lower:
                             content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
-                    if re.search(compiled, content):
+                    search_targets = [content]
+                    if rule_id in _RAW_FALLBACK_MISSING_RULES and _used_preprocessed:
+                        raw_content = item.get("stripped_content") or item.get("content") or ""
+                        search_targets.append(raw_content)
+                    if any(re.search(compiled, target) for target in search_targets):
                         found = True
                         break
 

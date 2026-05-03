@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "dataset": "0_KCMVP",
-  "source_result": "backend/scripts/blind_eval_20260503_1834.json",
-  "source_commit": "5d29de9",
+  "source_result": "backend/scripts/blind_eval_20260503_1922.json",
+  "source_commit": "current commit containing this label file",
   "contains_source_code": false,
   "label_policy": {
     "TP": "KCMVP 근거와 현재 입력 증거만으로 실제 위반으로 확정",
@@ -135,58 +135,6 @@
       "review_note": "private key 생성 함수 맥락에서 srand/time/rand 사용이 확인되어 TP"
     },
     {
-      "id": "0KCMVP-010",
-      "rule_id": "LEA-010",
-      "file": "lea.c",
-      "line": 152,
-      "scope": "line",
-      "confidence": "후보",
-      "confidence_score": null,
-      "l3_status": "kept_without_l3_review",
-      "manual_label": "FP",
-      "kcmvp_basis": "KS X 3246 LEA delta/key schedule structure",
-      "review_note": "LEA delta 상수와 ROTL 기반 키스케줄 구조가 확인되어 해당 후보는 FP"
-    },
-    {
-      "id": "0KCMVP-011",
-      "rule_id": "LEA-013",
-      "file": "lea.c",
-      "line": null,
-      "scope": "project",
-      "confidence": "후보",
-      "confidence_score": null,
-      "l3_status": "kept_without_l3_review",
-      "manual_label": "FP",
-      "kcmvp_basis": "KS X 3246 LEA round count / key length requirements",
-      "review_note": "키 스케줄에서 T 상태가 마스터키 워드로 초기화되는 동등 구현이 확인되어 FP"
-    },
-    {
-      "id": "0KCMVP-012",
-      "rule_id": "LEA-026",
-      "file": "lea.c",
-      "line": null,
-      "scope": "project",
-      "confidence": "후보",
-      "confidence_score": null,
-      "l3_status": "kept_without_l3_review",
-      "manual_label": "FP",
-      "kcmvp_basis": "KS X 3246 LEA decrypt/key schedule requirements",
-      "review_note": "암호화 초기 상태 로딩이 동등 매크로/워드 변환으로 확인되어 FP"
-    },
-    {
-      "id": "0KCMVP-013",
-      "rule_id": "LEA-033",
-      "file": "lea.c",
-      "line": null,
-      "scope": "project",
-      "confidence": "후보",
-      "confidence_score": null,
-      "l3_status": "kept_without_l3_review",
-      "manual_label": "FP",
-      "kcmvp_basis": "KS X 3246 LEA decrypt round/key-order requirements",
-      "review_note": "복호화 초기 상태 로딩 및 역라운드키 사용 구조가 확인되어 FP"
-    },
-    {
       "id": "0KCMVP-014",
       "rule_id": "LEA-044",
       "file": "lea.c",
@@ -224,32 +172,6 @@
       "manual_label": "ARTIFACT",
       "kcmvp_basis": "LEA 검증시스템 §6.2 Variable Key/Text KAT REQUEST/RESPONSE processing",
       "review_note": "코드 precision에서 제외하고 제출 시험 산출물 completeness로 별도 평가"
-    },
-    {
-      "id": "0KCMVP-017",
-      "rule_id": "GCM-LEA-002",
-      "file": "common.c",
-      "line": null,
-      "scope": "project",
-      "confidence": "검토권고",
-      "confidence_score": 0,
-      "l3_status": "confirmed_by_l3",
-      "manual_label": "FP",
-      "kcmvp_basis": "GCM GHASH implementation guidance; platform acceleration requirement must be separated from correctness",
-      "review_note": "common.c에서 GCM/GHASH/PCLMUL 관련 구현 근거가 없어 해당 파일 귀속 후보는 FP"
-    },
-    {
-      "id": "0KCMVP-018",
-      "rule_id": "CMAC-002",
-      "file": "common.c",
-      "line": null,
-      "scope": "project",
-      "confidence": "확정",
-      "confidence_score": 85,
-      "l3_status": "confirmed_by_l3",
-      "manual_label": "FP",
-      "kcmvp_basis": "MAC/tag verification must avoid timing side-channel leakage",
-      "review_note": "common.c에서 MAC/tag 비교 호출이 확인되지 않아 해당 파일 귀속 후보는 FP"
     }
   ]
 }
