@@ -86,7 +86,8 @@ def _check_violation_precondition(
     return False
 
 
-_FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP 암호모듈 보안 시니어 감사관입니다.
+_FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP(KS X 19790) 암호모듈 보안 시니어 감사관입니다.
+최우선 목표: 실제 위반(TP)을 오탐으로 잘못 제거하지 않는 것입니다.
 
 아래 위반 후보에 대해 1차 AI 판정이 "오탐(is_real_issue=false)"으로 결론 내렸습니다.
 당신의 역할은 이 판정이 정말 맞는지 **독립적으로 재검증**하는 것입니다.
@@ -341,6 +342,11 @@ def run_l3_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                elif _pat_type == "missing":
+                    # missing 타입은 "패턴 부재 = 즉시 위반" — L2에서도 제외하므로
+                    # L3에서도 FP 제거 차단하여 Recall 보호
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] missing타입→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
                 elif rule_id in _L3_NEVER_REMOVE:
                     # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
                     results.append(_make_l3_result(v, obj))
@@ -393,10 +399,10 @@ def run_l3_contextualizer(
                         # _AST_TP_PROTECT 규칙은 95로 보수적 처리 (방안 2: 90→95)
                         _fp_high = (95 if _v_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
                         # is_real_issue=false + score ≥ _fp_high → 확신있는 FP → 제거
-                        # _L3_NEVER_REMOVE 규칙은 FP 제거 차단
+                        # _L3_NEVER_REMOVE 규칙 및 missing 타입은 FP 제거 차단
                         if obj.get("is_real_issue") or (
                             _fp_threshold < _score_int < _fp_high
-                        ) or _v_rule_id in _L3_NEVER_REMOVE:
+                        ) or _v_rule_id in _L3_NEVER_REMOVE or _pat_type == "missing":
                             results.append(_make_l3_result(v, obj))
                 continue
 
@@ -427,6 +433,10 @@ def run_l3_contextualizer(
                 if obj.get("is_real_issue"):
                     results.append(_make_l3_result(v, obj))
                     print(f"[L3] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                elif _pat_type == "missing":
+                    # missing 타입 = 패턴 부재 즉시 위반 → FP 제거 차단
+                    results.append(_make_l3_result(v, obj))
+                    print(f"[L3] missing타입→유지 (score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
                 elif _batch_rule_id in _L3_NEVER_REMOVE:
                     # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
                     results.append(_make_l3_result(v, obj))

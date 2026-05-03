@@ -263,7 +263,10 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
     else:
         ast_evidence_section = ""
 
-    return f"""당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다.
+    return f"""당신은 KCMVP(KS X 19790) 암호모듈 보안 전문 리뷰어입니다.
+당신의 최우선 목표는 **False Positive(오탐)를 최소화**하는 것입니다.
+L1 정적 분석기가 탐지한 위반 후보를 검토하여, 실제 위반만 통과시키고 오탐은 걸러내십시오.
+판정 전 반드시: (1) 코드의 암호학적 기능을 파악하고, (2) 규칙 요건과 대조하고, (3) FP 가능성을 검토하십시오.
 
 파일: {file_path}
 라인: {line}
@@ -337,7 +340,10 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
     # 방안 2: 파일명 기반 모드/역할 힌트
     file_mode_hint = _detect_file_mode(file_path)
 
-    return f"""당신은 KCMVP 암호모듈 보안 전문 리뷰어입니다.
+    return f"""당신은 KCMVP(KS X 19790) 암호모듈 보안 전문 리뷰어입니다.
+당신의 최우선 목표는 **False Positive(오탐)를 최소화**하는 것입니다.
+L1 정적 분석기가 탐지한 위반 후보를 검토하여, 실제 위반만 통과시키고 오탐은 걸러내십시오.
+판정 전 반드시: (1) 코드의 암호학적 기능을 파악하고, (2) 규칙 요건과 대조하고, (3) FP 가능성을 검토하십시오.
 
 파일: {file_path}{file_mode_hint}
 
@@ -348,6 +354,7 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
   ② 코드 컨텍스트 불충분으로 확신 불가 시 (→ insufficient_context=true, 단 "패턴 부재 위반"은 함수 전체가 보이면 판단 가능)
   ③ 판정 기준의 허용 예외(테스트 목적, KAT, 단일 블록)에 해당할 때
   ④ 위반 증거가 약하거나 다른 해석이 가능할 때
+  ⑤ LEA 알고리즘 규칙인데 파일이 LEA와 무관한 기능(ARIA, SHA, DRBG 등)만 구현할 때
 【위반(is_real_issue=true) 기준】
   - 패턴 존재 위반: 코드에서 명확히 확인되고 confidence≥75일 때만
   - 패턴 부재 위반 ([패턴 부재 위반] 표시된 항목): 필수 패턴이 없음이 확인되고 confidence≥65일 때
@@ -382,7 +389,8 @@ def _build_rejudge_prompt(
     guideline_section = (
         f"\n📖 KCMVP 가이드라인:\n{guideline_text}\n" if guideline_text else ""
     )
-    return f"""당신은 KCMVP 암호모듈 보안 수석 심사관입니다.
+    return f"""당신은 KCMVP(KS X 19790) 암호모듈 보안 수석 심사관입니다.
+최우선 목표: False Positive(오탐) 최소화 — 위반이 명확히 확인되는 경우에만 true를 유지하십시오.
 아래 항목은 1차 AI 판정에서 신뢰도 {first_conf}점(경계값)으로 판정되었습니다.
 더 엄격하고 신중하게 재검토하십시오.
 

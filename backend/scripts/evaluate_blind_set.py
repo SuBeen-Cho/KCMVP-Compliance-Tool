@@ -120,6 +120,64 @@ def collect_files(src_root: Path):
     return entries
 
 
+def _safe_text(value, limit: int = 240) -> str:
+    if value is None:
+        return ""
+    text = str(value).replace("\r", " ").replace("\n", " ").strip()
+    return text[:limit]
+
+
+def _violation_key(v) -> tuple:
+    return (
+        str(v.get("file") or "").strip(),
+        str(v.get("rule_id") or "").strip(),
+        v.get("line"),
+    )
+
+
+def _l3_status(v, rejected_keys: set) -> str:
+    if not USE_L3:
+        return "l3_disabled"
+    if _violation_key(v) in rejected_keys:
+        return "removed_by_l3"
+    if v.get("l3_confirmed"):
+        return "confirmed_by_l3"
+    if v.get("l3_message") or v.get("l3_is_real_issue") is not None:
+        return "kept_after_l3_review"
+    return "kept_without_l3_review"
+
+
+def _make_detail(v, rejected_keys: set) -> dict:
+    rid = v.get("rule_id", "?")
+    fname = v.get("file", "")
+    fname_short = Path(fname).name if fname else "?"
+    confidence = v.get("confidence")
+    confidence_score = v.get("confidence_score")
+    try:
+        confidence_score = int(confidence_score) if confidence_score is not None else None
+    except (TypeError, ValueError):
+        confidence_score = None
+
+    return {
+        "rule_id": rid,
+        "file": fname_short,
+        "file_full": fname,
+        "line": v.get("line", 0),
+        "severity": v.get("severity", "?"),
+        "pattern_type": v.get("pattern_type", "?"),
+        "confidence": confidence,
+        "confidence_score": confidence_score,
+        "l3_status": _l3_status(v, rejected_keys),
+        "l3_confirmed": bool(v.get("l3_confirmed")),
+        "l3_is_real_issue": v.get("l3_is_real_issue"),
+        "needs_ai_review": bool(v.get("needs_ai_review")),
+        "insufficient_context": bool(v.get("insufficient_context")),
+        "message": _safe_text(v.get("message"), 160),
+        "l3_message": _safe_text(v.get("l3_message"), 240),
+        "suggestion": _safe_text(v.get("suggestion"), 240),
+    }
+
+
 def run_evaluation():
     print("=" * 65)
     print("블라인드 평가 세트 — 규칙 엔진 평가")
@@ -191,6 +249,8 @@ def run_evaluation():
     by_file: Counter = Counter()
     by_severity: Counter = Counter()
     by_pattern: Counter = Counter()
+    by_confidence: Counter = Counter()
+    by_l3_status: Counter = Counter()
     details = []
 
     for v in final_violations:
@@ -204,14 +264,15 @@ def run_evaluation():
         by_file[fname_short] += 1
         by_severity[sev] += 1
         by_pattern[ptype] += 1
-        details.append({
-            "rule_id": rid,
-            "file": fname_short,
-            "line": v.get("line", 0),
-            "severity": sev,
-            "pattern_type": ptype,
-            "message": v.get("message", "")[:120],
-        })
+        by_confidence[v.get("confidence") or "미분류"] += 1
+        by_l3_status[_l3_status(v, l3_rejected_keys)] += 1
+        details.append(_make_detail(v, l3_rejected_keys))
+
+    removed_details = []
+    if l3_rejected_keys:
+        for v in l1_violations:
+            if _violation_key(v) in l3_rejected_keys:
+                removed_details.append(_make_detail(v, l3_rejected_keys))
 
     total = len(final_violations)
     per_kloc = total / (total_loc / 1000) if total_loc > 0 else 0.0
@@ -237,9 +298,15 @@ def run_evaluation():
     for pt, cnt in by_pattern.most_common():
         print(f"    {pt}: {cnt}건")
 
+    print(f"\n  [신뢰도별]")
+    for confidence, cnt in by_confidence.most_common():
+        print(f"    {confidence}: {cnt}건")
+
     if USE_L3:
         print(f"\n  [L3 필터 효과]")
         print(f"    L1: {len(l1_violations)}건  →  최종: {total}건 (L3 제거: {len(l3_rejected_keys)}건)")
+        for status, cnt in by_l3_status.most_common():
+            print(f"    {status}: {cnt}건")
 
     print(f"\n{'═' * 65}")
     print("  [해석 가이드]")
@@ -264,7 +331,10 @@ def run_evaluation():
         "by_file": dict(by_file.most_common()),
         "by_severity": dict(by_severity),
         "by_pattern": dict(by_pattern),
+        "by_confidence": dict(by_confidence),
+        "by_l3_status": dict(by_l3_status),
         "details": details,
+        "removed_details": removed_details,
     }
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n  결과 저장: {out_path.name}")
