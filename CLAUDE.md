@@ -239,6 +239,53 @@ All config flows through `backend/app/config.py` (Pydantic Settings).
 - **L2 retry prompt inconsistency**: Retry suffix says "위 형식" but doesn't re-embed the expected JSON schema → occasional Gemini format drift.
 - **스캔본 섹션 분리 미지원**: OCR로 텍스트를 복원해도 TOC 구조 인식률이 낮을 수 있음 → 전체 파일 단일 섹션으로 fallback 처리됨.
 
+## Performance Measurement Principles (성능 측정 원칙)
+
+**이 원칙은 모든 성능 평가에 반드시 적용한다. 예외 없음.**
+
+### 1. 분모 조작 금지
+
+도구가 탐지한 모든 항목은 Precision 분모에 포함한다.
+- 도구가 보고한 탐지 결과를 "ARTIFACT", "REVIEW", "카테고리 분리" 등의 이유로 분모에서 제외하는 것을 **절대 금지**한다.
+- 탐지 결과는 TP(진짜 위반) 또는 FP(오탐) 둘 중 하나로만 분류한다.
+- `Precision = TP / (TP + FP)` — 모든 탐지 건이 분모에 들어가야 한다.
+- `Recall = TP / (TP + FN)` — 모든 GT 위반이 분모에 들어가야 한다.
+
+### 2. Train/Test 분리 (학습/평가 분리)
+
+성능을 측정하는 데이터와 규칙을 개선하는 데이터를 반드시 분리한다.
+- **Train 세트**: 이 데이터를 보고 규칙/프롬프트를 수정해도 됨 (예: 4세트)
+- **Test 세트**: 규칙 수정에 절대 사용하지 않음. 최종 성능 측정에만 사용 (예: 블라인드 세트)
+- Test 세트의 결과를 보고 규칙을 수정한 뒤 같은 Test 세트에서 재측정하는 것은 **과적합(overfitting)**이며 금지한다.
+- 특정 데이터셋의 FP를 보고 그 항목만 제거하는 하드코딩 예외는 금지한다.
+
+### 3. 라벨링과 코드 수정의 분리
+
+수동 라벨링(GT 작성)과 규칙/코드 개선은 반드시 순차적으로 진행한다.
+- **Step 1**: 현재 도구 상태에서 라벨링 완료 (코드 수정 금지)
+- **Step 2**: 라벨링 결과로 성능 측정
+- **Step 3**: 성능 분석 후 규칙 개선 (Train 세트 기반으로만)
+- **Step 4**: Test 세트에서 최종 재측정
+- 라벨링과 코드 수정을 동시에 하면 순환 논증(circular reasoning)이 되어 성능 수치가 무의미해진다.
+
+### 4. 라벨링 근거 요건
+
+모든 TP/FP 판정에는 반드시 근거를 명시해야 한다.
+- **TP 근거**: 어떤 KCMVP 규격 조항(KS X ISO/IEC 19790 §X.X 등)에 의해 위반인지
+- **FP 근거**: 왜 위반이 아닌지 (동등 구현, 규칙 범위 밖, 코드 증거 등)
+- 근거 없는 라벨링은 유효하지 않다.
+
+### 5. 허용되는 라벨
+
+| 라벨 | 의미 | Precision 분모 포함 |
+|---|---|---|
+| TP | 실제 위반을 도구가 맞게 탐지 | **포함** |
+| FP | 위반이 아닌데 도구가 탐지 | **포함** |
+| UNREVIEWED | 아직 검토하지 않음 | 제외 (검토 완료 시 TP/FP로 변경) |
+
+- "ARTIFACT", "REVIEW" 등 TP/FP 외의 분류로 분모를 줄이는 것은 금지한다.
+- 검토가 어려운 항목은 UNREVIEWED로 남기되, 최종 보고 시에는 모두 TP/FP로 확정해야 한다.
+
 ## Key Documentation (in `docs/`)
 
 - `YAML_룰과_코드_연동_설명.md` — Rule pattern types and authoring

@@ -1,0 +1,166 @@
+{
+  "schema_version": 2,
+  "dataset": "0_KCMVP",
+  "source_result": "backend/scripts/blind_eval_20260503_2029.json",
+  "previous_result": "backend/scripts/blind_eval_20260503_0338.json",
+  "contains_source_code": false,
+  "label_policy": {
+    "TP": "KCMVP 규격 근거 + 소스코드 증거로 실제 위반 확정",
+    "FP": "소스코드 증거상 위반이 아니거나 규칙 적용 대상이 아님",
+    "UNREVIEWED": "수동 검토 전"
+  },
+  "metric_policy": {
+    "precision": "TP / (TP + FP), UNREVIEWED 제외",
+    "recall": "확정 GT 없어 수동 GT 작성 전 계산하지 않음"
+  },
+  "changelog": [
+    {
+      "version": 1,
+      "source": "blind_eval_20260503_0338.json (Codex 수정 전)",
+      "findings": 18,
+      "tp": 13,
+      "fp": 5,
+      "precision": "72.2%"
+    },
+    {
+      "version": 2,
+      "source": "blind_eval_20260503_2029.json (현재 코드, L1 only)",
+      "findings": 11,
+      "tp": 11,
+      "fp": 0,
+      "precision": "100%",
+      "removed_findings": {
+        "LEA-013": "gcc -E raw fallback으로 CONCAT_UINT32 패턴 매칭 성공",
+        "LEA-026": "gcc -E raw fallback으로 평문 초기화 패턴 매칭 성공",
+        "LEA-033": "gcc -E raw fallback으로 암호문 초기화 패턴 매칭 성공",
+        "LEA-010": "delta+ROTL 동시 존재 시 ARX 구조 인정 (regex 사전 필터)",
+        "CMAC-002": "CMAC 맥락 없는 프로젝트에서 규칙 스킵",
+        "GCM-LEA-002": "advisory(권고) 규칙 제외",
+        "COM-001@addmac.c": "test 파일 분류 → impl 파일만 COM-001 검사"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "0KCMVP-001",
+      "rule_id": "COM-001",
+      "file": "aria.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] SSP/CSP zeroization",
+      "review_note": "aria.c의 aria_init()(L127)은 memset 사용. smc_zeroize()가 common.c에 존재하나 aria.c에서는 호출하지 않음. 키/라운드키 맥락에서 안전 제로화 미사용 확인 → TP"
+    },
+    {
+      "id": "0KCMVP-002",
+      "rule_id": "COM-001",
+      "file": "ctrdrbg.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] DRBG state/key zeroization",
+      "review_note": "ctrdrbg.c 전체에서 memset만 사용 (30+건). Key/V/seed_material 등 DRBG 내부 상태에 smc_zeroize 호출 없음. 컴파일러 최적화로 제거 가능 → TP"
+    },
+    {
+      "id": "0KCMVP-003",
+      "rule_id": "COM-001",
+      "file": "hmacdrbg.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] DRBG SSP zeroization",
+      "review_note": "hmacdrbg.c의 Key/V/seed_material에 memset만 사용 (10건). smc_zeroize 호출 없음 → TP"
+    },
+    {
+      "id": "0KCMVP-004",
+      "rule_id": "COM-001",
+      "file": "lea.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] block-cipher key/round-key zeroization",
+      "review_note": "lea.c:73 lea_init()은 memset 사용. lea_free()(L77-80)는 빈 스텁(//ctx zeroization 주석만). lea_encrypt/decrypt 래퍼(L236-264)에서 스택 lea_context ctx 제로화 없이 리턴 → TP"
+    },
+    {
+      "id": "0KCMVP-005",
+      "rule_id": "COM-001",
+      "file": "pbkdf.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] password/key derivation SSP zeroization",
+      "review_note": "pbkdf.c:59 memset(T, 0x00, 64)만 사용. smc_zeroize 호출 없음. 파생 키 맥락에서 안전 제로화 미사용 → TP"
+    },
+    {
+      "id": "0KCMVP-006",
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 143,
+      "pattern_type": "regex",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KCMVP 암호기술 구현안내서: IV/nonce/key 등 암호 목적 난수는 DRBG/CSPRNG 사용 필수",
+      "review_note": "ec_kcdsa.c:143 부근에서 srand((unsigned)time(NULL)) + rand() 호출. KCDSA 키/서명 관련 난수 맥락에서 비암호학적 RNG 사용 확인 → TP"
+    },
+    {
+      "id": "0KCMVP-007",
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 398,
+      "pattern_type": "regex",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KCMVP 암호기술 구현안내서: 비암호학적 RNG의 암호 목적 사용 금지",
+      "review_note": "ec_kcdsa.c:398 부근에서 srand/rand 호출. 서명 nonce 생성 맥락에서 비암호학적 RNG 사용 확인 → TP"
+    },
+    {
+      "id": "0KCMVP-008",
+      "rule_id": "COM-004",
+      "file": "ec_kcdsa.c",
+      "line": 1066,
+      "pattern_type": "regex",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KCMVP 암호기술 구현안내서: 서명/키 생성 난수는 검증된 DRBG/CSPRNG 필요",
+      "review_note": "ec_kcdsa.c:1066 부근에서 srand/rand 호출. private key 생성 함수 맥락에서 비암호학적 RNG 사용 확인 → TP"
+    },
+    {
+      "id": "0KCMVP-009",
+      "rule_id": "LEA-044",
+      "file": "lea.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "KS X ISO/IEC 19790:2015 §7.9 [09.01] LEA key material zeroization",
+      "review_note": "lea_free()(L77-80)가 빈 스텁: '//ctx zeroization' 주석만 있고 실제 제로화 코드 없음. lea_encrypt/decrypt 래퍼에서도 스택 ctx 제로화 없이 리턴. smc_zeroize가 LEA 맥락에서 한 번도 호출되지 않음 → TP"
+    },
+    {
+      "id": "0KCMVP-010",
+      "rule_id": "LEA-048",
+      "file": "test_lea.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "LEA 검증시스템 §6.2 KAT/MMT/MCT REQUEST/RESPONSE file format",
+      "review_note": "test_lea.c에서 테스트 벡터 파일을 'tv/lea/LEA128(ECB)KAT.txt' 등 .txt 확장자로 참조. 검증시스템이 요구하는 .req/.rsp/.fax 형식의 파일명이 프로젝트 어디에도 없음 → TP"
+    },
+    {
+      "id": "0KCMVP-011",
+      "rule_id": "LEA-062",
+      "file": "test_lea.c",
+      "line": null,
+      "pattern_type": "missing",
+      "severity": "high",
+      "manual_label": "TP",
+      "kcmvp_basis": "LEA 검증시스템 §6.2 Variable Key/Text KAT",
+      "review_note": "test_lea.c에 KAT/MMT 테스트만 구현. Variable Key KAT, Variable Text KAT 처리 로직 및 관련 문자열이 프로젝트 전체에서 검색되지 않음 → TP"
+    }
+  ]
+}

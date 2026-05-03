@@ -2,13 +2,12 @@
 Manual-label metric calculator for 0_KCMVP-style evaluations.
 
 The input label file must not contain source snippets. It should contain only
-finding metadata and one of these manual labels:
-TP, FP, REVIEW, ARTIFACT, UNREVIEWED.
+finding metadata and one of these manual labels: TP, FP, UNREVIEWED.
 
-Default metric policy:
-- code precision = TP / (TP + FP)
-- REVIEW, UNREVIEWED, and ARTIFACT are excluded from code precision.
-- ARTIFACT is counted separately as submission-package completeness work.
+Metric policy (CLAUDE.md 성능 측정 원칙 준수):
+- Precision = TP / (TP + FP) — 모든 탐지 결과가 분모에 포함
+- UNREVIEWED 항목은 검토 완료 시 TP 또는 FP로 확정해야 함
+- ARTIFACT, REVIEW 등 분모를 줄이는 별도 카테고리 사용 금지
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 
-VALID_LABELS = {"TP", "FP", "REVIEW", "ARTIFACT", "UNREVIEWED"}
+VALID_LABELS = {"TP", "FP", "UNREVIEWED"}
 
 
 def _load_items(path: Path) -> List[Dict[str, Any]]:
@@ -34,7 +33,11 @@ def _load_items(path: Path) -> List[Dict[str, Any]]:
 def _label(item: Dict[str, Any]) -> str:
     label = str(item.get("manual_label") or "UNREVIEWED").upper()
     if label not in VALID_LABELS:
-        raise ValueError(f"invalid manual_label={label!r} for {item.get('id')}")
+        raise ValueError(
+            f"invalid manual_label={label!r} for {item.get('id')}. "
+            f"Allowed: {VALID_LABELS}. ARTIFACT/REVIEW are not allowed — "
+            f"all findings must be TP, FP, or UNREVIEWED."
+        )
     return label
 
 
@@ -53,14 +56,14 @@ def calculate(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     tp = counts["TP"]
     fp = counts["FP"]
     denominator = tp + fp
+    unreviewed = counts["UNREVIEWED"]
     return {
         "total_findings": len(items),
         "label_counts": {label: counts[label] for label in sorted(VALID_LABELS)},
-        "code_precision": None if denominator == 0 else tp / denominator,
-        "code_precision_display": _percent(tp, denominator),
-        "code_precision_denominator": denominator,
-        "artifact_items": counts["ARTIFACT"],
-        "pending_items": counts["REVIEW"] + counts["UNREVIEWED"],
+        "precision": None if denominator == 0 else tp / denominator,
+        "precision_display": _percent(tp, denominator),
+        "precision_denominator": denominator,
+        "unreviewed_items": unreviewed,
     }
 
 
@@ -69,7 +72,7 @@ def main() -> int:
     parser.add_argument(
         "labels",
         nargs="?",
-        default=str(Path(__file__).parent.parent / "evaluation" / "0_kcmvp_labels_20260503.json"),
+        default=str(Path(__file__).parent.parent / "evaluation" / "0_kcmvp_labels.json"),
         help="manual label JSON path",
     )
     args = parser.parse_args()
@@ -83,13 +86,12 @@ def main() -> int:
     print("Label counts:")
     for label, count in result["label_counts"].items():
         print(f"  {label}: {count}")
-    print(f"Code precision: {result['code_precision_display']}")
-    print(f"Code precision denominator: {result['code_precision_denominator']}")
-    print(f"Artifact items: {result['artifact_items']}")
-    print(f"Pending review/unreviewed: {result['pending_items']}")
+    print(f"Precision: {result['precision_display']} ({result['precision_denominator']}건 기준)")
+    if result["unreviewed_items"] > 0:
+        print(f"Unreviewed: {result['unreviewed_items']}건 (검토 완료 시 TP/FP로 확정 필요)")
 
-    if result["code_precision"] is None:
-        print("Note: code precision is unavailable until at least one TP or FP label is assigned.")
+    if result["precision"] is None:
+        print("Note: precision is unavailable until at least one TP or FP label is assigned.")
     return 0
 
 
