@@ -391,12 +391,40 @@ _ROT_ALWAYS_NORMALIZE = frozenset({
 # lea_block.c 전용 세트처럼 키 스케줄 없이 암복호화만 있는 경우 FP 방지
 _KEY_SCHEDULE_ONLY_RULES = frozenset({
     "LEA-009",   # RK[6] 배열 구조 — 키 스케줄에만 존재
+    "LEA-011",   # δ[0]~δ[7] 상수 정의 — 키 스케줄 전용
+    "LEA-013",   # T 초기화(T ← K) — 키 스케줄 전용
     "LEA-016",   # ROL1 — 키 스케줄 T[0] 갱신
     "LEA-017",   # ROL3 — 키 스케줄 T[1] 갱신
     "LEA-018",   # ROL6 — 키 스케줄 T[2] 갱신
     "LEA-019",   # ROL11 — 키 스케줄 T[3] 갱신
     "LEA-020",   # ROL13/17 — 키 스케줄 T[4]/T[5] 갱신 (LEA-192/256)
 })
+
+# P5-A: 라운드 함수가 존재할 때만 적용할 규칙
+# 라운드 함수(암/복호화 본체)가 없는 프로젝트에서 FP 방지
+_ROUND_FUNC_ONLY_RULES = frozenset({
+    "LEA-008",   # Xi 4개 워드 배열 구성
+    "LEA-026",   # 암호화 초기화(X0 ← P)
+    "LEA-027",   # 암호화 ROL9
+    "LEA-028",   # 암호화 ROR5
+    "LEA-029",   # 암호화 ROR3
+    "LEA-033",   # 복호화 초기화(X0 ← C)
+    "LEA-036",   # 복호화 역회전(ROR9, ROL5, ROL3)
+    "LEA-037",   # 최종 암호문 대입(C ← XNr)
+    "LEA-038",   # 복호화 최종 평문 대입(P ← XNr)
+})
+
+# P5-A: 라운드 함수 존재 탐지 패턴
+# LEA 라운드 함수 = XOR + 모듈러 덧셈 + ROL/ROR 비트 회전이 섞인 구조
+_ROUND_FUNC_PRESENT_RE = re.compile(
+    r'(?i)(?:'
+    r'X\[?[0-3]\]?\s*=.*(?:ROL|ROR|<<|>>).*\^|'  # X[i] = ... ROL/ROR ... ^ ...
+    r'(?:ROL|ROR)\w*\s*\(.*\+.*\^|'               # ROL(...+...) ^ ...
+    r'\blea_encrypt_block\b|\blea_decrypt_block\b|' # 블록 암복호화 함수명
+    r'\bEncRound\b|\bDecRound\b|'                   # 라운드 함수 매크로
+    r'X\[?[0-3]\]?\s*=\s*\(\s*X\[?\d\]?\s*\^'     # X[0] = (X[?] ^ ... 라운드 패턴
+    r')'
+)
 
 # P3-B: 키 스케줄 존재 탐지 패턴
 # T[0]/T0 등 키 스케줄 상태 변수를 ROL로 갱신하거나, lea_set_key/KeyExpand 호출/정의가 있으면 적용
@@ -1578,12 +1606,23 @@ def _apply_project_missing_rule(
             if compiled:
                 # P3-B: 키 스케줄 전용 규칙은 프로젝트에 키 스케줄이 없으면 스킵
                 # (lea_block.c 전용 세트 등 암복호화만 있는 경우 FP 방지)
+                # P3-B / P5-A: 구조적 전제 조건 — 키 스케줄 / 라운드 함수 없으면 스킵
+                # files(algorithm-scoped)로 전제 조건 판단 — _search(전체 프로젝트)가 아닌
+                # 실제 알고리즘 구현 파일에서만 키 스케줄/라운드 함수 존재를 확인
+                _impl_content_lazy = None
+                def _get_impl_content():
+                    nonlocal _impl_content_lazy
+                    if _impl_content_lazy is None:
+                        _impl_content_lazy = "\n".join(
+                            item.get("content") or "" for item in files
+                        )
+                    return _impl_content_lazy
                 if rule_id in _KEY_SCHEDULE_ONLY_RULES:
-                    _all_content = "\n".join(
-                        item.get("content") or "" for item in _search
-                    )
-                    if not _KEY_SCHED_PRESENT_RE.search(_all_content):
+                    if not _KEY_SCHED_PRESENT_RE.search(_get_impl_content()):
                         return []  # 키 스케줄 없는 프로젝트 → 규칙 적용 불가
+                if rule_id in _ROUND_FUNC_ONLY_RULES:
+                    if not _ROUND_FUNC_PRESENT_RE.search(_get_impl_content()):
+                        return []  # 라운드 함수 없는 프로젝트 → 규칙 적용 불가
                 for item in _search:
                     # P4-F: gcc -E 전처리 결과 우선 사용 (매크로 완전 전개)
                     # preprocessed_content가 있으면 매크로 전개된 코드로 검색
