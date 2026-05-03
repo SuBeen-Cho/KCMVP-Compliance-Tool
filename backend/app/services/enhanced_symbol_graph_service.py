@@ -34,10 +34,10 @@ except ImportError:
 
 # ── 제거 함수 이름 (COM-001) ─────────────────────────────────────
 _CLEARING_NAMES = {
-    "memset", "SecureZeroMemory", "explicit_bzero", "RtlSecureZeroMemory",
+    "SecureZeroMemory", "explicit_bzero", "RtlSecureZeroMemory",
     "secure_clear", "clear_key", "secure_free_key", "wipe_buffer",
-    "memset_s", "memset_explicit",
-    "__builtin___memset_chk",  # pycparser/GCC가 memset을 확장하는 내부 형태
+    "memset_s", "memset_explicit", "lea_module_zeroize",
+    "OPENSSL_cleanse", "sodium_memzero",
 }
 
 # ── 시스템 경로 (심볼 수집 제외) ────────────────────────────────

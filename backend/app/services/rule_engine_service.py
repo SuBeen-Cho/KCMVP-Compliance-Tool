@@ -215,6 +215,7 @@ CLEARING_FUNCTION_NAMES = {
     "memset_s", "SecureZeroMemory", "explicit_bzero", "RtlSecureZeroMemory",
     "secure_clear", "clear_key", "secure_free_key", "wipe_buffer",
     "lea_module_zeroize",  # 본 프로젝트의 volatile-pointer 기반 안전 제로화 함수
+    "OPENSSL_cleanse", "sodium_memzero", "memset_explicit",
     "bzero",               # POSIX: bzero도 일부 환경에서 최적화 방지 보장
 }
 CLEARING_PATTERN = re.compile(
@@ -222,6 +223,19 @@ CLEARING_PATTERN = re.compile(
     "|".join(re.escape(n) + r"\s*\(" for n in CLEARING_FUNCTION_NAMES),
     re.IGNORECASE
 )
+
+_SAFE_CLEAR_NAME_RE = re.compile(
+    r"(zeroize|secure_?clear|secure_?zero|cleanse|memzero|wipe)",
+    re.IGNORECASE,
+)
+
+
+def _is_safe_clearing_call_name(name: str) -> bool:
+    """함수 호출명만 주어졌을 때 KCMVP SSP 제로화 후보인지 판별."""
+    if not name:
+        return False
+    base = name.split("::")[-1].split(".")[-1]
+    return base in CLEARING_FUNCTION_NAMES or bool(_SAFE_CLEAR_NAME_RE.search(base))
 
 # COM-001: 직접 제로화 루프 패턴
 #   for(...) key[i] = 0;  /  for(...) rk[i] = 0;  /  volatile 포인터 루프
@@ -348,6 +362,11 @@ _TEST_ARTIFACT_NAME_RE = re.compile(
 _TEST_ARTIFACT_CONTENT_RE = re.compile(
     r"(?i)(KAT|MMT|MCT|REQUEST|RESPONSE|Variable\s*Key|VariableKey|Variable\s*Text|VariableText|\.req|\.rsp)"
 )
+_SUBMISSION_ARTIFACT_RULES = frozenset({"LEA-048", "LEA-062"})
+
+
+def _is_submission_artifact_rule(rule_id: str) -> bool:
+    return (rule_id or "").upper() in _SUBMISSION_ARTIFACT_RULES
 
 
 def _build_project_artifact_evidence(
@@ -625,7 +644,7 @@ def _apply_rule_to_file(
         if rule.get("id") == "COM-001" and ast and isinstance(ast.get("file_calls"), list):
             for call in ast.get("file_calls", []):
                 name = (call.get("name") if isinstance(call, dict) else None)
-                if name and CLEARING_PATTERN.search(name):
+                if name and _is_safe_clearing_call_name(name):
                     found = True
                     break
         if not found and rule.get("id") == "COM-001" and symbol_graph:
@@ -642,7 +661,7 @@ def _apply_rule_to_file(
                 if edge.get("caller_file") != file_display:
                     continue
                 callee = edge.get("callee_name")
-                if callee and CLEARING_PATTERN.search(callee):
+                if callee and _is_safe_clearing_call_name(callee):
                     found = True
                     break
 
@@ -683,7 +702,7 @@ def _apply_rule_to_file(
                             if edge2.get("caller_file") != def_file:
                                 continue
                             callee2 = edge2.get("callee_name") or ""
-                            if CLEARING_PATTERN.search(callee2):
+                            if _is_safe_clearing_call_name(callee2):
                                 found = True
                                 break
                     if found:
@@ -1341,7 +1360,7 @@ def _apply_project_missing_rule(
                 c.get("name") for c in file_calls
                 if isinstance(c, dict) and c.get("name")
             }
-            has_safe_clear = bool(call_names & CLEARING_FUNCTION_NAMES)
+            has_safe_clear = any(_is_safe_clearing_call_name(name) for name in call_names)
             # 직접 제로화 루프도 안전 제로화로 인정
             # for(...) key[i] = 0; / for(...) rk[i] = 0; 등
             if not has_safe_clear:
@@ -1474,6 +1493,8 @@ def _apply_project_missing_rule(
     if found:
         return []
 
+    is_artifact_rule = _is_submission_artifact_rule(rule_id or "")
+
     # 어디에서도 못 찾았으면, 프로젝트 레벨 위반 1건 생성
     # 대표 파일 선택: algorithm/mode 키워드를 포함하는 .c 파일 우선 (헤더 파일 제외)
     file_display = ""
@@ -1481,11 +1502,17 @@ def _apply_project_missing_rule(
         algo_kw = (rule.get("algorithm") or "").lower()
         mode_kw = (rule.get("mode") or "").lower()
         keywords = [kw for kw in (algo_kw, mode_kw) if kw]
-        c_candidates = [
-            item for item in files
-            if (item.get("display") or "").lower().endswith(".c")
-            and item.get("file_type", "impl") == "impl"
-        ]
+        if is_artifact_rule:
+            c_candidates = [
+                item for item in files
+                if item.get("file_type", "impl") in ("test", "benchmark")
+            ]
+        else:
+            c_candidates = [
+                item for item in files
+                if (item.get("display") or "").lower().endswith(".c")
+                and item.get("file_type", "impl") == "impl"
+            ]
         if not c_candidates:
             c_candidates = [
                 item for item in files
@@ -1518,14 +1545,15 @@ def _apply_project_missing_rule(
             "rule_id": rule_id or "",
             "file": file_display,
             "line": None,
-            "scope": "project",
+            "scope": "submission-package" if is_artifact_rule else "project",
             "message": rule.get("name") or "",
             "severity": rule.get("severity", "high"),
-            "confidence": "후보",  # L3 AI 재판정 대상
+            "confidence": "검토권고" if is_artifact_rule else "후보",
             "snippet": repr_content[:300],
             "needs_ai_review": True,
             "pattern_type": rule.get("pattern_type", "missing"),
             "ai_context": rule.get("description", ""),
+            "artifact_rule": is_artifact_rule,
             "project_artifact_evidence": _build_project_artifact_evidence(rule_id or "", _search),
         }
     ]
@@ -1649,6 +1677,7 @@ def run_rule_engine(
             # ── check_in 필터: scope:project missing 규칙도 check_in 존중 ──
             # check_in: ["test", "benchmark"] → 해당 파일 타입이 없으면 skip
             _ci = rule.get("check_in")
+            _ci_files = None
             if _ci:
                 _ci_files = [f for f in file_cache if f.get("file_type", "impl") in _ci]
                 if not _ci_files:
@@ -1669,13 +1698,16 @@ def run_rule_engine(
                     if not project_has_mode:
                         return  # 이 모드를 구현하는 파일 없음 → missing 규칙 skip
 
+            _target_files = _ci_files if _is_submission_artifact_rule(_ri) and _ci_files else _active_cache
+            _search_files = _ci_files if _is_submission_artifact_rule(_ri) and _ci_files else file_cache
+
             violations.extend(
                 _apply_project_missing_rule(
-                    rule, _active_cache, job_root,
+                    rule, _target_files, job_root,
                     symbol_graph=symbol_graph,
-                    # 존재 여부 검색은 전체 file_cache(cipher.c 등 포함)로,
-                    # 위반 귀속은 _active_cache(LEA 관련 파일)로 분리
-                    search_files=file_cache,
+                    # 일반 규칙은 전체 file_cache(cipher.c 등 포함)에서 존재 여부를 검색한다.
+                    # 시험/제출 산출물 규칙은 구현 파일이 아니라 check_in 대상 파일에 귀속한다.
+                    search_files=_search_files,
                 )
             )
             return

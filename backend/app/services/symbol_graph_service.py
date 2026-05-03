@@ -110,9 +110,9 @@ def build_symbol_graph(
 
 # COM-001 등에서 인정하는 "제거" 함수 이름 (symbol_graph에서 어떤 파일이 직접 제거 호출을 하는지 표시용)
 _CLEARING_NAMES = {
-    "memset", "SecureZeroMemory", "explicit_bzero", "RtlSecureZeroMemory",
+    "memset_s", "SecureZeroMemory", "explicit_bzero", "RtlSecureZeroMemory",
     "secure_clear", "clear_key", "secure_free_key", "wipe_buffer",
-    "__builtin___memset_chk",  # pycparser가 memset을 확장하는 내부 형태
+    "lea_module_zeroize", "OPENSSL_cleanse", "sodium_memzero", "memset_explicit",
 }
 
 
