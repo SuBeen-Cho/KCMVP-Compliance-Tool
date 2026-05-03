@@ -502,7 +502,7 @@ def main():
     all_code_results = []
     all_doc_results = []
 
-    for i in range(1, 5):
+    for i in range(1, 8):
         set_dir = SET_BASE / f"세트 {i}"
         set_name = f"세트 {i}"
 
