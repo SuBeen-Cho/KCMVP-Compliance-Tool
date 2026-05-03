@@ -512,6 +512,41 @@ _BITOP_ROL_RE = re.compile(
 _BITOP_ROR_RE = re.compile(
     r'>>\s*\(?\s*(\d+)\s*\)?\s*\)(?:[^;{}\n]{0,120}?)<<\s*\(\s*32\s*-\s*\(?\s*\1\s*\)?\s*\)'
 )
+_ROT_CALL_FIRST_ARG_RE = re.compile(r"\b(ROTL|ROTR|ROL|ROR)\w*\s*\(\s*(\d+)\s*,", re.IGNORECASE)
+_ROT_CALL_SECOND_ARG_RE = re.compile(r"\b(ROL|ROR)\w*\s*\([^,\n]+,\s*(\d+)\s*\)", re.IGNORECASE)
+_BITOP_LEFT_ROT_LINE_RE = re.compile(
+    r"<<\s*\(?\s*(\d+)\s*\)?\s*\)(?:[^;{}\n]{0,180}?)>>\s*\(\s*32\s*-\s*\(?\s*\1\s*\)?\s*\)",
+    re.IGNORECASE,
+)
+_BITOP_RIGHT_ROT_LINE_RE = re.compile(
+    r">>\s*\(?\s*(\d+)\s*\)?\s*\)(?:[^;{}\n]{0,180}?)<<\s*\(\s*32\s*-\s*\(?\s*\1\s*\)?\s*\)",
+    re.IGNORECASE,
+)
+
+_LEA_ROTATION_EXPECTATIONS = {
+    "LEA-016": {
+        "direction": "left",
+        "amount": 1,
+        "context": "LEA key schedule T[0] update",
+        "line_re": re.compile(r"(?i)\bT\s*\[\s*0\s*\].*?(?:delta|rk|ROL|ROTL|<<)"),
+    },
+    "LEA-027": {
+        "direction": "left",
+        "amount": 9,
+        "context": "LEA encryption round X/tmp[0] update",
+        "line_re": re.compile(
+            r"(?i)\b(?:tmp|x|state)\s*\[\s*0\s*\].*?(?:(?:rk|round_?key).*?(?:ROL|ROTL|<<)|(?:ROL|ROTL|<<).*?(?:rk|round_?key))"
+        ),
+    },
+    "LEA-028": {
+        "direction": "right",
+        "amount": 5,
+        "context": "LEA encryption round X/tmp[1] update",
+        "line_re": re.compile(
+            r"(?i)\b(?:tmp|x|state)\s*\[\s*1\s*\].*?(?:(?:rk|round_?key).*?(?:ROR|ROTR|>>)|(?:ROR|ROTR|>>).*?(?:rk|round_?key))"
+        ),
+    },
+}
 
 
 def _normalize_rotation(text: str, apply_bitop: bool = False) -> str:
@@ -531,10 +566,105 @@ def _normalize_rotation(text: str, apply_bitop: bool = False) -> str:
     return text
 
 
+def _rotation_amounts_in_line(line: str, direction: str) -> List[int]:
+    """원본/전처리 라인에서 회전 방향과 회전량을 추출한다."""
+    amounts: List[int] = []
+    want_left = direction == "left"
+    for m in _ROT_CALL_FIRST_ARG_RE.finditer(line):
+        name = m.group(1).lower()
+        is_left = name.startswith("rol") or name.startswith("rotl")
+        is_right = name.startswith("ror") or name.startswith("rotr")
+        if (want_left and is_left) or (not want_left and is_right):
+            amounts.append(int(m.group(2)))
+    for m in _ROT_CALL_SECOND_ARG_RE.finditer(line):
+        name = m.group(1).lower()
+        if (want_left and name == "rol") or (not want_left and name == "ror"):
+            amounts.append(int(m.group(2)))
+    bitop_re = _BITOP_LEFT_ROT_LINE_RE if want_left else _BITOP_RIGHT_ROT_LINE_RE
+    for m in bitop_re.finditer(line):
+        amounts.append(int(m.group(1)))
+    return amounts
+
+
+def _find_lea_rotation_mismatches(
+    rule_id: str,
+    files: List[Dict[str, Any]],
+    rule: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """LEA 회전 규칙의 '존재 여부'가 아니라 컨텍스트별 회전량 변조를 탐지한다."""
+    spec = _LEA_ROTATION_EXPECTATIONS.get(rule_id)
+    if not spec:
+        return []
+    violations: List[Dict[str, Any]] = []
+    expected = int(spec["amount"])
+    direction = str(spec["direction"])
+    line_re = spec["line_re"]
+
+    for item in files:
+        if item.get("file_type", "impl") != "impl":
+            continue
+        display = item.get("display") or ""
+        if "lea" not in display.lower():
+            continue
+        seen = set()
+        source_content = item.get("stripped_content") or item.get("content") or ""
+        source_has_rotation_call = bool(
+            re.search(r"\b(?:ROL|ROR|ROTL|ROTR)\w*\s*\(", source_content, re.IGNORECASE)
+        )
+        sources = [
+            ("source", source_content),
+        ]
+        if not source_has_rotation_call:
+            sources.append(("gcc -E", item.get("preprocessed_content") or ""))
+        for source_name, content in sources:
+            if not content:
+                continue
+            current_func = ""
+            for line_no, line in enumerate(content.splitlines(), 1):
+                func_m = re.match(
+                    r"\s*(?:static\s+)?(?:void|int|uint\w+_t|unsigned|char|float|double)\s+(\w+)\s*\(",
+                    line,
+                )
+                if func_m:
+                    current_func = func_m.group(1).lower()
+                if rule_id in {"LEA-027", "LEA-028"} and any(kw in current_func for kw in ("dec", "decrypt")):
+                    continue
+                if not line_re.search(line):
+                    continue
+                amounts = _rotation_amounts_in_line(line, direction)
+                bad_amounts = [amount for amount in amounts if amount != expected]
+                if not bad_amounts:
+                    continue
+                key = (display, line_no, tuple(bad_amounts), source_name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                snippet = line.strip()[:200] if source_name == "source" else ""
+                violations.append({
+                    "rule_id": rule_id,
+                    "file": display,
+                    "line": line_no if source_name == "source" else None,
+                    "scope": "line" if source_name == "source" else "file",
+                    "message": rule.get("name") or "",
+                    "severity": rule.get("severity", "high"),
+                    "confidence": "후보",
+                    "snippet": snippet,
+                    "pattern_type": rule.get("pattern_type", "missing"),
+                    "needs_ai_review": True,
+                    "ai_context": (
+                        f"{spec['context']}: expected {direction} rotation {expected}, "
+                        f"observed {sorted(set(bad_amounts))} via {source_name}."
+                    ),
+                })
+        if violations:
+            break
+    return violations
+
+
 # COM-003: 하드코딩 키 탐지에서 제외할 변수명/컨텍스트 키워드 (S-box, 룩업테이블, 테스트벡터 등)
 _COM003_FP_KEYWORDS = frozenset({
     "sbox", "s_box", "delta", "lookup", "table", "lut",
-    "test_pt", "test_ct", "test_key", "test_iv", "test_nonce",
+    "test_pt", "test_ct", "test_iv", "test_nonce",
     "kat", "vector", "sample", "round_const", "rcon",
     "permut", "weight", "mds", "mask", "pad", "crc",
     "example", "dummy", "bench", "ref_",
@@ -1361,6 +1491,10 @@ def _apply_project_missing_rule(
     found = False
     # 존재 여부 검색 대상: search_files 우선, 없으면 files
     _search = search_files if search_files is not None else files
+
+    rotation_mismatches = _find_lea_rotation_mismatches(rule_id, _search, rule)
+    if rotation_mismatches:
+        return rotation_mismatches
 
     if rule_id in _ADVISORY_MISSING_RULES:
         return []
