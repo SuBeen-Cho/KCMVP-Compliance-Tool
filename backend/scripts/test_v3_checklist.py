@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-v3 GPTScan 체크리스트 프롬프트 효과 실측
+v3 단계별 판정 체크리스트 프롬프트 효과 실측
 ===========================================
 BEFORE: v2 AFTER (GCFS=True + key_lifecycle=True + 구 서술형 프롬프트)
         → l3_ba_checkpoint.json 의 after 결과 재사용
-AFTER:  v3 (GCFS=True + key_lifecycle=True + GPTScan 체크리스트 프롬프트)
+AFTER:  v3 (GCFS=True + key_lifecycle=True + 단계별 판정 체크리스트 프롬프트)
         → LEA-031, LEA-034, OFB-002, CFB-002 재실행
 
 다른 규칙들은 프롬프트 변경 없으므로 BEFORE 결과를 그대로 복사.
@@ -20,7 +20,7 @@ for line in open('.env').readlines():
         k, _, v = line.strip().partition('=')
         os.environ.setdefault(k.strip(), v.strip())
 
-# GPTScan으로 프롬프트가 변경된 4개 규칙
+# 단계별 판정 체크리스트로 프롬프트가 변경된 4개 규칙
 CHECKLIST_RULES = {"LEA-031", "LEA-034", "OFB-002", "CFB-002"}
 
 V3_CHECKPOINT = ROOT / 'scripts' / 'l3_v3_checkpoint.json'
@@ -28,7 +28,7 @@ V3_RESULT_FILE = ROOT / 'scripts' / 'l3_v3_result.json'
 V2_CHECKPOINT  = ROOT / 'scripts' / 'l3_ba_checkpoint.json'
 
 print("=" * 70)
-print("  v3 GPTScan 체크리스트 효과 실측")
+print("  v3 단계별 판정 체크리스트 효과 실측")
 print(f"  대상 규칙: {', '.join(sorted(CHECKLIST_RULES))}")
 print("=" * 70)
 
@@ -46,7 +46,7 @@ if len(v2_after) < 30:
     print("❌ v2 AFTER 결과 불충분"); sys.exit(1)
 
 print(f"  v2 Job: {job_name[:24]}...")
-print(f"  v2 AFTER 로드: {len(v2_after)}건 (GPTScan BEFORE로 사용)")
+print(f"  v2 AFTER 로드: {len(v2_after)}건 (v3 BEFORE로 사용)")
 
 # 4개 타깃 규칙의 v2 AFTER 현황
 for r in sorted(CHECKLIST_RULES):
@@ -316,7 +316,7 @@ if conf_changes:
 
 # 결과 저장
 result = {
-    'description': 'v3 GPTScan 체크리스트 효과 측정 (BEFORE=v2 AFTER, AFTER=v3)',
+    'description': 'v3 단계별 판정 체크리스트 효과 측정 (BEFORE=v2 AFTER, AFTER=v3)',
     'checklist_rules': sorted(CHECKLIST_RULES),
     'job': target_job.name,
     'total': N,

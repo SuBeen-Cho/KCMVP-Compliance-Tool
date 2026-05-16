@@ -165,7 +165,7 @@ def run_doc_l3_contextualizer(
             keyword_hint = "\n[주의] 관련 키워드가 문서 어디에도 존재하지 않음. 요건 자체가 누락된 강한 신호."
         else:
             keyword_hint = ""
-        # GPTScan 체크리스트 템플릿 적용 (rule_id가 _DOC_PROMPT_TEMPLATES에 있으면 우선 사용)
+        # 단계별 판정 체크리스트 템플릿 적용 (rule_id가 _DOC_PROMPT_TEMPLATES에 있으면 우선 사용)
         if rule_id in _DOC_PROMPT_TEMPLATES:
             _cl = _DOC_PROMPT_TEMPLATES[rule_id]
             _sec = f"\n[관련 섹션] {section_title}" if section_title else ""

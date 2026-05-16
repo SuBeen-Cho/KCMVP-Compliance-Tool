@@ -4,10 +4,10 @@ RuleEngineService (L1): 룰셋 기반 탐지.
 - 정규식/AST 패턴 매칭으로 위반 리스트 출력.
 - COM-001 "missing": AST의 file_calls가 있으면 그걸로 제거 함수 호출 여부 판단 (우선), 없으면 원문 정규식.
 
-[GPTScan 앵커 기반 FP 차단]
+[도메인 앵커 기반 FP 차단]
 mode 필드가 있는 규칙은 해당 모드를 구현하는 파일에만 적용한다.
 파일명이나 콘텐츠에 모드 고유 API 패턴이 없으면 해당 파일은 해당 모드를 구현하지 않는 것으로 간주,
-규칙 적용을 건너뛴다. (GPTScan ICSE 2024 앵커 조건 개념 적용)
+규칙 적용을 건너뛴다. (도메인 앵커 조건 적용)
 """
 import re
 from pathlib import Path
@@ -16,7 +16,7 @@ import yaml
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [GPTScan 앵커] 모드별 파일 관련성 판단 패턴
+# [도메인 앵커] 모드별 파일 관련성 판단 패턴
 # 파일명 또는 콘텐츠에 모드 키워드(\bGCM\b 등)가 없으면 미관련 파일로 판단.
 # API명 기반 매칭보다 키워드 기반이 더 robust: violation 파일은 표준 API를 안 써도 됨.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1405,7 +1405,7 @@ def _apply_ast_rule(
                 # 참고: per-file 알고리즘 필터는 FN 위험으로 미적용
                 # (프로젝트 레벨 필터만 사용)
                 content = item.get("content") or ""
-                # 주석 제거 콘텐츠로 스캔 — 주석 속 키워드 오탐 방지 (GPTScan 앵커 원칙)
+                # 주석 제거 콘텐츠로 스캔 — 주석 속 키워드 오탐 방지 (도메인 앵커 원칙)
                 scan_content = item.get("stripped_content") or content
                 lines   = content.splitlines()
                 for match in compiled.finditer(scan_content):
@@ -1977,7 +1977,7 @@ def run_rule_engine(
                 if not _ci_files:
                     return  # 대상 파일 타입 없음 → KAT/MCT 규칙이 구현 파일에 불필요하게 발화 방지
 
-            # ── [GPTScan 앵커] project-scope missing 규칙에도 모드 필터 적용 ──
+            # ── [도메인 앵커] project-scope missing 규칙에도 모드 필터 적용 ──
             # mode 필드가 있는 규칙은 해당 모드를 구현하는 파일이 프로젝트에 없으면 skip.
             # 예: CTR missing 규칙이 CBC-only 프로젝트에 firing하는 FP 방지.
             rule_mode_p = (rule.get("mode") or "").lower()
@@ -2006,7 +2006,7 @@ def run_rule_engine(
             )
             return
 
-        # ── [GPTScan 앵커] 모드별 파일 관련성 필터 ──────────────────────────
+        # ── [도메인 앵커] 모드별 파일 관련성 필터 ──────────────────────────
         # mode 필드가 있는 규칙은 해당 모드를 구현하는 파일에만 적용.
         # 파일명 또는 콘텐츠에 모드 키워드(\bGCM\b 등)가 하나라도 있으면 관련 파일.
         # 이 필터로 GCM 규칙이 CBC 파일에, CTR 규칙이 LEA-057 파일에 적용되는 FP를 차단.

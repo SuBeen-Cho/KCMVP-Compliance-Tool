@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from app.services.rag_service import search_evidence
 from app.services.llm.prompt_templates import PROMPT_TEMPLATES, _get_prompt_template
+from app.services.llm.triage_memory import get_few_shot_examples
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -36,20 +37,48 @@ _ROLE_KEYWORDS = {
 }
 
 
+_KCMVP_CORE_FILES = {"lea.c", "aria.c", "aes.c", "lea.h", "aria.h", "aes.h"}
+
+
 def _detect_file_mode(file_path: str) -> str:
     """파일명에서 운영 모드 및 역할 힌트를 추출하여 프롬프트 삽입용 문자열 반환."""
     fname = file_path.split("/")[-1].lower() if file_path else ""
     if not fname:
         return ""
 
+    # ── 파일 유형별 특수 힌트 (우선 적용) ──────────────────────
+    # violations_*.c 파일: 모드 래퍼 또는 위반 시험 파일
+    if "violations" in fname:
+        return (
+            f"\n[파일 역할 힌트] {fname}은(는) [위반 시험용 / 모드 래퍼 파일]로 추정됩니다.\n"
+            f"  → 키 스케줄(T 배열, ROL 회전, delta 상수) 등의 패턴이 없는 것은 설계상 당연할 수 있습니다.\n"
+            f"  → missing 타입 위반은 '이 파일에 해당 구현이 실제로 있어야 하는가'를 먼저 판단하십시오.\n"
+            f"  → 키 스케줄이 내부 LEA/ARIA 구현 파일에 위임된 경우 is_real_issue=false로 처리하십시오."
+        )
+
+    # 시험/검증 파일: test, verify, kat, mct
+    if any(kw in fname for kw in ("test", "verify", "kat", "mct")):
+        return (
+            f"\n[파일 역할 힌트] {fname}은(는) [시험 / 검증 파일]로 추정됩니다.\n"
+            f"  → 시험 파일은 일부 보안 패턴(키 제로화, 에러 반환 등)이 요구사항 범위 밖일 수 있습니다.\n"
+            f"  → missing 타입 위반은 실제 구현 파일에 위임된 경우 is_real_issue=false로 처리하십시오."
+        )
+
+    # KCMVP 핵심 구현 파일: lea.c, aria.c, aes.c
+    if fname in _KCMVP_CORE_FILES:
+        return (
+            f"\n[파일 역할 힌트] {fname}은(는) [KCMVP 핵심 암호 구현 파일]입니다.\n"
+            f"  → 동등한 구현 방식(변수명 변경, sizeof, enum 상수 등)으로 보안 요건을 충족했을 가능성이 높습니다.\n"
+            f"  → missing 타입 위반도 코드 전체를 확인하여 동등 구현 여부를 철저히 검토하십시오."
+        )
+
+    # ── 운영 모드 + 역할 감지 (기존 로직) ──────────────────────
     parts = []
-    # 운영 모드 감지
     for kw, mode in _MODE_KEYWORDS.items():
         if kw in fname:
             parts.append(f"{mode} 모드 구현 파일")
             break
 
-    # 역할 감지
     for kw, role in _ROLE_KEYWORDS.items():
         if kw in fname:
             parts.append(f"{role} 관련 파일")
@@ -60,7 +89,7 @@ def _detect_file_mode(file_path: str) -> str:
 
     role_str = " / ".join(parts)
     return (
-        f"\n🏷️ 파일 역할 힌트: {fname}은(는) [{role_str}]로 추정됩니다.\n"
+        f"\n[파일 역할 힌트] {fname}은(는) [{role_str}]로 추정됩니다.\n"
         f"  → 이 파일에서 해당 모드/역할 관련 규칙 위반은 실제 위반(TP)일 가능성이 높습니다.\n"
         f"  → 오탐(FP)으로 판정하려면 코드에서 해당 구현이 완전히 정상임을 반드시 확인하십시오."
     )
@@ -70,28 +99,96 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
     """실제 제출물형 missing 후보에 대한 규칙별 L3 검토 기준."""
     rid = (rule_id or "").upper()
     guidance = {
+        # ── 공통 보안 규칙 ──────────────────────────────────────────
         "COM-001": [
             "파일이 실제 CSP/SSP(secret key, round key, private key, password, seed, DRBG state, MAC key)를 생성·보관·사용하는지 먼저 확인하라.",
-            "수명 종료 지점, error path, free/cleanup 함수, 호출자 cleanup에서 zeroize/clear가 수행되는지 확인하라.",
-            "공개 해시/다이제스트, 공개 상수, 테스트 벡터만 처리하고 SSP 증거가 없으면 COM-001 확정 위반으로 보지 말라.",
+            "memset(ctx, 0, sizeof(*ctx)) / memset(key, 0, keylen) / volatile 포인터 루프 제로화 패턴이 있으면 동등 구현으로 인정 → is_real_issue=false.",
+            "cleanup/free/reset 함수 또는 호출자 영역에서 제로화가 수행되면 is_real_issue=false.",
+            "공개 해시/다이제스트, 공개 상수, 테스트 벡터만 처리하고 SSP 증거가 없으면 is_real_issue=false.",
+            "memset_s/explicit_bzero가 없어도 memset이 키·컨텍스트 변수에 직접 호출되면 false로 볼 수 있다 (confidence 50~70 검토 권고 수준으로 처리).",
         ],
         "COM-004": [
             "rand/srand/random이 보안 목적 난수인지, 테스트·인덱스·비보안 임시값인지 구분하라.",
             "서명 nonce, 키 생성, seed, IV/nonce 생성에 쓰이면 실제 위반 가능성이 높다.",
             "프로젝트 내 DRBG/OS CSPRNG 래퍼가 호출 경로에 있으면 동등 구현으로 인정할 수 있다.",
         ],
+        # ── LEA 키 관리 ────────────────────────────────────────────
+        "LEA-002": [
+            "keylen/key_len/key_size 변수가 16/24/32 중 하나로 검증되거나, sizeof(key_struct) 등 암묵적 검증이 있으면 is_real_issue=false.",
+            "함수 인자로 128/192/256이 직접 전달되거나, KEY_SIZE_128 등 enum/define이 사용되어도 동등 구현으로 인정한다.",
+            "이 파일이 모드(CBC/CTR) 래퍼 파일이라면 키 길이 검증은 내부 LEA 구현 파일에 위임되었을 가능성이 높다 → confidence 50~70.",
+        ],
+        "LEA-013": [
+            "T[], T[0..3], ctx->T, rk[], round_key[], key_state 등 어떤 이름이든 4개 워드 초기화 배열이 보이면 동등 구현으로 인정 → is_real_issue=false.",
+            "키 스케줄 함수가 없는 모드 래퍼 파일(violations_cbc.c, violations_ctr.c 등)에서는 T 초기화 부재가 당연 → is_real_issue=false.",
+        ],
+        "LEA-044": [
+            "memset(ctx, 0, ...) / memset(key, 0, ...) / volatile 루프 제로화가 cleanup/free/reset 함수 안에 있으면 is_real_issue=false.",
+            "이 파일이 부분 구현(helper, violations_*.c, 래퍼 파일)이라면 키 제로화는 호출자 또는 다른 파일에 위임되었을 수 있다 → confidence 50~70.",
+            "파일에 키를 보관하는 구조체/변수 자체가 없으면 is_real_issue=false.",
+        ],
+        # ── LEA 키 스케줄 회전 ──────────────────────────────────────
+        "LEA-018": [
+            "ROL6/ROL32(..., 6) 또는 동등한 비트 시프트 (x<<6)|(x>>26) 이 있으면 is_real_issue=false.",
+            "이 파일에 ROL 연산 자체가 존재하나 다른 비트 수를 사용하는 경우는 LEA-016 위반에 해당할 수 있으며 LEA-018과는 별개다 → is_real_issue=false (LEA-018 기준).",
+            "키 스케줄이 아예 없는 모드 래퍼 파일에서는 ROL6 부재가 당연 → is_real_issue=false.",
+        ],
+        "LEA-019": [
+            "ROL11/ROL32(..., 11) 또는 동등한 비트 시프트 (x<<11)|(x>>21) 이 있으면 is_real_issue=false.",
+            "ROL 연산이 다른 비트 수로 존재하는 경우 LEA-017 위반과 중복 탐지된 것일 수 있다 → is_real_issue=false (LEA-019 기준).",
+            "키 스케줄 없는 파일에서는 is_real_issue=false.",
+        ],
+        "LEA-020": [
+            "ROL13/ROL17 또는 동등한 비트 시프트가 있으면 is_real_issue=false.",
+            "128-bit 전용 키 스케줄 파일이라면 ROL13/17은 불필요하므로 is_real_issue=false.",
+            "ROL 배열 {1,3,6,11,13,17} 형태가 있으면 ROL13/17 포함으로 인정한다.",
+        ],
+        # ── LEA 암/복호화 구조 ──────────────────────────────────────
+        "LEA-011": [
+            "delta[] / DELTA[] / delta_const 등 이름의 8개 이상 상수 배열이 있으면 is_real_issue=false.",
+            "헤더 파일이나 다른 파일에서 delta를 import/extern 참조하는 경우에도 is_real_issue=false.",
+        ],
+        "LEA-026": [
+            "암호화 함수 진입부에서 X[0]=P[0], X[1]=P[1], X[2]=P[2], X[3]=P[3] 또는 memcpy(X, P, ...) 패턴이 있으면 is_real_issue=false.",
+            "평문을 다른 변수명(pt, plaintext, block 등)으로 참조하여 초기화해도 동등 구현으로 인정한다.",
+        ],
+        "LEA-033": [
+            "복호화 함수 진입부에서 X[0]=C[0]~X[3]=C[3] 또는 memcpy(X, C, ...) 패턴이 있으면 is_real_issue=false.",
+            "암호문을 다른 변수명(ct, ciphertext, block 등)으로 참조하여 초기화해도 동등 구현으로 인정한다.",
+        ],
+        "LEA-038": [
+            "복호화 마지막 단계에서 P[i] = X[Nr][i] 또는 memcpy(P, X_last, ...) 패턴이 있으면 is_real_issue=false.",
+            "평문 출력 대입이 다른 변수명으로 수행되어도 동등 구현으로 인정한다.",
+            "이 파일이 부분 구현(라운드 함수만 있는 파일)이면 최종 대입은 호출자에서 수행 → is_real_issue=false.",
+        ],
+        "LEA-045": [
+            "uint32_t 연산(덧셈, XOR, ROL)으로 구성된 라운드 함수가 있으면 32비트 원자성을 충족한 것으로 인정한다.",
+            "SIMD/벡터 연산을 쓰지 않는 순수 C 구현이면 일반적으로 원자성 위반 위험이 낮다 → confidence 50 이하 검토 권고.",
+        ],
+        # ── 기타 ───────────────────────────────────────────────────
+        "LEA-053": [
+            "함수 반환값이 음수(-1, -LEA_ERR_*, LEA_FAIL 등) 또는 0보다 작은 값인지 확인하라.",
+            "에러 처리를 호출자에게 위임하는 내부 helper 함수라면 음수 반환이 없어도 is_real_issue=false.",
+        ],
+        "CTR-003": [
+            "카운터/nonce가 DRBG, getrandom(), os.urandom(), /dev/urandom 등 안전한 소스에서 생성되면 is_real_issue=false.",
+            "clock()/time() 등 예측 가능한 소스로 카운터를 초기화하면 is_real_issue=true.",
+            "카운터 초기화가 이 파일에 없으면 호출자에서 주입된 것일 수 있다 → confidence 50~70.",
+        ],
+        # ── 시험 아티팩트 ───────────────────────────────────────────
+        "LEA-048": [
+            "KAT/MMT/MCT REQUEST/RESPONSE는 구현 파일 자체보다 시험 도구/제출 패키지 아티팩트 요구사항인지 먼저 구분하라.",
+            "일반 암호 라이브러리 구현 파일만 보고 확정 위반으로 단정하지 말고, 시험 파일/벡터/문서가 별도 제출될 가능성이 있으면 confidence 50~70 검토 권고로 낮춰라.",
+        ],
+        "LEA-062": [
+            "Variable Key/Text KAT 처리는 구현 라이브러리 함수가 아니라 시험 도구/자가시험/제출 패키지 구성요소일 수 있다.",
+            "시험 아티팩트가 없다는 증거가 프로젝트 전체에서 확인될 때만 위반으로 보고, 불확실하면 confidence 50~70 검토 권고로 낮춰라.",
+        ],
+        # ── 기타 공통 ──────────────────────────────────────────────
         "LEA-010": [
             "delta 상수가 매크로, enum, 테이블, 전처리 결과, 하드코딩 배열 중 어디에 있는지 확인하라.",
             "KS X 3246 표준 delta 값과 실제 값이 일치하면 false로 판정하라.",
             "이 파일이 키 스케줄 구현 파일이 아니면 확정 위반으로 보지 말라.",
-        ],
-        "LEA-048": [
-            "KAT/MMT/MCT REQUEST/RESPONSE는 구현 파일 자체보다 시험 도구/제출 패키지 아티팩트 요구사항인지 먼저 구분하라.",
-            "일반 암호 라이브러리 구현 파일만 보고 확정 위반으로 단정하지 말고, 시험 파일/벡터/문서가 별도 제출될 가능성이 있으면 검토 권고로 낮춰라.",
-        ],
-        "LEA-062": [
-            "Variable Key/Text KAT 처리는 구현 라이브러리 함수가 아니라 시험 도구/자가시험/제출 패키지 구성요소일 수 있다.",
-            "시험 아티팩트가 없다는 증거가 프로젝트 전체에서 확인될 때만 위반으로 보고, 불확실하면 검토 권고로 낮춰라.",
         ],
         "GCM-LEA-002": [
             "PCLMULQDQ/GHASH 가속 부재가 필수 위반인지 성능 권고인지 구분하라.",
@@ -191,6 +288,9 @@ def _build_single_prompt(
         else ""
     )
 
+    # Triage Memory: 규칙별 TP/FP few-shot 예시 주입
+    few_shot_section = get_few_shot_examples(rule_id)
+
     # 방안 2: 파일명 기반 모드/역할 힌트
     file_mode_hint = _detect_file_mode(file_path)
 
@@ -222,7 +322,6 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
         judgment_criteria = f"""{missing_rule_guidance}판정 지침 (엄격 적용):
 【이 위반은 "필수 보안 패턴의 부재"가 위반 — L1이 특정 패턴이 없음을 감지했음】
 【중요】missing 후보는 L1 단독으로 확정하지 말고, 코드 역할·동등 구현·별도 래퍼/시험 도구 존재 가능성을 함께 판단하라.
-【판정 강도】정책상 요구는 맞지만 현재 코드 증거만으로 제출물 전체 누락을 단정하기 어렵다면 is_real_issue=true를 유지하되 confidence를 65~84로 낮춰 "검토 권고"가 되게 하라.
 【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
   ① 변수명·배열명·주석이 S-box, delta, lookup_table, test_vector, KAT 등 공개 상수를 암시할 때
   ② L1 탐지 메시지의 필수 패턴이 다른 방식(동등한 구현)으로 이미 충족되어 있을 때
@@ -232,7 +331,11 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
   ● 허용 예외에 해당하지 않음
   ● confidence ≥ 65
   ※ "패턴 부재" 확인: 함수 전체가 보이면 부재 여부를 판단할 수 있음
-  ※ insufficient_context=true는 코드가 실제로 너무 짧아 판단 자체가 불가한 경우에만 사용"""
+  ※ insufficient_context=true는 코드가 실제로 너무 짧아 판단 자체가 불가한 경우에만 사용
+【confidence 3단계 기준 (missing 타입 전용)】
+  - 90~100: 확실한 위반 — 필수 패턴이 코드 전체에 없고, 동등 구현·위임 증거도 없음
+  - 65~84 : 검토 권고 — 패턴이 없지만 래퍼/시험 파일 가능성·다른 파일 위임 가능성 존재
+  - false  : 동등 구현이 코드에서 직접 확인됨 (변수명만 다른 경우 포함)"""
     else:
         judgment_criteria = """판정 지침 (엄격 적용):
 【오탐(is_real_issue=false) 판정 조건 — 아래 중 하나라도 해당하면 반드시 false】
@@ -271,7 +374,7 @@ L1 정적 분석기가 탐지한 위반 후보를 검토하여, 실제 위반만
 파일: {file_path}
 라인: {line}
 rule_id: {rule_id}
-판정 기준: {template}{ctx_line}{guideline_section}{file_mode_hint}
+판정 기준: {template}{ctx_line}{guideline_section}{few_shot_section}{file_mode_hint}
 L1 탐지 메시지: {l1_msg}{ast_evidence_section}
 
 코드:
@@ -323,12 +426,15 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
             ast_section = f"  【C&A AST 분석 결과】 {ast_fact}\n  ※ 위 구조적 사실 기반으로 보안 영향도를 판단하라.\n"
         else:
             ast_section = ""
+        # Triage Memory: 규칙별 few-shot 예시 (배치에서는 간략히 FP 1건만)
+        batch_few_shot = get_few_shot_examples(rule_id, max_fp=1, max_tp=0)
+        batch_few_shot_part = f"\n{batch_few_shot}" if batch_few_shot else ""
         items_text_parts.append(
             f"[위반 {i + 1}]\n"
             f"  rule_id: {rule_id}\n"
             f"  line: {v.get('line') or 'N/A'}\n"
-            f"  판정 기준: {template}{ctx_part}{guide_part}\n"
-            f"{threshold_note}"
+            f"  판정 기준: {template}{ctx_part}{guide_part}{batch_few_shot_part}"
+            f"\n{threshold_note}"
             f"{missing_guide}"
             f"{ast_section}"
             f"  L1 탐지: {l1_msg_batch}\n"
@@ -358,6 +464,10 @@ L1 정적 분석기가 탐지한 위반 후보를 검토하여, 실제 위반만
 【위반(is_real_issue=true) 기준】
   - 패턴 존재 위반: 코드에서 명확히 확인되고 confidence≥75일 때만
   - 패턴 부재 위반 ([패턴 부재 위반] 표시된 항목): 필수 패턴이 없음이 확인되고 confidence≥65일 때
+【패턴 부재 위반 confidence 3단계 기준】
+  - 90~100: 확실한 위반 — 필수 패턴이 없고 동등 구현·위임 증거도 없음
+  - 65~84 : 검토 권고 — 패턴이 없지만 래퍼/시험 파일 가능성·다른 파일 위임 가능성 존재
+  - false  : 동등 구현이 코드에서 직접 확인됨 (변수명만 다른 경우 포함)
 
 {items_text}
 
