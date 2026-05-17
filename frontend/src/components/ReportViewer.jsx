@@ -252,6 +252,158 @@ function CollapsibleSection({ title, badge, defaultOpen = true, children }) {
   );
 }
 
+/** AI 종합 평가를 3개 섹션(핵심 위협 / 우선 수정 / 전반적 평가)으로 분리하여 렌더링 */
+function AiSummarySection({ aiSummary }) {
+  // 마크다운을 "핵심 위험 요소" / "우선 수정 권고" / 나머지로 분리
+  const sections = useMemo(() => {
+    const result = { threat: [], fix: [], general: [] };
+    let current = "general";
+    for (const line of (aiSummary || "").split("\n")) {
+      const lower = line.toLowerCase();
+      if (lower.includes("핵심 위험") || lower.includes("핵심 위협") || lower.includes("핵심위험") || lower.includes("핵심위협")) {
+        current = "threat"; continue;
+      }
+      if (lower.includes("우선 수정") || lower.includes("우선수정")) {
+        current = "fix"; continue;
+      }
+      if (lower.includes("전반적 평가") || lower.includes("전반적평가") || lower.includes("전체 평가") || lower.includes("전반 평가") || lower.includes("종합 의견")) {
+        current = "general"; continue;
+      }
+      result[current].push(line);
+    }
+    return result;
+  }, [aiSummary]);
+
+  const hasThreat = sections.threat.some((l) => l.trim());
+  const hasFix = sections.fix.some((l) => l.trim());
+  const hasGeneral = sections.general.some((l) => l.trim());
+
+  // 분리할 수 없는 경우 원본 그대로 렌더
+  if (!hasThreat && !hasFix) {
+    return (
+      <section className="rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-blue-500 text-base">AI</span>
+          <h3 className="text-sm font-bold text-blue-800 tracking-wide">AI 종합 평가</h3>
+        </div>
+        <div className="leading-relaxed space-y-1">{renderMd(aiSummary)}</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-blue-500 text-base">AI</span>
+        <h3 className="text-sm font-bold text-blue-800 tracking-wide">AI 종합 평가</h3>
+      </div>
+
+      {/* 핵심 위협 요소 */}
+      {hasThreat && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-[12px] font-bold text-red-700 mb-2 flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-[10px] shrink-0">!</span>
+            핵심 위협 요소
+          </p>
+          <div className="leading-relaxed space-y-1 text-[12px] text-red-800">
+            {renderMd(sections.threat.join("\n"))}
+          </div>
+        </div>
+      )}
+
+      {/* 우선 수정 권고 */}
+      {hasFix && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-[12px] font-bold text-amber-700 mb-2 flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-[10px] shrink-0">!</span>
+            우선 수정 권고
+          </p>
+          <div className="leading-relaxed space-y-1 text-[12px] text-amber-800">
+            {renderMd(sections.fix.join("\n"))}
+          </div>
+        </div>
+      )}
+
+      {/* 전반적 평가 */}
+      {hasGeneral && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-[12px] font-bold text-blue-700 mb-2 flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-[10px] shrink-0">i</span>
+            전반적 평가
+          </p>
+          <div className="leading-relaxed space-y-1 text-[12px] text-blue-800">
+            {renderMd(sections.general.join("\n"))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** 카테고리별 가로 바 차트 */
+function CategoryBarChart({ catData }) {
+  const maxTotal = useMemo(() => {
+    let max = 0;
+    for (const cat of CATEGORY_ORDER) {
+      const total = catData[cat].confirmed.length + catData[cat].review.length + catData[cat].candidate.length;
+      if (total > max) max = total;
+    }
+    return max || 1;
+  }, [catData]);
+
+  const bars = CATEGORY_ORDER.map((cat) => {
+    const c = catData[cat].confirmed.length;
+    const r = catData[cat].review.length;
+    const k = catData[cat].candidate.length;
+    const total = c + r + k;
+    if (total === 0) return null;
+    const { label, abbr } = CATEGORY_META[cat];
+    return { cat, label, abbr, c, r, k, total };
+  }).filter(Boolean);
+
+  if (!bars.length) return null;
+
+  return (
+    <div className="space-y-2">
+      {bars.map(({ cat, label, abbr, c, r, k, total }) => (
+        <div key={cat} className="flex items-center gap-2 text-[11px]">
+          <span className="w-20 text-right text-gray-600 font-medium shrink-0 truncate">{abbr}</span>
+          <div className="flex-1 flex h-5 rounded overflow-hidden bg-gray-100">
+            {c > 0 && (
+              <div
+                className="bg-red-400 transition-all duration-500"
+                style={{ width: `${(c / maxTotal) * 100}%` }}
+                title={`확정 ${c}건`}
+              />
+            )}
+            {r > 0 && (
+              <div
+                className="bg-blue-300 transition-all duration-500"
+                style={{ width: `${(r / maxTotal) * 100}%` }}
+                title={`권고 ${r}건`}
+              />
+            )}
+            {k > 0 && (
+              <div
+                className="bg-amber-300 transition-all duration-500"
+                style={{ width: `${(k / maxTotal) * 100}%` }}
+                title={`후보 ${k}건`}
+              />
+            )}
+          </div>
+          <span className="w-8 text-gray-500 shrink-0 text-right">{total}</span>
+        </div>
+      ))}
+      {/* 범례 */}
+      <div className="flex items-center gap-4 text-[10px] text-gray-500 pt-1 pl-22">
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-red-400 inline-block" /> 확정</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-blue-300 inline-block" /> 권고</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-amber-300 inline-block" /> 후보</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportViewer() {
   const report     = useAnalysisStore((s) => s.report);
   const jobId      = useAnalysisStore((s) => s.jobId);
@@ -405,39 +557,57 @@ export default function ReportViewer() {
             </div>
           )}
 
+          {/* 카테고리별 위반 바 차트 */}
+          <CategoryBarChart catData={catData} />
+
           {/* 카테고리별 판정 테이블 */}
-          <div className="overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-hidden rounded-lg border border-gray-200 mt-4">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
-                  <th className="text-left px-3 py-2 font-medium">카테고리</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">확정</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">권고</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">후보</th>
-                  <th className="text-center px-3 py-2 font-medium w-28">판정</th>
+                  <th className="text-left px-4 py-3 font-medium">카테고리</th>
+                  <th className="text-center px-4 py-3 font-medium w-20">확정</th>
+                  <th className="text-center px-4 py-3 font-medium w-20">권고</th>
+                  <th className="text-center px-4 py-3 font-medium w-20">후보</th>
+                  <th className="text-center px-4 py-3 font-medium w-28">판정</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-200">
                 {CATEGORY_ORDER.map((cat) => {
                   const c = catData[cat].confirmed.length;
                   const r = catData[cat].review.length;
                   const k = catData[cat].candidate.length;
                   if (c === 0 && r === 0 && k === 0) return null;
                   const { label, abbr } = CATEGORY_META[cat];
+                  const hasIssues = c > 0 || r > 0 || k > 0;
                   return (
-                    <tr key={cat} className={["transition-colors", c > 0 ? "bg-red-50 hover:bg-red-100" : r > 0 ? "bg-blue-50 hover:bg-blue-100" : k > 0 ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"].join(" ")}>
-                      <td className="px-3 py-2 font-medium text-gray-800">
+                    <tr key={cat} className={[
+                      "transition-colors",
+                      c > 0 ? "hover:bg-red-50" : r > 0 ? "hover:bg-blue-50" : k > 0 ? "hover:bg-amber-50" : "hover:bg-gray-50",
+                    ].join(" ")}>
+                      <td className="px-4 py-3 font-medium text-gray-800">
+                        <span className={`inline-block w-2 h-2 rounded-full mr-2 ${c > 0 ? "bg-red-500" : r > 0 ? "bg-blue-400" : k > 0 ? "bg-amber-400" : "bg-gray-300"}`} />
                         {label} <span className="text-gray-400">({abbr})</span>
                       </td>
-                      <td className="px-3 py-2 text-center">
+                      <td className="px-4 py-3 text-center">
                         {c > 0
                           ? <span className="font-bold text-red-600">{c}건</span>
-                          : <span className="text-gray-400">0건</span>
+                          : <span className="text-gray-300">0건</span>
                         }
                       </td>
-                      <td className="px-3 py-2 text-center text-blue-600">{r}건</td>
-                      <td className="px-3 py-2 text-center text-gray-500">{k}건</td>
-                      <td className="px-3 py-2 text-center">
+                      <td className="px-4 py-3 text-center">
+                        {r > 0
+                          ? <span className="font-semibold text-blue-600">{r}건</span>
+                          : <span className="text-gray-300">0건</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {k > 0
+                          ? <span className="text-gray-600">{k}건</span>
+                          : <span className="text-gray-300">0건</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-center">
                         <Verdict confirmed={c} review={r} candidate={k} />
                       </td>
                     </tr>
@@ -448,17 +618,9 @@ export default function ReportViewer() {
           </div>
         </section>
 
-        {/* ── AI 종합 평가 ── */}
+        {/* ── AI 종합 평가 (3섹션 분리) ── */}
         {aiSummary && (
-          <section className="rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-blue-500 text-base">🤖</span>
-              <h3 className="text-sm font-bold text-blue-800 tracking-wide">AI 종합 평가</h3>
-            </div>
-            <div className="leading-relaxed space-y-1">
-              {renderMd(aiSummary)}
-            </div>
-          </section>
+          <AiSummarySection aiSummary={aiSummary} />
         )}
 
         {/* ── 카테고리별 상세 ── */}

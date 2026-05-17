@@ -1,6 +1,71 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAnalysisStore } from "../stores/analysisStore";
 import { getFile, getFileAst, getSymbolGraph } from "../api/client";
+
+/** File-level violations banner (replaces the old hardcoded COM-001 banner) */
+function FileLevelViolationsBanner({ violations, onSelectViolation }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!violations.length) return null;
+
+  const shown = expanded ? violations : violations.slice(0, 2);
+
+  return (
+    <div className="border-b border-amber-200 bg-amber-50">
+      <button
+        type="button"
+        className="w-full px-3 py-2 flex items-center justify-between text-[11px] sm:text-xs text-amber-800 hover:bg-amber-100 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <span className="font-semibold">
+          이 파일에 파일 전체 수준 위반 {violations.length}건
+        </span>
+        <span className="text-[10px] text-amber-600">
+          {expanded ? "접기" : "펼치기"}
+        </span>
+      </button>
+      <ul className="px-3 pb-2 space-y-1">
+        {shown.map((v, i) => {
+          const sev = (v.severity || "medium").toLowerCase();
+          const sevColor =
+            sev === "high"
+              ? "bg-red-600 text-white"
+              : sev === "low"
+              ? "bg-gray-200 text-gray-600"
+              : "bg-amber-400 text-white";
+          const sevLabel = sev === "high" ? "HIGH" : sev === "low" ? "LOW" : "MED";
+          return (
+            <li
+              key={`${v.rule_id}-${i}`}
+              className="flex items-start gap-2 text-[11px] cursor-pointer rounded px-2 py-1.5 hover:bg-amber-100 transition-colors"
+              onClick={() => onSelectViolation && onSelectViolation(v)}
+            >
+              <span
+                className={`inline-block px-1 py-px rounded text-[9px] font-bold shrink-0 ${sevColor}`}
+              >
+                {sevLabel}
+              </span>
+              <span className="font-semibold text-amber-900 shrink-0">
+                {v.rule_id || "unknown"}
+              </span>
+              <span className="text-amber-700 truncate">
+                {v.message || "(메시지 없음)"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {!expanded && violations.length > 2 && (
+        <button
+          type="button"
+          className="w-full px-3 pb-2 text-[10px] text-amber-600 hover:text-amber-800"
+          onClick={() => setExpanded(true)}
+        >
+          + {violations.length - 2}건 더 보기
+        </button>
+      )}
+    </div>
+  );
+}
 
 /**
  * CodeViewer: 중앙 코드 뷰.
@@ -161,14 +226,15 @@ export default function CodeViewer() {
         )}
       </div>
       <div className="mt-2 flex-1 overflow-auto border border-gray-200 rounded bg-white">
-        {/* 파일 레벨 위반(COM-001 등)에 대한 상단 배너 */}
-        {selectedFilePath &&
-          fileViolations.some((v) => !v.line) && (
-            <div className="px-3 py-2 border-b border-red-100 bg-red-50 text-[11px] sm:text-xs text-red-700">
-              이 파일에는 파일 전체 수준의 위반(COM-001 등)이 있습니다. 잔존 정보 제거 코드가
-              전혀 없거나, 가이드라인에서 요구하는 처리 로직이 누락되어 있을 수 있습니다.
-            </div>
-          )}
+        {/* 파일 레벨 위반 상단 배너 — 실제 위반 항목 표시 */}
+        {selectedFilePath && (
+          <FileLevelViolationsBanner
+            violations={fileViolations.filter((v) => !v.line)}
+            onSelectViolation={(v) => {
+              // 위반 선택 시 우측 패널 연동은 analysisStore로 처리
+            }}
+          />
+        )}
         {selectedFilePath && lines.length === 0 && (
           <div className="p-3 text-gray-400">이 파일은 비어 있거나 내용을 불러오지 못했습니다.</div>
         )}

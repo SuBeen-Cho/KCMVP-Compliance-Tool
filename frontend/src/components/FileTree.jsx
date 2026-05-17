@@ -1,7 +1,10 @@
 import { useAnalysisStore } from "../stores/analysisStore";
 
 /**
- * FileTree: 좌측 파일 트리. 분석 결과의 파일 목록을 표시하고 선택 상태를 전역 스토어에 반영.
+ * FileTree: 좌측 파일 트리 (IDE 스타일).
+ * - 위반 있는 파일: 굵은 글씨 + 우측 컬러 chip
+ * - 위반 없는 파일: 약화된 텍스트
+ * - 선택된 파일: 좌측 컬러바 + 배경 하이라이트
  */
 export default function FileTree() {
   const fileList = useAnalysisStore((s) => s.fileList);
@@ -12,17 +15,30 @@ export default function FileTree() {
 
   return (
     <div className="p-2">
-      <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">파일 트리</div>
+      <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mb-2 px-2">
+        파일 트리
+      </div>
       {fileList.length === 0 ? (
         <ul className="text-sm text-gray-700 space-y-0.5">
-          <li className="italic text-gray-400">분석 후 또는 업로드 후 파일 목록 표시</li>
+          <li className="italic text-gray-400 px-2 text-xs">분석 후 파일 목록 표시</li>
         </ul>
       ) : (
-        <ul className="text-sm text-gray-700 space-y-0.5">
+        <ul className="text-[12px] space-y-px">
           {fileList.map((path) => {
             const isSelected = selectedFilePath === path;
             const violations = violationsByFile[path] || [];
             const hasViolations = violations.length > 0;
+
+            const confirmed = hasViolations
+              ? violations.filter(
+                  (v) =>
+                    v.confidence === "확정" ||
+                    (v.l2_confirmed && !v.confidence) ||
+                    (!v.confidence && !v.needs_ai_review)
+                ).length
+              : 0;
+            const hasConfirmed = confirmed > 0;
+
             return (
               <li key={path}>
                 <button
@@ -32,29 +48,29 @@ export default function FileTree() {
                     setFocusedLine(null);
                   }}
                   className={[
-                    "w-full text-left px-2 py-1 rounded flex items-center gap-1.5",
+                    "w-full text-left px-2 py-1.5 rounded-md flex items-center gap-1.5 transition-colors",
                     isSelected
-                      ? "bg-[#BDE8F5] text-[#0F2854] font-medium"
+                      ? "bg-blue-50 border-l-2 border-l-blue-500 text-[#0F2854] font-semibold"
                       : hasViolations
-                      ? "hover:bg-red-50 text-red-600"
-                      : "hover:bg-gray-100 text-gray-700",
+                      ? "hover:bg-gray-50 text-gray-800 font-medium"
+                      : "hover:bg-gray-50 text-gray-400",
                   ].join(" ")}
                 >
-                  <span className="truncate flex-1">{path}</span>
-                  {hasViolations && (() => {
-                    const confirmed = violations.filter(
-                      (v) => v.confidence === "확정" || (v.l2_confirmed && !v.confidence) || (!v.confidence && !v.needs_ai_review)
-                    ).length;
-                    return confirmed > 0 ? (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-100 border border-red-200 text-[10px] font-bold text-red-700 shrink-0">
-                        {violations.length}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-600 shrink-0">
-                        {violations.length}
-                      </span>
-                    );
-                  })()}
+                  <span className={`truncate flex-1 ${isSelected ? "ml-0" : ""}`}>
+                    {path}
+                  </span>
+                  {hasViolations && (
+                    <span
+                      className={[
+                        "inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10px] font-bold shrink-0",
+                        hasConfirmed
+                          ? "bg-red-500 text-white"
+                          : "bg-amber-100 text-amber-700 border border-amber-200",
+                      ].join(" ")}
+                    >
+                      {violations.length}
+                    </span>
+                  )}
                 </button>
               </li>
             );

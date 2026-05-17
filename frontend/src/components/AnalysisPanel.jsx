@@ -1,4 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAnalysisStore } from "../stores/analysisStore";
 
 const TABS = ["summary", "violations", "patches"];
@@ -303,6 +305,133 @@ function SummaryTab({ summary, violations, activeArtifactTab, countsByTab, allVi
 
 const isTrc = (v) => (v.rule_id || "").toUpperCase().startsWith("TRC-") || !!v.trc_type;
 
+/** severity 정렬 순서 */
+const SEV_ORDER = { high: 0, medium: 1, med: 1, low: 2 };
+function sevRank(v) { return SEV_ORDER[(v.severity || "medium").toLowerCase()] ?? 1; }
+
+/** 위반이 라인 위치를 가지는지 판별 */
+function hasLineLocation(v) {
+  const ruleId = (v.rule_id || "").toUpperCase();
+  const isDoc = ruleId.startsWith("DOC-") || !!v.doc_type;
+  if (isDoc) return Array.isArray(v.ranges) && v.ranges.length > 0;
+  return typeof v.line === "number" && v.line > 0;
+}
+
+/** 위치 라벨 생성 (개선됨) */
+function getLocationLabel(v) {
+  const ruleId = (v.rule_id || "").toUpperCase();
+  const isDocViolation = ruleId.startsWith("DOC-") || !!v.doc_type;
+  const isTrcViolation = ruleId.startsWith("TRC-") || !!v.trc_type;
+
+  if (isDocViolation) {
+    const dtMap = { design: "설계서", scm: "형상관리", config_mgmt: "형상관리", cm: "형상관리", test: "시험서" };
+    const rangeCount = Array.isArray(v.ranges) ? v.ranges.length : 0;
+    const dtKey = String(v.doc_type || "").toLowerCase().trim();
+    const dt = dtMap[dtKey] || "문서";
+    return rangeCount > 0
+      ? { text: `${dt} · ${rangeCount}곳`, badge: null }
+      : { text: dt, badge: "섹션 누락" };
+  }
+
+  if (isTrcViolation) {
+    const trcTypeMap = { interface_match: "인터페이스", error_code_match: "오류코드", test_coverage: "시험커버리지" };
+    const trcLabel = trcTypeMap[v.trc_type] || "추적성";
+    const path = v.file || v.file_path;
+    return { text: path ? `${trcLabel} · ${path.split("/").pop()}` : `${trcLabel}`, badge: path ? null : "전체" };
+  }
+
+  const path = v.file || v.file_path;
+  const hasLine = typeof v.line === "number" && v.line > 0;
+  const hasEndLine = typeof v.endLine === "number" && hasLine && v.endLine > v.line;
+  const pt = v.pattern_type || "";
+
+  if (hasLine) {
+    const lineLabel = hasEndLine ? `${v.line}~${v.endLine}` : String(v.line);
+    return { text: path ? `${path.split("/").pop()}:${lineLabel}` : `줄 ${lineLabel}`, badge: null };
+  }
+
+  // 위치 없는 위반
+  const fileName = path ? path.split("/").pop() : null;
+  if (pt === "missing") {
+    return { text: fileName || "프로젝트 전체", badge: "코드 누락" };
+  }
+  return { text: fileName || "프로젝트 전체", badge: "파일 전체" };
+}
+
+/** severity 배지 렌더 */
+function SeverityBadge({ severity }) {
+  const sev = (severity || "medium").toLowerCase();
+  if (sev === "high") return <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-red-600 text-white shrink-0">HIGH</span>;
+  if (sev === "low") return <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-gray-200 text-gray-600 border border-gray-300 shrink-0">LOW</span>;
+  return <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-amber-400 text-white shrink-0">MED</span>;
+}
+
+/** confidence 배지 렌더 */
+function ConfidenceBadge({ v }) {
+  const conf = getConfidence(v);
+  const isTrcViolation = isTrc(v);
+  if (isTrcViolation) return <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 shrink-0">추적성</span>;
+  if (conf === "확정") {
+    return (
+      <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[9px] font-bold bg-red-200 text-red-800 shrink-0"
+            title={v.confidence_score != null ? `확신도: ${v.confidence_score}%` : undefined}>
+        확정{v.confidence_score != null && <span className="font-normal opacity-70"> {v.confidence_score}%</span>}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 shrink-0"
+          title={v.confidence_score != null ? `확신도: ${v.confidence_score}%` : undefined}>
+      후보{v.confidence_score != null && <span className="font-normal opacity-70"> {v.confidence_score}%</span>}
+    </span>
+  );
+}
+
+/** 위반 카드 한 개 렌더 */
+function ViolationCard({ v, idx, onSelectViolation, isFileLevelGroup }) {
+  const key = `${v.rule_id || "rule"}-${idx}`;
+  const isTrcViolation = isTrc(v);
+  const loc = getLocationLabel(v);
+
+  const sev = (v.severity || "medium").toLowerCase();
+  const borderColor = isTrcViolation
+    ? "border-l-purple-400"
+    : sev === "high" ? "border-l-red-500" : sev === "low" ? "border-l-gray-300" : "border-l-amber-400";
+
+  return (
+    <li
+      key={key}
+      className={`border border-gray-200 rounded-md bg-white hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${borderColor}`}
+      onClick={() => onSelectViolation && onSelectViolation(v)}
+    >
+      <div className="px-3 py-2">
+        <div className="flex items-center gap-1.5 mb-1">
+          {!isTrcViolation && <SeverityBadge severity={v.severity} />}
+          <ConfidenceBadge v={v} />
+          <span className="text-xs font-semibold text-[#0F2854] shrink-0">{v.rule_id || "규칙 미지정"}</span>
+          <span className="text-[11px] text-gray-400 truncate ml-auto text-right flex items-center gap-1">
+            {loc.text}
+            {loc.badge && (
+              <span className="inline-block px-1 py-px rounded text-[9px] bg-gray-100 text-gray-500 border border-gray-200 font-medium shrink-0">
+                {loc.badge}
+              </span>
+            )}
+          </span>
+        </div>
+        <p className={`text-[11px] text-gray-600 leading-tight ${isFileLevelGroup ? "line-clamp-3" : "line-clamp-2"}`}>
+          {v.message || "(메시지 없음)"}
+        </p>
+        {/* 파일 전체 위반에서 파일 경로 표시 */}
+        {isFileLevelGroup && (v.file || v.file_path) && (
+          <p className="text-[10px] text-blue-500 mt-1">
+            {v.file || v.file_path}
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function ViolationsTab({ violations, onSelectViolation }) {
   const [confidenceFilter, setConfidenceFilter] = useState("all"); // "all" | "확정" | "후보"
   const [showTrc, setShowTrc] = useState(false); // TRC 위반 기본 숨김
@@ -315,6 +444,13 @@ function ViolationsTab({ violations, onSelectViolation }) {
     if (confidenceFilter === "all") return base;
     return base.filter((v) => getConfidence(v) === confidenceFilter);
   }, [violations, nonTrcViolations, confidenceFilter, showTrc]);
+
+  // 그룹 분리 + severity 정렬
+  const { lineViolations: lineGroup, fileLevelViolations: fileLevelGroup } = useMemo(() => {
+    const line = filtered.filter(hasLineLocation).sort((a, b) => sevRank(a) - sevRank(b));
+    const fileLevel = filtered.filter((v) => !hasLineLocation(v)).sort((a, b) => sevRank(a) - sevRank(b));
+    return { lineViolations: line, fileLevelViolations: fileLevel };
+  }, [filtered]);
 
   if (!violations.length) {
     return <p className="text-gray-500">표시할 위반이 없습니다.</p>;
@@ -370,83 +506,37 @@ function ViolationsTab({ violations, onSelectViolation }) {
         </p>
       )}
 
-      <ul className="space-y-1.5">
-        {filtered.map((v, idx) => {
-          const key = `${v.rule_id || "rule"}-${idx}`;
-          const ruleId = (v.rule_id || "").toUpperCase();
-          const isDocViolation = ruleId.startsWith("DOC-") || !!v.doc_type;
-          const conf = getConfidence(v);
-          const isTrcViolation = isTrc(v);
+      {/* 라인 위반 그룹 */}
+      {lineGroup.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 px-1 py-1.5">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">라인 위반</span>
+            <span className="text-[10px] text-gray-400">{lineGroup.length}건</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+          <ul className="space-y-1.5">
+            {lineGroup.map((v, idx) => (
+              <ViolationCard key={`line-${v.rule_id}-${idx}`} v={v} idx={idx} onSelectViolation={onSelectViolation} isFileLevelGroup={false} />
+            ))}
+          </ul>
+        </div>
+      )}
 
-          let locationLabel;
-          if (isDocViolation) {
-            const dtMap = { design: "설계서", scm: "형상관리", config_mgmt: "형상관리", cm: "형상관리", test: "시험서" };
-            const rangeCount = Array.isArray(v.ranges) ? v.ranges.length : 0;
-            const dtKey = String(v.doc_type || "").toLowerCase().trim();
-            const dt = dtMap[dtKey] || "문서";
-            locationLabel = rangeCount > 0 ? `${dt} · ${rangeCount}곳` : `${dt} · 누락`;
-          } else if (isTrcViolation) {
-            const trcTypeMap = { interface_match: "인터페이스", error_code_match: "오류코드", test_coverage: "시험커버리지" };
-            const trcLabel = trcTypeMap[v.trc_type] || "추적성";
-            const path = v.file || v.file_path;
-            locationLabel = path ? `${trcLabel} · ${path.split("/").pop()}` : `${trcLabel} · 전체`;
-          } else {
-            const path = v.file || v.file_path;
-            const hasLine = typeof v.line === "number" && v.line > 0;
-            const hasEndLine = typeof v.endLine === "number" && hasLine && v.endLine > v.line;
-            const pt = v.pattern_type || "";
-            const lineLabel = hasLine
-              ? (hasEndLine ? `${v.line}~${v.endLine}` : v.line)
-              : pt === "missing" ? "항목부재" : "전체";
-            locationLabel = path ? `${path.split("/").pop()}:${lineLabel}` : "전체";
-          }
-
-          const cardStyle = isTrcViolation
-            ? "border-purple-100 bg-purple-50 hover:bg-purple-100"
-            : conf === "확정"
-            ? "border-red-200 bg-red-50 hover:bg-red-100"
-            : "border-amber-100 bg-amber-50 hover:bg-amber-100";
-
-          const sev = (v.severity || "medium").toLowerCase();
-          const sevBadge = sev === "high"
-            ? <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-red-600 text-white shrink-0">HIGH</span>
-            : sev === "low"
-            ? <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-gray-200 text-gray-600 border border-gray-300 shrink-0">LOW</span>
-            : <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-amber-400 text-white shrink-0">MED</span>;
-
-          return (
-            <li
-              key={key}
-              className={`border rounded-md px-3 py-2 cursor-pointer transition-colors ${cardStyle}`}
-              onClick={() => onSelectViolation && onSelectViolation(v)}
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                {/* severity 배지 */}
-                {!isTrcViolation && sevBadge}
-                {/* TRC 배지 또는 confidence 배지 */}
-                {isTrcViolation
-                  ? <span className="inline-block px-1 py-px rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 shrink-0">추적성</span>
-                  : conf === "확정"
-                  ? (
-                    <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[9px] font-bold bg-red-200 text-red-800 shrink-0"
-                          title={v.confidence_score != null ? `확신도: ${v.confidence_score}%` : undefined}>
-                      확정{v.confidence_score != null && <span className="font-normal opacity-70"> {v.confidence_score}%</span>}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-0.5 px-1 py-px rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 shrink-0"
-                          title={v.confidence_score != null ? `확신도: ${v.confidence_score}%` : undefined}>
-                      후보{v.confidence_score != null && <span className="font-normal opacity-70"> {v.confidence_score}%</span>}
-                    </span>
-                  )
-                }
-                <span className="text-xs font-semibold text-[#0F2854] shrink-0">{v.rule_id || "규칙 미지정"}</span>
-                <span className="text-[11px] text-gray-400 truncate ml-auto text-right">{locationLabel}</span>
-              </div>
-              <p className="text-[11px] text-gray-600 leading-tight">{v.message || "(메시지 없음)"}</p>
-            </li>
-          );
-        })}
-      </ul>
+      {/* 파일/전체 수준 위반 그룹 */}
+      {fileLevelGroup.length > 0 && (
+        <div className={lineGroup.length > 0 ? "mt-2" : ""}>
+          <div className="flex items-center gap-2 px-1 py-1.5">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">파일/전체 수준 위반</span>
+            <span className="text-[10px] text-gray-400">{fileLevelGroup.length}건</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+          <ul className="space-y-1.5">
+            {fileLevelGroup.map((v, idx) => (
+              <ViolationCard key={`file-${v.rule_id}-${idx}`} v={v} idx={idx} onSelectViolation={onSelectViolation} isFileLevelGroup={true} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -516,77 +606,58 @@ function DiffBlock({ code }) {
   );
 }
 
-/** 패치 마크다운을 섹션별로 파싱 */
-function parsePatchContent(content) {
-  if (!content) return [];
-  const sections = [];
-  let current = null;
-  let codeBlock = null;
-  let codeLang = "";
-
-  for (const line of content.split("\n")) {
-    // ### 헤딩 감지
-    if (line.startsWith("### ")) {
-      if (current) sections.push(current);
-      current = { title: line.slice(4).trim(), body: [], codeBlocks: [] };
-      codeBlock = null;
-      continue;
-    }
-    // 코드 블록 시작/끝
-    if (line.startsWith("```")) {
-      if (codeBlock === null) {
-        codeLang = line.slice(3).trim();
-        codeBlock = [];
-      } else {
-        if (current) current.codeBlocks.push({ lang: codeLang, code: codeBlock.join("\n") });
-        else sections.push({ title: "", body: [], codeBlocks: [{ lang: codeLang, code: codeBlock.join("\n") }] });
-        codeBlock = null;
-        codeLang = "";
-      }
-      continue;
-    }
-    if (codeBlock !== null) {
-      codeBlock.push(line);
-    } else if (current) {
-      current.body.push(line);
-    }
-  }
-  if (current) sections.push(current);
-  return sections;
-}
-
+/** react-markdown 기반 패치 콘텐츠 렌더러 (마크다운 표/GFM 지원) */
 function PatchContent({ content }) {
-  const sections = parsePatchContent(content);
-  if (!sections.length) {
-    return (
-      <pre className="whitespace-pre-wrap text-[11px] text-gray-700 leading-relaxed">
-        {content}
-      </pre>
-    );
-  }
+  if (!content) return null;
+
   return (
-    <div className="space-y-2">
-      {sections.map((sec, i) => (
-        <div key={i}>
-          {sec.title && (
-            <p className="text-[11px] font-semibold text-gray-700 mb-1">{sec.title}</p>
-          )}
-          {sec.body.filter(l => l.trim()).length > 0 && (
-            <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed mb-1">
-              {sec.body.join("\n").trim()}
-            </p>
-          )}
-          {sec.codeBlocks.map((cb, j) =>
-            cb.lang === "diff" ? (
-              <DiffBlock key={j} code={cb.code} />
-            ) : (
-              <pre key={j} className="rounded bg-gray-900 text-[10px] font-mono text-gray-200 p-2 overflow-auto max-h-48">
-                {cb.code}
+    <div className="patch-markdown text-[11px] text-gray-700 leading-relaxed">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // diff 코드블록은 DiffBlock으로 렌더, 나머지는 기본 pre
+          code({ node, inline, className, children, ...props }) {
+            const lang = (className || "").replace("language-", "");
+            const codeStr = String(children).replace(/\n$/, "");
+            if (inline) {
+              return <code className="bg-gray-100 text-gray-800 px-1 rounded text-[10px] font-mono" {...props}>{children}</code>;
+            }
+            if (lang === "diff") {
+              return <DiffBlock code={codeStr} />;
+            }
+            return (
+              <pre className="rounded bg-gray-900 text-[10px] font-mono text-gray-200 p-2 overflow-auto max-h-48">
+                <code>{codeStr}</code>
               </pre>
-            )
-          )}
-        </div>
-      ))}
+            );
+          },
+          pre({ children }) { return <>{children}</>; },
+          // 테이블 스타일링
+          table({ children }) {
+            return (
+              <div className="overflow-x-auto my-2">
+                <table className="w-full text-[10px] border-collapse border border-gray-200 rounded">
+                  {children}
+                </table>
+              </div>
+            );
+          },
+          thead({ children }) { return <thead className="bg-gray-50 text-gray-600">{children}</thead>; },
+          th({ children }) { return <th className="border border-gray-200 px-2 py-1 text-left font-medium">{children}</th>; },
+          td({ children }) { return <td className="border border-gray-200 px-2 py-1">{children}</td>; },
+          // 헤딩 스타일링
+          h3({ children }) { return <p className="text-[11px] font-semibold text-gray-700 mb-1 mt-2">{children}</p>; },
+          h2({ children }) { return <p className="text-[12px] font-bold text-gray-800 mb-1 mt-2">{children}</p>; },
+          // 리스트 스타일링
+          ul({ children }) { return <ul className="list-disc ml-4 space-y-0.5">{children}</ul>; },
+          ol({ children }) { return <ol className="list-decimal ml-4 space-y-0.5">{children}</ol>; },
+          li({ children }) { return <li className="text-[11px] text-gray-600">{children}</li>; },
+          // 단락
+          p({ children }) { return <p className="text-[11px] text-gray-600 mb-1 leading-relaxed">{children}</p>; },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
