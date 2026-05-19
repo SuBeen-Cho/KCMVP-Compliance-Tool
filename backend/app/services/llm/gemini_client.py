@@ -1,6 +1,7 @@
 """Gemini/OpenAI/Local LLM 호출 + JSON 파싱 + 재시도 로직."""
 
 import json
+import os
 import re
 from typing import Any, Dict, List, Optional, Union
 
@@ -21,6 +22,31 @@ L3_PROVIDER = settings.L3_PROVIDER  # "gemini" | "openai" | "local"
 OPENAI_API_KEY = settings.OPENAI_API_KEY
 OPENAI_L3_MODEL = settings.LLM_MODEL_L3      # default: "gpt-4o"
 OPENAI_PATCH_MODEL = settings.LLM_MODEL_PATCH # default: "gpt-4o"
+
+
+# ─────────────────────────────────────────────────────────────────
+# 토큰 사용량 추적 (평가 전용)
+# ─────────────────────────────────────────────────────────────────
+_token_counter: Dict[str, int] = {"input": 0, "output": 0, "calls": 0}
+
+
+def reset_token_usage() -> None:
+    """토큰 카운터를 초기화한다 (평가 루프 반복 시 사용)."""
+    global _token_counter
+    _token_counter = {"input": 0, "output": 0, "calls": 0}
+
+
+def get_token_usage() -> Dict[str, int]:
+    """현재 누적 토큰 사용량을 반환한다."""
+    return dict(_token_counter)
+
+
+# Ablation 플래그 — os.environ에서 매 호출 시 읽음 (평가 루프 중 동적 전환 가능)
+def _ablation_no_cot()          -> bool: return os.environ.get("ABLATION_NO_COT",          "0") == "1"
+def _ablation_no_rejudge()      -> bool: return os.environ.get("ABLATION_NO_REJUDGE",      "0") == "1"
+def _ablation_no_gcfs()         -> bool: return os.environ.get("ABLATION_NO_GCFS",         "0") == "1"
+def _ablation_no_dual_verify()  -> bool: return os.environ.get("ABLATION_NO_DUAL_VERIFY",  "0") == "1"
+def _ablation_no_missing_protect() -> bool: return os.environ.get("ABLATION_NO_MISSING_PROTECT", "0") == "1"
 
 
 def _extract_json_from_text(raw: str) -> Optional[Dict[str, Any]]:
@@ -171,6 +197,11 @@ def _call_gemini(
             contents=prompt,
             config=config,
         )
+        usage = getattr(response, "usage_metadata", None)
+        if usage is not None:
+            _token_counter["input"]  += getattr(usage, "prompt_token_count",     0) or 0
+            _token_counter["output"] += getattr(usage, "candidates_token_count", 0) or 0
+        _token_counter["calls"] += 1
         text = getattr(response, "text", None)
         if text and isinstance(text, str):
             return text
