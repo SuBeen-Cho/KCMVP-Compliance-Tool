@@ -78,12 +78,6 @@ ZIP 또는 GitHub URL로 소스를 올리고, PDF 문서를 함께 업로드하�
 
 ## Quick Start
 
-### 사전 준비
-
-- Python 3.10+
-- Node.js 18+
-- (선택) libclang — 있으면 AST 분석 정확도 향상
-
 ### Backend
 
 ```bash
@@ -104,42 +98,38 @@ cd frontend
 npm install && npm run dev
 ```
 
-> **접속**: http://localhost:5173 | **API 문서**: http://localhost:8000/docs
-
 ---
 
-## 프로젝트 구조
+<details>
+<summary><b>프로젝트 구조</b></summary>
 
 ```
-├── backend/
-│   ├── app/
-│   │   ├── main.py                  # FastAPI 진입점
-│   │   ├── api/routes/              # analyze, health 라우트
-│   │   └── services/                # 핵심 서비스
-│   │       ├── preprocess_service.py        # C/H AST 파싱
-│   │       ├── symbol_graph_service.py      # 크로스파일 콜그래프
-│   │       ├── rule_engine_service.py       # L1 YAML 룰 엔진
-│   │       ├── doc_rule_service.py          # 문서 L1 룰
-│   │       └── llm/                         # LLM 판정 + 패치 생성
-│   ├── rules/                       # YAML 룰셋 (170+)
-│   ├── guidelines/                  # RAG 소스 마크다운
-│   └── mapping/                     # rule_id → 가이드라인 매핑
-│
-├── frontend/                        # React + Vite
-│   └── src/
-│       ├── pages/                   # Landing, Analyze
-│       ├── components/              # CodeViewer, DocViewer, FileTree 등
-│       └── stores/                  # Zustand 상태 관리
-│
-├── ruleset/                         # KCMVP 가이드라인 기반 룰셋 DB (RAG용)
-│   ├── docs/                        # 상세설계서 항목별 마크다운
-│   └── LEA/                         # LEA 알고리즘 + 운용모드 마크다운
-│
-├── docs/                            # 룰 작성 가이드
-└── assets/                          # README 이미지
+backend/
+├── app/
+│   ├── main.py                     # FastAPI 진입점
+│   ├── api/routes/                 # analyze, health 라우트
+│   └── services/                   # 핵심 서비스
+│       ├── preprocess_service.py   # C/H AST 파싱
+│       ├── symbol_graph_service.py # 크로스파일 콜그래프
+│       ├── rule_engine_service.py  # L1 YAML 룰 엔진
+│       ├── doc_rule_service.py     # 문서 L1 룰
+│       └── llm/                    # LLM 판정 + 패치 생성
+├── rules/                          # YAML 룰셋 (170+)
+├── guidelines/                     # RAG 소스 마크다운
+└── mapping/                        # rule_id → 가이드라인 매핑
+
+frontend/
+└── src/
+    ├── pages/                      # Landing, Analyze
+    ├── components/                 # CodeViewer, DocViewer, FileTree 등
+    └── stores/                     # Zustand 상태 관리
+
+ruleset/                            # KCMVP 가이드라인 기반 룰셋 DB (RAG용)
+├── docs/                           # 상세설계서 항목별 마크다운
+└── LEA/                            # LEA 알고리즘 + 운용모드 마크다운
 ```
 
----
+</details>
 
 <details>
 <summary><b>성능 측정 결과</b></summary>
@@ -212,6 +202,15 @@ LOCAL_LLM_MODEL=kcmvp-judge
 | Frontend | React 18, Vite, Zustand |
 | LLM | Google Gemini 2.5 Flash |
 | DB | ChromaDB (RAG, 선택) |
+
+---
+
+## Contributors
+
+<a href="https://github.com/SuBeen-Cho"><img src="https://github.com/SuBeen-Cho.png" width="60" style="border-radius:50%"/></a>
+<a href="https://github.com/yulim4hyoung"><img src="https://github.com/yulim4hyoung.png" width="60" style="border-radius:50%"/></a>
+<a href="https://github.com/lima050627-ops"><img src="https://github.com/lima050627-ops.png" width="60" style="border-radius:50%"/></a>
+<a href="https://github.com/rhcp030418"><img src="https://github.com/rhcp030418.png" width="60" style="border-radius:50%"/></a>
 
 ---
 
