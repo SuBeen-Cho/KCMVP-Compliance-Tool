@@ -1,23 +1,35 @@
-# KCMVP Pre-Compliance Validator
+<p align="center">
+  <img src="assets/screenshot-report.png" width="800" alt="KCMVP Pre-Compliance Validator"/>
+</p>
 
-KCMVP 암호모듈 검증 제출 전, 소스 코드와 제출 문서를 자동으로 사전 점검하는 웹 도구.
-코드 정적 분석 + YAML 기반 170여 개 규칙 + LLM 재판정을 결합해 위반 후보를 추려내고, 수정 패치까지 생성한다.
-
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini_2.5-4285F4?style=for-the-badge&logo=google&logoColor=white)
+<h1 align="center">KCMVP Pre-Compliance Validator</h1>
 
 <p align="center">
-  <img src="assets/screenshot-report.png" width="800" alt="분석 보고서 화면"/>
+  KCMVP 암호모듈 검증 제출 전, 소스 코드와 제출 문서를 자동으로 사전 점검하는 웹 도구
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white"/>
+  <img src="https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black"/>
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Gemini_2.5-4285F4?style=for-the-badge&logo=google&logoColor=white"/>
+</p>
+
+<p align="center">
+  <a href="https://github.com/SuBeen-Cho/KCMVP-Compliance-Tool/stargazers"><img src="https://img.shields.io/github/stars/SuBeen-Cho/KCMVP-Compliance-Tool?style=flat-square"/></a>
+  <a href="https://github.com/SuBeen-Cho/KCMVP-Compliance-Tool/commits/main"><img src="https://img.shields.io/github/last-commit/SuBeen-Cho/KCMVP-Compliance-Tool?style=flat-square"/></a>
+  <a href="https://github.com/SuBeen-Cho/KCMVP-Compliance-Tool"><img src="https://img.shields.io/github/repo-size/SuBeen-Cho/KCMVP-Compliance-Tool?style=flat-square"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/SuBeen-Cho/KCMVP-Compliance-Tool?style=flat-square"/></a>
 </p>
 
 ---
 
 ## Demo
 
-[![KCMVP Demo](https://img.youtube.com/vi/6zdJuxVHgmE/maxresdefault.jpg)](https://www.youtube.com/watch?v=6zdJuxVHgmE)
+<a href="https://www.youtube.com/watch?v=6zdJuxVHgmE">
+  <img src="https://img.youtube.com/vi/6zdJuxVHgmE/maxresdefault.jpg" width="700" alt="KCMVP Demo Video"/>
+</a>
 
 > 클릭하면 YouTube에서 데모 영상을 볼 수 있습니다.
 
@@ -25,31 +37,33 @@ KCMVP 암호모듈 검증 제출 전, 소스 코드와 제출 문서를 자동�
 
 ## 주요 기능
 
-- **코드 정적 분석** — C/C++ 소스를 AST + regex로 분석. LEA/ARIA + CBC, CTR, GCM 등 8개 운용 모드, 총 170+ 규칙 자동 점검
-- **문서 규격 검사** — 설계서, 형상관리, 시험서 PDF의 섹션/표 구조를 파싱해서 DOC 규칙 적용
-- **LLM 재판정** — Gemini로 L1 후보 위반의 의미적 타당성을 검증하고 오탐(FP) 걸러냄
-- **추적성 검사** — 설계서 - 코드 - 시험서 간 일관성 확인
-- **패치 생성** — 위반 항목별로 수정 전/후 코드 + 수정 이유를 자동 생성
+|  | 기능 | 설명 |
+|--|------|------|
+| **L1** | 코드 정적 분석 | C/C++ 소스를 AST + regex로 분석. LEA/ARIA + 8개 운용 모드, 170+ 규칙 자동 점검 |
+| **L1** | 문서 규격 검사 | 설계서, 형상관리, 시험서 PDF의 섹션/표 구조를 파싱 후 DOC 규칙 적용 |
+| **L2** | 증거 매핑 | 규칙별 KCMVP 가이드라인 근거 연결 (RAG) |
+| **L3** | LLM 재판정 | Gemini로 후보 위반의 의미적 타당성 검증, 오탐(FP) 제거 |
+|  | 추적성 검사 | 설계서 - 코드 - 시험서 간 일관성 확인 |
+|  | 패치 생성 | 위반 항목별 수정 전/후 코드 + 수정 이유 자동 생성 |
 
 ---
 
 ## 스크린샷
 
-### 코드 분석 결과 (IDE 스타일)
-
 <p align="center">
-  <img src="assets/screenshot-analysis-result.png" width="800" alt="코드 분석 결과 화면"/>
+  <img src="assets/screenshot-analysis-result.png" width="800" alt="코드 분석 결과 (IDE 스타일)"/>
 </p>
 
-파일 트리에서 파일 선택 → 해당 파일의 위반 항목이 코드 위에 인라인으로 표시된다.
-오른쪽 패널에서 심각도, 확정/후보 여부로 필터링 가능.
+<p align="center">
+  파일 트리에서 파일 선택 → 위반 항목이 코드 위에 인라인 표시. 오른쪽 패널에서 심각도/확정 여부 필터링.
+</p>
 
 ---
 
 ## 파이프라인
 
 <p align="center">
-  <img src="assets/pipeline.png" width="500" alt="분석 파이프라인"/>
+  <img src="assets/pipeline.png" width="480" alt="분석 파이프라인"/>
 </p>
 
 ZIP 또는 GitHub URL로 소스를 올리고, PDF 문서를 함께 업로드하면 아래 순서로 분석이 진행된다:
@@ -68,7 +82,7 @@ ZIP 또는 GitHub URL로 소스를 올리고, PDF 문서를 함께 업로드하�
 
 - Python 3.10+
 - Node.js 18+
-- (선택) libclang — 있으면 AST 분석 정확도가 올라감
+- (선택) libclang — 있으면 AST 분석 정확도 향상
 
 ### Backend
 
@@ -88,12 +102,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 cd frontend
 npm install && npm run dev
-```
-
-### Docker
-
-```bash
-docker-compose up -d
 ```
 
 > **접속**: http://localhost:5173 | **API 문서**: http://localhost:8000/docs
@@ -123,9 +131,7 @@ docker-compose up -d
 │       ├── components/              # CodeViewer, DocViewer, FileTree 등
 │       └── stores/                  # Zustand 상태 관리
 │
-├── docs/                            # 룰 작성 가이드
-├── assets/                          # README 이미지
-└── docker-compose.yml
+└── assets/                          # README 이미지
 ```
 
 ---
@@ -201,12 +207,9 @@ LOCAL_LLM_MODEL=kcmvp-judge
 | Frontend | React 18, Vite, Zustand |
 | LLM | Google Gemini 2.5 Flash |
 | DB | ChromaDB (RAG, 선택) |
-| Infra | Docker Compose |
 
 ---
 
-## 관련 문서
+## License
 
-- [`docs/LEA_코드_룰_작성_가이드.md`](docs/LEA_코드_룰_작성_가이드.md) — LEA/모드 YAML 룰 작성법
-- [`docs/DOC_설계서_룰_작성_가이드.md`](docs/DOC_설계서_룰_작성_가이드.md) — 문서 규칙 작성법
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — 상세 아키텍처, 서비스별 동작 방식, 규칙 시스템 설명
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
