@@ -12,9 +12,11 @@ frontend/node_modules/
 .env
 backend/.env
 
-# Storage (분석 결과물)
+# Storage (analysis artifacts)
 backend/storage/jobs/
 backend/data/chroma/
+data/chroma/
+storage/
 
 # Sensitive local inputs
 0_KCMVP.zip
@@ -33,3 +35,16 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Claude Code
+.claude/
+
+# Internal docs (not for repo)
+CODEX_NEXT_PLAN.md
+SERVER_RUN_GUIDE.md
+
+# Legacy folders
+pptx/
+document 복사본/
+블록암호_LEA_소스코드*/
+코드 - 설계서 세트/
