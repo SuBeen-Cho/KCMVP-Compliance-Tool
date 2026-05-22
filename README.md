@@ -131,6 +131,11 @@ npm install && npm run dev
 │       ├── components/              # CodeViewer, DocViewer, FileTree 등
 │       └── stores/                  # Zustand 상태 관리
 │
+├── ruleset/                         # KCMVP 가이드라인 기반 룰셋 DB (RAG용)
+│   ├── docs/                        # 상세설계서 항목별 마크다운
+│   └── LEA/                         # LEA 알고리즘 + 운용모드 마크다운
+│
+├── docs/                            # 룰 작성 가이드
 └── assets/                          # README 이미지
 ```
 

@@ -62,7 +62,7 @@ def get_guideline_path(rule_id: str) -> Optional[Path]:
     rule_id에 대응하는 guideline MD 파일의 절대경로 반환.
 
     탐색 순서:
-      1. mapping의 item_ids → 실제 database/ 폴더에서 item_id 패턴 검색
+      1. mapping의 item_ids → 실제 ruleset/ 폴더에서 item_id 패턴 검색
       2. mapping의 guideline_file → backend/ 기준 상대경로 직접 조회
     """
     info = lookup(rule_id)
@@ -71,8 +71,8 @@ def get_guideline_path(rule_id: str) -> Optional[Path]:
     # 1. item_ids 기반으로 실제 DB에서 파일 탐색
     item_ids = info.get("item_ids", [])
     db_dirs = [
-        project_root / "database" / "docs",
-        project_root / "database" / "LEA",
+        project_root / "ruleset" / "docs",
+        project_root / "ruleset" / "LEA",
     ]
     for item_id in item_ids:
         # item_id 형식: "AS02.09" → 파일명에 "AS02_09" 포함 패턴으로 검색

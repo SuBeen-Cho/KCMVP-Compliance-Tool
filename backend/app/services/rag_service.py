@@ -28,8 +28,8 @@ from app.config import settings
 # 실제 지식 DB 폴더들 (프로젝트 루트 기준)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _DB_DIRS = [
-    _PROJECT_ROOT / "database" / "docs",   # 설계서/형상관리/시험서 가이드라인 DB
-    _PROJECT_ROOT / "database" / "LEA",    # LEA 알고리즘 DB
+    _PROJECT_ROOT / "ruleset" / "docs",   # 설계서/형상관리/시험서 가이드라인 DB
+    _PROJECT_ROOT / "ruleset" / "LEA",    # LEA 알고리즘 DB
     _PROJECT_ROOT / "backend" / "guidelines",  # 기존 guidelines (fallback 보조)
 ]
 # 하위 호환 단일 경로 (기존 코드 참조용)
