@@ -101,37 +101,6 @@ npm install && npm run dev
 ---
 
 <details>
-<summary><b>프로젝트 구조</b></summary>
-
-```
-backend/
-├── app/
-│   ├── main.py                     # FastAPI 진입점
-│   ├── api/routes/                 # analyze, health 라우트
-│   └── services/                   # 핵심 서비스
-│       ├── preprocess_service.py   # C/H AST 파싱
-│       ├── symbol_graph_service.py # 크로스파일 콜그래프
-│       ├── rule_engine_service.py  # L1 YAML 룰 엔진
-│       ├── doc_rule_service.py     # 문서 L1 룰
-│       └── llm/                    # LLM 판정 + 패치 생성
-├── rules/                          # YAML 룰셋 (170+)
-├── guidelines/                     # RAG 소스 마크다운
-└── mapping/                        # rule_id → 가이드라인 매핑
-
-frontend/
-└── src/
-    ├── pages/                      # Landing, Analyze
-    ├── components/                 # CodeViewer, DocViewer, FileTree 등
-    └── stores/                     # Zustand 상태 관리
-
-ruleset/                            # KCMVP 가이드라인 기반 룰셋 DB (RAG용)
-├── docs/                           # 상세설계서 항목별 마크다운
-└── LEA/                            # LEA 알고리즘 + 운용모드 마크다운
-```
-
-</details>
-
-<details>
 <summary><b>성능 측정 결과</b></summary>
 
 ### 코드 위반 탐지
@@ -151,24 +120,6 @@ ruleset/                            # KCMVP 가이드라인 기반 룰셋 DB (RA
 | Precision (L1+L2) | 58.8% |
 
 6단계 체계적 평가: Blind Test → Wilson CI → Mutation Testing → LOO Cross-Validation → External Blind → Mutation Automation
-
-</details>
-
-<details>
-<summary><b>API 엔드포인트</b></summary>
-
-| Method | Endpoint | 설명 |
-|--------|----------|------|
-| `POST` | `/api/analyze` | 분석 Job 생성 (ZIP/GitHub + PDF) |
-| `GET` | `/api/analyze/{job_id}` | 상태-진행률 폴링 |
-| `GET` | `/api/analyze/{job_id}/report` | 위반 목록 + 종합 평가 |
-| `GET` | `/api/analyze/{job_id}/file` | 소스 파일 내용 |
-| `GET` | `/api/analyze/{job_id}/files` | 파일 목록 |
-| `GET` | `/api/analyze/{job_id}/ast` | 파일별 AST |
-| `GET` | `/api/analyze/{job_id}/docs` | 문서 섹션 |
-| `GET` | `/api/analyze/{job_id}/patches` | 패치 목록 |
-| `GET` | `/api/analyze/{job_id}/symbol-graph` | 함수 콜그래프 |
-| `GET` | `/api/health` | 헬스 체크 |
 
 </details>
 
