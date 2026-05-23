@@ -169,3 +169,5 @@ LOCAL_LLM_MODEL=kcmvp-judge
 ## License
 
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+본 프로젝트의 룰셋은 KISA 공개 가이드라인(KS X ISO/IEC 19790, KS X 3246 등)을 참고하여 독자적으로 작성되었습니다. 참조 표준 목록은 [NOTICE.md](NOTICE.md)를 참고하세요.
