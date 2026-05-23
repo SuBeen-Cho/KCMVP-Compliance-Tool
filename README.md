@@ -103,29 +103,6 @@ npm install && npm run dev
 ---
 
 <details>
-<summary><b>Evaluation Results</b></summary>
-
-### Code Violation Detection
-
-| Metric | Value |
-|--------|-------|
-| L1 Recall | 89.5% (baseline 49.5% → +40pp) |
-| L1+L3 Recall | 87.6% |
-| L3 FP Removal Rate | 94.3% (50 out of 53 removed) |
-| KISA LEA FP Reduction | 208 → 11 (94.7% reduction) |
-
-### Document Violation Detection
-
-| Metric | Value |
-|--------|-------|
-| Recall | 100% (10/10) |
-| Precision (L1+L2) | 58.8% |
-
-6-stage systematic evaluation: Blind Test → Wilson CI → Mutation Testing → LOO Cross-Validation → External Blind → Mutation Automation
-
-</details>
-
-<details>
 <summary><b>Environment Variables</b></summary>
 
 ```env
