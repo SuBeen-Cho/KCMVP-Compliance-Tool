@@ -5,7 +5,7 @@
 <h1 align="center">KCMVP Pre-Compliance Validator</h1>
 
 <p align="center">
-  KCMVP 암호모듈 검증 제출 전, 소스 코드와 제출 문서를 자동으로 사전 점검하는 웹 도구
+  A web-based tool that automatically validates cryptographic module source code and submission documents before official KCMVP certification.
 </p>
 
 <p align="center">
@@ -31,48 +31,48 @@
   <img src="https://img.youtube.com/vi/6zdJuxVHgmE/maxresdefault.jpg" width="700" alt="KCMVP Demo Video"/>
 </a>
 
-> 클릭하면 YouTube에서 데모 영상을 볼 수 있습니다.
+> Click the thumbnail to watch the demo on YouTube.
 
 ---
 
-## 주요 기능
+## Features
 
-|  | 기능 | 설명 |
-|--|------|------|
-| **L1** | 코드 정적 분석 | C/C++ 소스를 AST + regex로 분석. LEA/ARIA + 8개 운용 모드, 170+ 규칙 자동 점검 |
-| **L1** | 문서 규격 검사 | 설계서, 형상관리, 시험서 PDF의 섹션/표 구조를 파싱 후 DOC 규칙 적용 |
-| **L2** | 증거 매핑 | 규칙별 KCMVP 가이드라인 근거 연결 (RAG) |
-| **L3** | LLM 재판정 | Gemini로 후보 위반의 의미적 타당성 검증, 오탐(FP) 제거 |
-|  | 추적성 검사 | 설계서 - 코드 - 시험서 간 일관성 확인 |
-|  | 패치 생성 | 위반 항목별 수정 전/후 코드 + 수정 이유 자동 생성 |
-
----
-
-## 스크린샷
-
-<p align="center">
-  <img src="assets/screenshot-analysis-result.png" width="800" alt="코드 분석 결과 (IDE 스타일)"/>
-</p>
-
-<p align="center">
-  파일 트리에서 파일 선택 → 위반 항목이 코드 위에 인라인 표시. 오른쪽 패널에서 심각도/확정 여부 필터링.
-</p>
+|  | Feature | Description |
+|--|---------|-------------|
+| **L1** | Static Code Analysis | Parses C/C++ source via AST + regex. Checks LEA/ARIA + 8 operation modes with 170+ rules |
+| **L1** | Document Validation | Parses design docs, configuration management, and test report PDFs by section/table structure |
+| **L2** | Evidence Mapping | Links each rule to KCMVP guideline references via RAG |
+| **L3** | LLM Re-evaluation | Gemini verifies semantic validity of candidate violations and filters out false positives |
+|  | Traceability | Cross-checks consistency between design docs, code, and test reports |
+|  | Patch Generation | Auto-generates before/after code fixes with explanations for each violation |
 
 ---
 
-## 파이프라인
+## Screenshots
 
 <p align="center">
-  <img src="assets/pipeline.png" width="480" alt="분석 파이프라인"/>
+  <img src="assets/screenshot-analysis-result.png" width="800" alt="Code Analysis Result (IDE-style)"/>
 </p>
 
-ZIP 또는 GitHub URL로 소스를 올리고, PDF 문서를 함께 업로드하면 아래 순서로 분석이 진행된다:
+<p align="center">
+  Select a file from the tree view — violations are displayed inline on the code. Filter by severity and confidence in the right panel.
+</p>
 
-1. **전처리** — AST 파싱(libclang/pycparser), PDF 섹션-표 구조화(PyMuPDF + pdfplumber), 스캔본 OCR
-2. **L1 정적 분석** — YAML 규칙 매칭 (missing / regex / semantic / ast)
-3. **L2 증거 매핑** — 규칙별 KCMVP 가이드라인 근거 연결 (RAG)
-4. **L3 LLM 재판정** — Gemini가 코드/문서 컨텍스트를 보고 FP 필터링
-5. **보고서 + 패치** — 위반 병합-중복 제거 → 종합 보고서 + 수정 코드 생성
+---
+
+## Pipeline
+
+<p align="center">
+  <img src="assets/pipeline.png" width="480" alt="Analysis Pipeline"/>
+</p>
+
+Upload source code via ZIP or GitHub URL along with PDF documents, and the analysis runs through:
+
+1. **Preprocessing** — AST parsing (libclang/pycparser), PDF section/table extraction (PyMuPDF + pdfplumber), scanned PDF OCR
+2. **L1 Static Analysis** — YAML rule matching (missing / regex / semantic / ast)
+3. **L2 Evidence Mapping** — Links rules to KCMVP guideline references (RAG)
+4. **L3 LLM Re-evaluation** — Gemini reviews code/document context to filter false positives
+5. **Report + Patches** — Merges and deduplicates violations, generates report and code fixes
 
 ---
 
@@ -86,7 +86,7 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 cp ../.env.example .env
-# .env에 GOOGLE_API_KEY 설정 (Google AI Studio에서 발급)
+# Set GOOGLE_API_KEY in .env (get one from Google AI Studio)
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -101,41 +101,41 @@ npm install && npm run dev
 ---
 
 <details>
-<summary><b>성능 측정 결과</b></summary>
+<summary><b>Evaluation Results</b></summary>
 
-### 코드 위반 탐지
+### Code Violation Detection
 
-| 지표 | 수치 |
-|------|------|
-| L1 Recall | 89.5% (베이스라인 49.5% → +40pp) |
+| Metric | Value |
+|--------|-------|
+| L1 Recall | 89.5% (baseline 49.5% → +40pp) |
 | L1+L3 Recall | 87.6% |
-| L3 FP 제거율 | 94.3% (53건 중 50건 제거) |
-| KISA LEA FP 감소 | 208건 → 11건 (94.7% 감소) |
+| L3 FP Removal Rate | 94.3% (50 out of 53 removed) |
+| KISA LEA FP Reduction | 208 → 11 (94.7% reduction) |
 
-### 문서 위반 탐지
+### Document Violation Detection
 
-| 지표 | 수치 |
-|------|------|
+| Metric | Value |
+|--------|-------|
 | Recall | 100% (10/10) |
 | Precision (L1+L2) | 58.8% |
 
-6단계 체계적 평가: Blind Test → Wilson CI → Mutation Testing → LOO Cross-Validation → External Blind → Mutation Automation
+6-stage systematic evaluation: Blind Test → Wilson CI → Mutation Testing → LOO Cross-Validation → External Blind → Mutation Automation
 
 </details>
 
 <details>
-<summary><b>환경 변수</b></summary>
+<summary><b>Environment Variables</b></summary>
 
 ```env
-# 필수
-GOOGLE_API_KEY=AIza...          # Google AI Studio API 키
+# Required
+GOOGLE_API_KEY=AIza...          # Google AI Studio API key
 
-# 기본값 사용 가능
+# Defaults available
 API_V1_PREFIX=/api
 GEMINI_L2_MODEL=gemini-2.5-flash-lite
-L2_PROVIDER=gemini              # 또는 local
+L2_PROVIDER=gemini              # or "local"
 
-# 선택
+# Optional
 RAG_USE_CHROMA=false
 LOCAL_LLM_BASE_URL=http://localhost:8080/v1
 LOCAL_LLM_MODEL=kcmvp-judge
@@ -145,14 +145,14 @@ LOCAL_LLM_MODEL=kcmvp-judge
 
 ---
 
-## 기술 스택
+## Tech Stack
 
-| 영역 | 기술 |
-|------|------|
+| Layer | Technologies |
+|-------|-------------|
 | Backend | Python, FastAPI, pycparser, libclang, PyMuPDF, pdfplumber |
 | Frontend | React 18, Vite, Zustand |
 | LLM | Google Gemini 2.5 Flash |
-| DB | ChromaDB (RAG, 선택) |
+| DB | ChromaDB (RAG, optional) |
 
 ---
 
@@ -170,4 +170,4 @@ LOCAL_LLM_MODEL=kcmvp-judge
 
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
-본 프로젝트의 룰셋은 KISA 공개 가이드라인(KS X ISO/IEC 19790, KS X 3246 등)을 참고하여 독자적으로 작성되었습니다. 참조 표준 목록은 [NOTICE.md](NOTICE.md)를 참고하세요.
+The rulesets in this project are independently authored based on publicly available KISA guidelines (KS X ISO/IEC 19790, KS X 3246, etc.). See [NOTICE.md](NOTICE.md) for the full list of referenced standards.
