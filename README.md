@@ -27,11 +27,13 @@
 
 ## Demo
 
-<a href="https://www.youtube.com/watch?v=6zdJuxVHgmE">
-  <img src="https://img.youtube.com/vi/6zdJuxVHgmE/maxresdefault.jpg" width="700" alt="KCMVP Demo Video"/>
-</a>
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=6zdJuxVHgmE">
+    <img src="https://img.youtube.com/vi/6zdJuxVHgmE/maxresdefault.jpg" width="700" alt="KCMVP Demo Video"/>
+  </a>
+</p>
 
-> Click the thumbnail to watch the demo on YouTube.
+<p align="center">Click the thumbnail to watch the demo on YouTube.</p>
 
 ---
 
