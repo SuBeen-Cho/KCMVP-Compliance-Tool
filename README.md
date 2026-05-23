@@ -164,6 +164,7 @@ LOCAL_LLM_MODEL=kcmvp-judge
 <a href="https://github.com/yulim4hyoung"><img src="https://github.com/yulim4hyoung.png" width="60" style="border-radius:50%"/></a>
 <a href="https://github.com/lima050627-ops"><img src="https://github.com/lima050627-ops.png" width="60" style="border-radius:50%"/></a>
 <a href="https://github.com/jaedol2023-oss"><img src="https://github.com/jaedol2023-oss.png" width="60" style="border-radius:50%"/></a>
+<a href="https://github.com/sumiiniee"><img src="https://github.com/sumiiniee.png" width="60" style="border-radius:50%"/></a>
 <a href="https://github.com/rhcp030418"><img src="https://github.com/rhcp030418.png" width="60" style="border-radius:50%"/></a>
 
 ---
