@@ -45,9 +45,11 @@ backend/docs/
 # Sensitive local inputs
 0_KCMVP.zip
 
-# Generated evaluation outputs & logs
-backend/scripts/*.json
-backend/scripts/*.log
+# Scripts (evaluation/test utilities, local only)
+backend/scripts/
+
+# Frontend generated README
+frontend/README.md
 
 # Backup files
 *.bak
