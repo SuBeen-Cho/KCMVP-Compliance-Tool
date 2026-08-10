@@ -64,6 +64,7 @@ backend/scripts/*
 !backend/scripts/fetch_cipher_candidates.py
 !backend/scripts/verify_cipher_vectors.py
 !backend/scripts/check_policy_freshness.py
+!backend/scripts/l1_snapshot.py
 
 # Frontend generated README
 frontend/README.md
