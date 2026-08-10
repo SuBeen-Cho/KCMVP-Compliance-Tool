@@ -131,7 +131,13 @@ def sanitize_gt_annotations(content: str) -> str:
 
 def source_id(path: Path, source_root: Path) -> str:
     """Stable source identity used by GT, detections, and exported candidates."""
-    return path.resolve().relative_to(source_root.resolve()).as_posix()
+    relative = path.resolve().relative_to(source_root.resolve())
+    # Archives conventionally place implementation files below src/, while
+    # tests and benchmarks live beside it.  Keep one project-wide analysis
+    # root but preserve the historical GT identity that omits the src/ prefix.
+    if relative.parts and relative.parts[0] == "src":
+        relative = Path(*relative.parts[1:])
+    return relative.as_posix()
 
 
 def resolved_source_id(raw_path: str, source_root: Path, known: Dict[str, str]) -> str:
@@ -227,7 +233,10 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(tmp)
 
-        src_dir = tmp / "src" if (tmp / "src").exists() else tmp
+        # Analyse the complete project tree.  Restricting discovery to src/
+        # silently excluded sibling test/ and benchmark/ sources, including
+        # the KAT request/response rules that explicitly target those files.
+        src_dir = tmp
         c_files = sorted(src_dir.rglob("*.c"))
 
         # Engines re-read file paths, so sanitize the physical analysis tree.
@@ -268,7 +277,7 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
             for v in l1_violations
             if v.get("rule_id") and resolved_source_id(str(v.get("file", "")), src_dir, source_ids)
         }
-        pre_l3_candidate_ids = sorted(f"{fname}::{rid}" for fname, rid in pre_l3_candidate_keys)
+        pre_l3_candidate_ids = sorted(f"{set_name}::{fname}::{rid}" for fname, rid in pre_l3_candidate_keys)
 
         # L3 (L3)
         t1 = time.time()
@@ -299,10 +308,10 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
             fname = resolved_source_id(str(rej_file), src_dir, source_ids)
             if (fname, rej_rid) in gt_rules:
                 l3_wrong += 1
-                l3_rejected_detail.append({"candidate_id": f"{fname}::{rej_rid}", "file": fname, "rule_id": rej_rid, "correct": False})
+                l3_rejected_detail.append({"candidate_id": f"{set_name}::{fname}::{rej_rid}", "file": fname, "rule_id": rej_rid, "correct": False})
             else:
                 l3_correct += 1
-                l3_rejected_detail.append({"candidate_id": f"{fname}::{rej_rid}", "file": fname, "rule_id": rej_rid, "correct": True})
+                l3_rejected_detail.append({"candidate_id": f"{set_name}::{fname}::{rej_rid}", "file": fname, "rule_id": rej_rid, "correct": True})
 
     # 탐지 결과 집계 (파일명, rule_id)
     detected = defaultdict(set)
@@ -326,27 +335,27 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         for rid in expected_rids:
             if rid in detected_rids:
                 TP += 1
-                tp_list.append({"candidate_id": f"{fname}::{rid}", "file": fname, "rule_id": rid})
+                tp_list.append({"candidate_id": f"{set_name}::{fname}::{rid}", "file": fname, "rule_id": rid})
             else:
                 FN += 1
-                fn_list.append({"candidate_id": f"{fname}::{rid}", "file": fname, "rule_id": rid})
+                fn_list.append({"candidate_id": f"{set_name}::{fname}::{rid}", "file": fname, "rule_id": rid})
 
         # GT에 없는 추가 탐지 (over-detection)
         extra = detected_rids - expected_rids
         for rid in extra:
             FP_extra += 1
-            fp_list.append({"candidate_id": f"{fname}::{rid}", "file": fname, "rule_id": rid})
+            fp_list.append({"candidate_id": f"{set_name}::{fname}::{rid}", "file": fname, "rule_id": rid})
 
     total_gt = TP + FN
     recall = TP / total_gt if total_gt > 0 else 0.0
     precision = TP / (TP + FP_extra) if (TP + FP_extra) > 0 else 1.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
     final_candidate_ids = sorted({
-        f"{fname}::{rid}" for fname, rids in detected.items() for rid in rids
+        f"{set_name}::{fname}::{rid}" for fname, rids in detected.items() for rid in rids
     })
     final_candidate_keys = {(fname, rid) for fname, rids in detected.items() for rid in rids}
     unique_removed_keys = pre_l3_candidate_keys - final_candidate_keys
-    unique_removed_ids = sorted(f"{fname}::{rid}" for fname, rid in unique_removed_keys)
+    unique_removed_ids = sorted(f"{set_name}::{fname}::{rid}" for fname, rid in unique_removed_keys)
     unique_author_gt_extra = sum(key not in gt_rules for key in unique_removed_keys)
     unique_author_gt_match = len(unique_removed_keys) - unique_author_gt_extra
 

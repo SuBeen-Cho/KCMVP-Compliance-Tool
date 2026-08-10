@@ -59,7 +59,32 @@ def test_evaluator_physically_sanitizes_input_and_counts_gt_free_file_as_fp(tmp_
     assert observed["l2"] is True
     assert result["FN"] == 1
     assert result["FP_extra"] == 1
-    assert result["fp_list"][0]["candidate_id"] == "sub/b.c::LEA-099"
+    assert result["fp_list"][0]["candidate_id"] == "test::sub/b.c::LEA-099"
+
+
+def test_evaluator_includes_test_sources_beside_src(tmp_path, monkeypatch):
+    archive = tmp_path / "sample.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("src/cipher.c", "int cipher(void) { return 0; }\n")
+        zf.writestr(
+            "test/test_lea.c",
+            "int test(void) { return 0; } /* [위반: LEA-048] */\n",
+        )
+
+    def fake_l1(*, preprocess_result, **_kwargs):
+        displays = {item["display"] for item in preprocess_result["files"]}
+        assert displays == {"cipher.c", "test/test_lea.c"}
+        return [{"file": "test/test_lea.c", "rule_id": "LEA-048", "line": 1}]
+
+    monkeypatch.setattr(MODULE, "run_rule_engine", fake_l1)
+    monkeypatch.setattr(MODULE, "run_l2_rag_context", lambda items: items)
+    monkeypatch.setattr(MODULE, "USE_L3", False)
+
+    result = MODULE.evaluate_code_set(archive, "test")
+
+    assert result["TP"] == 1
+    assert result["FN"] == 0
+    assert result["tp_list"][0]["candidate_id"] == "test::test/test_lea.c::LEA-048"
 
 
 def test_cli_set_selection_and_output_parsing(tmp_path):
