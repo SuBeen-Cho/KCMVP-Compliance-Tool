@@ -4,7 +4,7 @@ import hashlib
 import re
 from typing import Any, Dict, List, Optional
 
-from app.services.rag_service import search_evidence
+from app.services.rag_service import rag_ablation_disabled, search_evidence
 from app.services.llm.prompt_templates import PROMPT_TEMPLATES, _get_prompt_template
 from app.services.llm.triage_memory import get_few_shot_examples
 
@@ -212,6 +212,8 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
 # ─────────────────────────────────────────────────────────────────
 def _fetch_guideline_text(rule_id: str, max_chars: int = 800) -> str:
     """search_evidence()로 가이드라인 청크 로드 → 프롬프트 주입용 텍스트 반환."""
+    if rag_ablation_disabled():
+        return ""
     try:
         chunks = search_evidence(rule_id, top_k=2)
         if not chunks:
@@ -385,9 +387,15 @@ L1 탐지 메시지: {l1_msg}{ast_evidence_section}
 {judgment_criteria}
 - confidence: 판정 확신도 (0=오탐/불확실, 100=위반 확실)
 - insufficient_context: 코드 절삭이 너무 짧아 판단 불가이면 true
+- evidence_type: direct_violation, equivalent_impl, delegated_to_other_file, not_applicable_scope, insufficient_context 중 하나
+- requirement_scope: file, function, project, artifact, unknown 중 하나
+- concrete_evidence_line: 현재 코드 블록 안에서 오탐 근거가 되는 실제 코드 한 줄. 없으면 빈 문자열
+- delegated_target: 다른 함수/파일에 위임되어 오탐이라고 판단한 경우 대상 함수 또는 파일. 없으면 빈 문자열
+- supporting_symbol: 동등 구현 또는 위임을 뒷받침하는 함수명/상수명/변수명. 없으면 빈 문자열
+- removal_risk: low, medium, high 중 하나. 오탐 제거 시 실제 위반을 놓칠 위험도
 
 반드시 아래 JSON 형식의 객체만 출력하라:
-{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false}}""".strip()
+{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium"}}""".strip()
 
 
 def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
@@ -473,8 +481,8 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
 
 반드시 아래 JSON 배열 형식만 출력하라 (입력과 동일한 순서, idx는 1부터):
 [
-  {{"idx": 1, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false}},
-  {{"idx": 2, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false}}
+  {{"idx": 1, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium"}},
+  {{"idx": 2, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "equivalent_impl", "requirement_scope": "function", "concrete_evidence_line": "동등 구현 코드 한 줄", "delegated_target": "", "supporting_symbol": "함수명 또는 심볼명", "removal_risk": "low"}}
 ]""".strip()
 
 
@@ -564,6 +572,16 @@ def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
         "l3_confirmed": True,
         "pattern_type": v.get("pattern_type", ""),
         "l3_is_real_issue": bool(obj.get("is_real_issue")),
+        "l3_raw_confidence": score,
+        "l3_file_role": obj.get("file_role", ""),
+        "l3_evidence_type": obj.get("evidence_type", ""),
+        "l3_risk_tier": obj.get("risk_tier", ""),
+        "l3_removal_allowed": bool(obj.get("removal_allowed", False)),
+        "l3_removal_blocked_reason": obj.get("removal_blocked_reason"),
+        "l3_concrete_evidence_line": obj.get("concrete_evidence_line", ""),
+        "l3_delegated_target": obj.get("delegated_target", ""),
+        "l3_supporting_symbol": obj.get("supporting_symbol", ""),
+        "l3_removal_risk": obj.get("removal_risk", ""),
     }
     # insufficient_context: 코드 절삭 부족 피드백 전달
     if obj.get("insufficient_context"):

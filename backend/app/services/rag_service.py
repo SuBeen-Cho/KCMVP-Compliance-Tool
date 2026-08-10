@@ -23,6 +23,11 @@ from app.services.mapping_service import (
     get_search_query,
     lookup,
 )
+
+
+def rag_ablation_disabled() -> bool:
+    """True only for controlled L2 ablation experiments."""
+    return os.environ.get("ABLATION_NO_RAG", "0") == "1"
 from app.config import settings
 
 # 실제 지식 DB 폴더들 (프로젝트 루트 기준)
@@ -444,6 +449,8 @@ def attach_evidence(
     -------
     list[dict] : evidence 필드가 추가된 위반 리스트 (원본 수정 없이 새 dict 반환)
     """
+    if rag_ablation_disabled():
+        return [dict(item, evidence="", rag_ablation=True) for item in violations]
     result = []
     for v in violations:
         item = dict(v)
@@ -476,8 +483,15 @@ def run_l2_rag_context(violations: list, max_chars: int = 800) -> list:
     L1 위반 리스트를 받아 각 항목에 'rag_guideline_text' 필드를 추가한 뒤 반환.
     L3(LLM 판정)은 이 필드를 프롬프트에 직접 주입하여 가이드라인 문맥을 활용한다.
     """
+    # 평가 조건 간 입력 오염을 막기 위해 호출자의 L1 후보를 변경하지 않는다.
+    result = [dict(violation) for violation in violations]
+    if rag_ablation_disabled():
+        for violation in result:
+            violation["rag_guideline_text"] = ""
+            violation["rag_ablation"] = True
+        return result
     guideline_cache: dict = {}
-    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in violations}
+    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in result}
     for rid in unique_rule_ids:
         try:
             chunks = search_evidence(rid, top_k=2)
@@ -501,10 +515,11 @@ def run_l2_rag_context(violations: list, max_chars: int = 800) -> list:
     loaded = sum(1 for g in guideline_cache.values() if g)
     print(f"[L2][RAG] 가이드라인 로드: {loaded}건 (/{len(guideline_cache)})")
 
-    for v in violations:
+    for v in result:
         rid = v.get("rule_id") or "UNKNOWN"
         v["rag_guideline_text"] = guideline_cache.get(rid, "")
-    return violations
+        v.pop("rag_ablation", None)
+    return result
 
 
 def build_or_get_index(docs_dir: Path, persist_dir: str) -> None:

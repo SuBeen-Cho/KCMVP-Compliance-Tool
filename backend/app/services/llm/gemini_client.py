@@ -47,6 +47,13 @@ def _ablation_no_rejudge()      -> bool: return os.environ.get("ABLATION_NO_REJU
 def _ablation_no_gcfs()         -> bool: return os.environ.get("ABLATION_NO_GCFS",         "0") == "1"
 def _ablation_no_dual_verify()  -> bool: return os.environ.get("ABLATION_NO_DUAL_VERIFY",  "0") == "1"
 def _ablation_no_missing_protect() -> bool: return os.environ.get("ABLATION_NO_MISSING_PROTECT", "0") == "1"
+def _ablation_no_rag()          -> bool: return os.environ.get("ABLATION_NO_RAG",          "0") == "1"
+def _experimental_missing_relax() -> bool: return os.environ.get("L3_EXPERIMENTAL_MISSING_RELAX", "0") == "1"
+def _experimental_ast_relax() -> bool: return os.environ.get("L3_EXPERIMENTAL_AST_RELAX", "0") == "1"
+def _hybrid_safe_relax() -> bool: return os.environ.get("L3_HYBRID_SAFE_RELAX", "0") == "1"
+def _grounded_relax() -> bool: return os.environ.get("L3_GROUNDED_RELAX", "0") == "1"
+def _grounded_artifact_relax() -> bool: return os.environ.get("L3_GROUNDED_ARTIFACT_RELAX", "0") == "1"
+def _allow_provider_fallback() -> bool: return os.environ.get("LLM_ALLOW_PROVIDER_FALLBACK", "0") == "1"
 
 
 def _extract_json_from_text(raw: str) -> Optional[Dict[str, Any]]:
@@ -145,19 +152,31 @@ def _call_llm(
             from app.services.local_llm_service import call_local
             return call_local(prompt)
         except Exception as e:
-            print(f"[LLM] local 호출 실패, gemini로 fallback: {e}")
-            return _call_gemini(prompt, response_mime_type=response_mime_type)
+            if _allow_provider_fallback():
+                print(f"[LLM] local 호출 실패, 명시적으로 허용된 Gemini fallback 수행: {e}")
+                return _call_gemini(prompt, response_mime_type=response_mime_type)
+            raise LLMProviderError("Local LLM failed; cross-provider fallback is disabled") from e
     if L3_PROVIDER == "openai":
         result = _call_openai(prompt, model=model)
         if result is not None:
             return result
-        print("[LLM] OpenAI 실패, Gemini로 fallback")
-        return _call_gemini(prompt, response_mime_type=response_mime_type)
+        if _allow_provider_fallback():
+            print("[LLM] OpenAI 실패, 명시적으로 허용된 Gemini fallback 수행")
+            return _call_gemini(prompt, response_mime_type=response_mime_type)
+        raise LLMProviderError("OpenAI returned no result; cross-provider fallback is disabled")
     return _call_gemini(prompt, response_mime_type=response_mime_type)
 
 
 class _Gemini503Error(Exception):
     """Gemini 503 UNAVAILABLE — 프롬프트 과부하 또는 일시적 오류."""
+
+
+class GeminiConfigurationError(RuntimeError):
+    """Non-retryable authentication or model-configuration failure."""
+
+
+class LLMProviderError(RuntimeError):
+    """Selected LLM provider failed without an explicitly allowed fallback."""
 
 
 def _strip_gcfs_from_prompt(prompt: str) -> str:
@@ -175,8 +194,10 @@ def _call_gemini(
     response_mime_type: Optional[str] = None,
 ) -> Optional[str]:
     """Google Gemini API 호출. 키 없으면 None 반환. 503 시 _Gemini503Error 발생."""
-    if not GOOGLE_API_KEY or not _HAS_GOOGLE_GENAI:
-        return None
+    if not GOOGLE_API_KEY:
+        raise GeminiConfigurationError("GOOGLE_API_KEY is required for the Gemini provider")
+    if not _HAS_GOOGLE_GENAI:
+        raise GeminiConfigurationError("google-genai is required for the Gemini provider")
     try:
         from google.genai import types
 
@@ -218,6 +239,14 @@ def _call_gemini(
         return None
     except Exception as e:
         err_str = str(e)
+        permanent_markers = (
+            "API_KEY_INVALID", "API key not valid", "PERMISSION_DENIED",
+            "permission denied", "MODEL_NOT_FOUND", "model not found",
+        )
+        if any(marker in err_str for marker in permanent_markers):
+            raise GeminiConfigurationError(
+                "Gemini authentication, permission, or model configuration is invalid"
+            ) from e
         if "503" in err_str or "UNAVAILABLE" in err_str:
             print(f"[L3][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
             raise _Gemini503Error(err_str)

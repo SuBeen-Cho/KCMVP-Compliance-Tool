@@ -1,5 +1,6 @@
 """메인 L3 실행 — run_l3_contextualizer."""
 
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +10,9 @@ from app.services.llm.gemini_client import (
     _ablation_no_cot, _ablation_no_rejudge,
     _ablation_no_gcfs, _ablation_no_dual_verify,
     _ablation_no_missing_protect,
+    _experimental_missing_relax, _experimental_ast_relax,
+    _hybrid_safe_relax, _grounded_relax, _grounded_artifact_relax,
+    GeminiConfigurationError,
 )
 from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
 
@@ -39,6 +43,36 @@ _L3_NEVER_REMOVE = frozenset({
     "CBC-002",
     # CTR 카운터 갱신 누락: MCT 컨텍스트에서 실제 위반. LLM 오판 확인됨.
     "CTR-LEA-006",
+})
+
+# Risk-Tiered L3 policy (2026-05-19)
+# Tier B: FP가 관찰되었지만 Tier C/D보다 FN 비용이 낮아, 실험 플래그에서만
+# L3 제거 권한을 조건부로 넓힌다. 기본 운영값에서는 기존 보호 정책을 유지한다.
+_CONDITIONAL_AST_RELAX_RULES = frozenset({
+    "LEA-022",
+    "LEA-030",
+    "LEA-031",
+})
+
+_LOW_RISK_FILE_ROLE_KEYWORDS = (
+    "violations", "wrapper", "test", "tests", "helper", "sample",
+    "example", "demo", "mock", "stub", "kat", "mct",
+)
+
+_CORE_CRYPTO_FILES = frozenset({
+    "lea.c", "lea_block.c", "lea_ctr.c", "lea_cbc.c",
+    "aria.c", "aes.c", "cipher.c", "ctrdrbg.c", "hmacdrbg.c", "pbkdf.c",
+})
+
+_SAFE_MISSING_EVIDENCE_TYPES = frozenset({
+    "equivalent_impl",
+    "delegated_to_other_file",
+    "not_applicable_scope",
+})
+
+_ARTIFACT_SCOPE_MISSING_RULES = frozenset({
+    "LEA-048",
+    "LEA-062",
 })
 from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
@@ -90,6 +124,111 @@ def _check_violation_precondition(
         return True  # 전제조건 충족
     print(f"[L3][PC] 전제조건 불충족 → FP 확정: {rule_id} @ {file_path}")
     return False
+
+
+def _score(obj: Dict[str, Any], default: int = 50) -> int:
+    try:
+        value = int(obj.get("confidence", default))
+    except (TypeError, ValueError):
+        value = default
+    return max(0, min(100, value))
+
+
+def _file_role(file_path: str) -> str:
+    fname = os.path.basename(file_path or "").lower()
+    if fname in _CORE_CRYPTO_FILES:
+        return "core_crypto"
+    if any(kw in fname for kw in _LOW_RISK_FILE_ROLE_KEYWORDS):
+        return "low_risk_auxiliary"
+    if fname.endswith((".h", ".hpp")):
+        return "header"
+    return "implementation"
+
+
+def _missing_relax_allowed(v: Dict[str, Any], obj: Dict[str, Any], file_path: str) -> bool:
+    """실험 플래그에서만 missing FP 제거 모수를 넓힌다."""
+    if _ablation_no_missing_protect():
+        return True
+    hybrid = _hybrid_safe_relax()
+    grounded = _grounded_relax()
+    grounded_artifact = _grounded_artifact_relax()
+    if not _experimental_missing_relax() and not hybrid and not grounded and not grounded_artifact:
+        return False
+    if (v.get("rule_id") or "") in _L3_NEVER_REMOVE:
+        return False
+    if obj.get("is_real_issue"):
+        return False
+    if obj.get("insufficient_context"):
+        return False
+    role = _file_role(file_path)
+    if (hybrid or grounded or grounded_artifact) and role == "core_crypto":
+        return False
+    confidence = _score(obj)
+    evidence = (obj.get("evidence_type") or "").strip()
+    grounded_detail = any(
+        str(obj.get(key) or "").strip()
+        for key in ("concrete_evidence_line", "delegated_target", "supporting_symbol")
+    )
+    if grounded_artifact:
+        rule_id = v.get("rule_id") or ""
+        scope = (obj.get("requirement_scope") or "").strip()
+        risk = (obj.get("removal_risk") or "").strip()
+        if rule_id in _ARTIFACT_SCOPE_MISSING_RULES and role == "low_risk_auxiliary":
+            return (
+                evidence in _SAFE_MISSING_EVIDENCE_TYPES
+                and scope in {"artifact", "project", "unknown", ""}
+                and risk in {"low", "medium", ""}
+            )
+        return evidence in _SAFE_MISSING_EVIDENCE_TYPES and grounded_detail
+    if grounded:
+        return evidence in _SAFE_MISSING_EVIDENCE_TYPES and grounded_detail
+    if hybrid:
+        return role == "low_risk_auxiliary" and evidence in _SAFE_MISSING_EVIDENCE_TYPES
+    if evidence in _SAFE_MISSING_EVIDENCE_TYPES:
+        return True
+    return role == "low_risk_auxiliary" and confidence <= 40
+
+
+def _ast_relax_allowed(v: Dict[str, Any], obj: Dict[str, Any]) -> bool:
+    """Tier B AST 규칙만 실험 플래그에서 조건부 완화한다."""
+    if (
+        not _experimental_ast_relax()
+        and not _hybrid_safe_relax()
+        and not _grounded_relax()
+        and not _grounded_artifact_relax()
+    ):
+        return False
+    rule_id = v.get("rule_id") or ""
+    if rule_id not in _CONDITIONAL_AST_RELAX_RULES:
+        return False
+    if obj.get("is_real_issue") or obj.get("insufficient_context"):
+        return False
+    evidence = (obj.get("evidence_type") or "").strip()
+    if evidence in {"equivalent_impl", "delegated_to_other_file", "not_applicable_scope"}:
+        return True
+    return _score(obj) <= 25
+
+
+def _mark_l3_decision(
+    obj: Dict[str, Any],
+    *,
+    file_path: str,
+    risk_tier: str,
+    removal_allowed: bool,
+    blocked_reason: Optional[str],
+) -> None:
+    obj["file_role"] = obj.get("file_role") or _file_role(file_path)
+    obj["risk_tier"] = risk_tier
+    obj["removal_allowed"] = removal_allowed
+    obj["removal_blocked_reason"] = blocked_reason
+
+
+def _reject_key(v: Dict[str, Any]) -> tuple:
+    return (
+        (v.get("file") or v.get("file_path") or "").strip(),
+        (v.get("rule_id") or "").strip(),
+        v.get("line"),
+    )
 
 
 _FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP(KS X 19790) 암호모듈 보안 시니어 감사관입니다.
@@ -147,6 +286,105 @@ def _verify_fp_removal(
     return True
 
 
+def _fp_removal_verified(
+    v: Dict[str, Any],
+    obj: Dict[str, Any],
+    code_block: str,
+    file_path: str,
+) -> bool:
+    """FP 제거 후보의 2차 재검증 통과 여부."""
+    if _ablation_no_dual_verify():
+        return True
+    return _verify_fp_removal(v, obj, code_block, file_path)
+
+
+def _apply_l3_decision(
+    *,
+    v: Dict[str, Any],
+    obj: Dict[str, Any],
+    code_block: str,
+    file_path: str,
+    results: List[Dict[str, Any]],
+    rejected_tracker: Optional[set],
+) -> None:
+    """Risk-tier 정책에 따라 L3 결과를 유지/제거한다."""
+    # 캐시된 판정에 파일별 정책 메타데이터가 누적되지 않도록 복사한다.
+    obj = dict(obj)
+    rule_id = v.get("rule_id") or ""
+    pat_type = v.get("pattern_type", "")
+    score = _score(obj)
+    fp_threshold = 25 if pat_type in ("ast", "semantic") else 40
+    fp_high = (82 if rule_id in _AST_TP_PROTECT else 80) if pat_type == "ast" else 70
+
+    if rule_id in _L3_NEVER_REMOVE:
+        risk_tier = "D"
+    elif pat_type == "ast" and rule_id in _CONDITIONAL_AST_RELAX_RULES:
+        risk_tier = "B"
+    elif rule_id in _AST_TP_PROTECT:
+        risk_tier = "C"
+    elif pat_type == "missing":
+        risk_tier = "A"
+    else:
+        risk_tier = "B"
+
+    if obj.get("is_real_issue"):
+        _mark_l3_decision(
+            obj, file_path=file_path, risk_tier=risk_tier,
+            removal_allowed=False, blocked_reason="l3_real_issue",
+        )
+        results.append(_make_l3_result(v, obj))
+        print(f"[L3] 확정 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
+        return
+
+    if pat_type == "missing" and not _missing_relax_allowed(v, obj, file_path):
+        _mark_l3_decision(
+            obj, file_path=file_path, risk_tier=risk_tier,
+            removal_allowed=False, blocked_reason="missing_protect",
+        )
+        results.append(_make_l3_result(v, obj))
+        print(f"[L3] missing타입→유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
+        return
+
+    if rule_id in _L3_NEVER_REMOVE:
+        _mark_l3_decision(
+            obj, file_path=file_path, risk_tier=risk_tier,
+            removal_allowed=False, blocked_reason="never_remove",
+        )
+        results.append(_make_l3_result(v, obj))
+        print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+        return
+
+    ast_relax = pat_type == "ast" and _ast_relax_allowed(v, obj)
+    score_relax = score <= fp_threshold or score >= fp_high
+    if pat_type == "missing":
+        score_relax = _missing_relax_allowed(v, obj, file_path)
+
+    if ast_relax or score_relax:
+        if _fp_removal_verified(v, obj, code_block, file_path):
+            _mark_l3_decision(
+                obj, file_path=file_path, risk_tier=risk_tier,
+                removal_allowed=True, blocked_reason=None,
+            )
+            print(f"[L3] 오탐 제거 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
+            if rejected_tracker is not None:
+                rejected_tracker.add(_reject_key(v))
+        else:
+            _mark_l3_decision(
+                obj, file_path=file_path, risk_tier=risk_tier,
+                removal_allowed=False, blocked_reason="dual_verify_failed",
+            )
+            results.append(_make_l3_result(v, obj))
+            print(f"[L3] FP재검증 실패→유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
+        return
+
+    _mark_l3_decision(
+        obj, file_path=file_path, risk_tier=risk_tier,
+        removal_allowed=False, blocked_reason="uncertain",
+    )
+    results.append(_make_l3_result(v, obj))
+    print(f"[L3] 불확실 FP→보수적 유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
+
+
 def run_l3_contextualizer(
     preprocess_result: Dict[str, Any],
     l1_violations: List[Dict[str, Any]],
@@ -173,7 +411,9 @@ def run_l3_contextualizer(
     """
     # gemini 프로바이더는 API 키 필수; local은 키 불필요
     if L3_PROVIDER == "gemini" and not GOOGLE_API_KEY:
-        return []
+        raise GeminiConfigurationError(
+            "GOOGLE_API_KEY is required; L3 cannot silently return an empty result"
+        )
 
     results: List[Dict[str, Any]] = []
     files = preprocess_result.get("files", [])
@@ -294,8 +534,14 @@ def run_l3_contextualizer(
             if cache_key in _l3_cache:
                 print(f"[L3] 캐시 히트: {rule_id} @ {file_path}:{line}")
                 obj = _l3_cache[cache_key]
-                if obj.get("is_real_issue") or rule_id in _L3_NEVER_REMOVE:
-                    results.append(_make_l3_result(v, obj))
+                _apply_l3_decision(
+                    v=v,
+                    obj=obj,
+                    code_block=code_block,
+                    file_path=file_path,
+                    results=results,
+                    rejected_tracker=_rejected_tracker,
+                )
             else:
                 entry = {
                     "violation": v,
@@ -343,55 +589,14 @@ def run_l3_contextualizer(
                         score = obj.get("confidence", score)
                         print(f"[L3] 재판정 완료 (score={score}): {rule_id}")
 
-                _score_int = int(obj.get("confidence", 50))
-                _pat_type = v.get("pattern_type", "")
-                _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
-                # ast fallback(후보) 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
-                # _AST_TP_PROTECT 규칙: P0-3 개선(2026-05-19)으로 88→82 완화 (Dual Verify 보호)
-                _fp_high = (82 if rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
-                if obj.get("is_real_issue"):
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 확정 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                elif _pat_type == "missing" and not _ablation_no_missing_protect():
-                    # missing 타입 보호 — 래퍼/테스트 파일은 선별적 완화
-                    _fname = (file_path.split("/")[-1] or "").lower()
-                    _is_wrapper = any(kw in _fname for kw in ("violations", "wrapper", "test", "helper", "sample"))
-                    if _is_wrapper and not obj.get("is_real_issue") and _score_int <= 40:
-                        # 래퍼 파일 + L3 FP 판정 + 낮은 confidence → Dual Verify 후 제거
-                        if not _ablation_no_dual_verify() and _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                            print(f"[L3] 래퍼missing FP제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                            if _rejected_tracker is not None:
-                                _rejected_tracker.add((
-                                    (v.get("file") or v.get("file_path") or "").strip(),
-                                    rule_id,
-                                    v.get("line"),
-                                ))
-                        else:
-                            results.append(_make_l3_result(v, obj))
-                            print(f"[L3] 래퍼missing DV실패→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                    else:
-                        results.append(_make_l3_result(v, obj))
-                        print(f"[L3] missing타입→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                elif rule_id in _L3_NEVER_REMOVE:
-                    # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                elif _score_int <= _fp_threshold or _score_int >= _fp_high:
-                    # FP 제거 전 비대칭 재검증
-                    if not _ablation_no_dual_verify() and _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                        print(f"[L3] 오탐 제거 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                        if _rejected_tracker is not None:
-                            _rejected_tracker.add((
-                                (v.get("file") or v.get("file_path") or "").strip(),
-                                rule_id,
-                                v.get("line"),
-                            ))
-                    else:
-                        results.append(_make_l3_result(v, obj))
-                        print(f"[L3] FP재검증 실패→유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
-                else:
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 불확실 FP→보수적 유지 (score={score}): {rule_id} @ {file_path}:{v.get('line')}")
+                _apply_l3_decision(
+                    v=v,
+                    obj=obj,
+                    code_block=entry["code_block"],
+                    file_path=file_path,
+                    results=results,
+                    rejected_tracker=_rejected_tracker,
+                )
 
         if not batch_items:
             continue
@@ -416,26 +621,14 @@ def run_l3_contextualizer(
                     )
                     if obj:
                         _l3_cache[entry["cache_key"]] = obj
-                        _score_int = int(obj.get("confidence", 50))
-                        _pat_type = v.get("pattern_type", "")
-                        _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
-                        # ast fallback 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
-                        _v_rule_id = v.get("rule_id") or ""
-                        # _AST_TP_PROTECT 규칙: P0-3 개선(2026-05-19)으로 88→82 완화 (Dual Verify 보호)
-                        _fp_high = (82 if _v_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
-                        # is_real_issue=false + score ≥ _fp_high → 확신있는 FP → 제거
-                        # _L3_NEVER_REMOVE 규칙 및 missing 타입(보호 활성 시)은 FP 제거 차단
-                        # 래퍼 파일 missing 선별 완화
-                        _fname_fb = (file_path.split("/")[-1] or "").lower()
-                        _is_wrapper_fb = any(kw in _fname_fb for kw in ("violations", "wrapper", "test", "helper", "sample"))
-                        _missing_keep = (
-                            _pat_type == "missing" and not _ablation_no_missing_protect()
-                            and not (_is_wrapper_fb and not obj.get("is_real_issue") and _score_int <= 40)
+                        _apply_l3_decision(
+                            v=v,
+                            obj=obj,
+                            code_block=entry["code_block"],
+                            file_path=file_path,
+                            results=results,
+                            rejected_tracker=_rejected_tracker,
                         )
-                        if obj.get("is_real_issue") or (
-                            _fp_threshold < _score_int < _fp_high
-                        ) or _v_rule_id in _L3_NEVER_REMOVE or _missing_keep:
-                            results.append(_make_l3_result(v, obj))
                 continue
 
             # 청크 결과 처리
@@ -454,56 +647,14 @@ def run_l3_contextualizer(
                     continue
 
                 _l3_cache[entry["cache_key"]] = obj
-                score = obj.get("confidence", 80)
-                _score_int = int(score)
-                _pat_type = v.get("pattern_type", "")
-                _fp_threshold = 25 if _pat_type in ("ast", "semantic") else 40
-                # ast fallback(후보) 위반은 FP 확신 임계값을 80으로 높여 Recall 보호
-                _batch_rule_id = v.get("rule_id") or ""
-                # _AST_TP_PROTECT 규칙: P0-3 개선(2026-05-19)으로 88→82 완화 (Dual Verify 보호)
-                _fp_high = (82 if _batch_rule_id in _AST_TP_PROTECT else 80) if _pat_type == "ast" else 70
-                if obj.get("is_real_issue"):
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 확정 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
-                elif _pat_type == "missing" and not _ablation_no_missing_protect():
-                    # missing 타입 보호 — 래퍼/테스트 파일은 선별적 완화
-                    _fname_b = (file_path.split("/")[-1] or "").lower()
-                    _is_wrapper_b = any(kw in _fname_b for kw in ("violations", "wrapper", "test", "helper", "sample"))
-                    if _is_wrapper_b and not obj.get("is_real_issue") and _score_int <= 40:
-                        if not _ablation_no_dual_verify() and _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                            print(f"[L3] 래퍼missing FP제거 (score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
-                            if _rejected_tracker is not None:
-                                _rejected_tracker.add((
-                                    (v.get("file") or v.get("file_path") or "").strip(),
-                                    (_batch_rule_id or "").strip(),
-                                    v.get("line"),
-                                ))
-                        else:
-                            results.append(_make_l3_result(v, obj))
-                            print(f"[L3] 래퍼missing DV실패→유지 (score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
-                    else:
-                        results.append(_make_l3_result(v, obj))
-                        print(f"[L3] missing타입→유지 (score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
-                elif _batch_rule_id in _L3_NEVER_REMOVE:
-                    # 제거 차단: FP 제거 정확도 미달 → Recall 보호 우선
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {_batch_rule_id} @ {file_path}:{v.get('line')}")
-                elif _score_int <= _fp_threshold or _score_int >= _fp_high:
-                    # FP 제거 전 비대칭 재검증
-                    if not _ablation_no_dual_verify() and _verify_fp_removal(v, obj, entry["code_block"], file_path):
-                        print(f"[L3] 오탐 제거 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
-                        if _rejected_tracker is not None:
-                            _rejected_tracker.add((
-                                (v.get("file") or v.get("file_path") or "").strip(),
-                                (v.get("rule_id") or "").strip(),
-                                v.get("line"),
-                            ))
-                    else:
-                        results.append(_make_l3_result(v, obj))
-                        print(f"[L3] FP재검증 실패→유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
-                else:
-                    results.append(_make_l3_result(v, obj))
-                    print(f"[L3] 불확실 FP→보수적 유지 (score={score}): {v.get('rule_id')} @ {file_path}:{v.get('line')}")
+                _apply_l3_decision(
+                    v=v,
+                    obj=obj,
+                    code_block=entry["code_block"],
+                    file_path=file_path,
+                    results=results,
+                    rejected_tracker=_rejected_tracker,
+                )
 
     rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0
     print(f"[L3] 최종 L3 확정 위반: {len(results)}건, 오탐 제거: {rejected_count}건")
