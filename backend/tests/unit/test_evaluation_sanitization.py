@@ -93,3 +93,35 @@ def test_cli_set_selection_and_output_parsing(tmp_path):
     assert args.no_l3 and args.no_rag
     assert args.code_only
     assert args.output == tmp_path / "r.json"
+
+
+def test_l3_receives_stable_candidate_ids_with_occurrence_ordinal(tmp_path, monkeypatch):
+    archive = tmp_path / "sample.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("src/a.c", "int a;\n")
+
+    def fake_l1(**_kwargs):
+        return [
+            {"file": "src/a.c", "rule_id": "AES-001", "line": 1},
+            {"file": "src/a.c", "rule_id": "AES-001", "line": 1},
+        ]
+
+    observed = []
+
+    def fake_l3(*, l1_violations, **_kwargs):
+        observed.extend(item["candidate_id"] for item in l1_violations)
+        return l1_violations
+
+    monkeypatch.setattr(MODULE, "run_rule_engine", fake_l1)
+    monkeypatch.setattr(MODULE, "run_l2_rag_context", lambda items: items)
+    monkeypatch.setattr(MODULE, "run_l3_contextualizer", fake_l3)
+    monkeypatch.setattr(MODULE, "post_process_violations", lambda *, l3, **_kwargs: l3)
+    monkeypatch.setattr(MODULE, "USE_L3", True)
+    monkeypatch.setattr(MODULE, "L3_AVAILABLE", True)
+
+    result = MODULE.evaluate_code_set(archive, "set-1")
+    assert observed == [
+        "set-1::a.c::AES-001::1::1",
+        "set-1::a.c::AES-001::1::2",
+    ]
+    assert result["l3_request_candidate_ids"] == observed

@@ -74,6 +74,13 @@ _ARTIFACT_SCOPE_MISSING_RULES = frozenset({
     "LEA-048",
     "LEA-062",
 })
+
+
+def _ledger_candidate_id(violation: Dict[str, Any], file_path: str) -> str:
+    """Build an internal candidate identity; the ledger persists only its hash."""
+    return str(violation.get("candidate_id") or (
+        f"{file_path}::{violation.get('line')}::{violation.get('rule_id')}"
+    ))
 from app.services.llm.candidate_selector import _select_l3_candidates
 from app.services.llm.code_context import _get_code_context
 from app.services.llm.prompt_builder import (
@@ -274,7 +281,11 @@ def _verify_fp_removal(
         first_description=first_obj.get("description", "")[:300],
         code_block=code_block[:2000],
     )
-    verify_obj = _call_gemini_with_retry(prompt)
+    verify_obj = _call_gemini_with_retry(
+        prompt,
+        candidate_ids=[_ledger_candidate_id(v, file_path)],
+        phase="l3_fp_verify",
+    )
     if not verify_obj:
         # API 실패 → 보수적으로 유지 (제거 안 함)
         print(f"[L3][FP검증] API 실패 → 보수적 유지: {rule_id} @ {file_path}:{v.get('line')}")
@@ -529,7 +540,12 @@ def run_l3_contextualizer(
             if gcfs_prefix and not _is_doc_rule:
                 code_block = gcfs_prefix + code_block
             rule_id = v.get("rule_id") or "UNKNOWN"
-            cache_key = _l3_cache_key(rule_id, code_block)
+            cache_key = _l3_cache_key(
+                rule_id,
+                code_block,
+                guideline_text=v.get("rag_guideline_text", ""),
+                violation_message=v.get("message", ""),
+            )
 
             if cache_key in _l3_cache:
                 print(f"[L3] 캐시 히트: {rule_id} @ {file_path}:{line}")
@@ -566,7 +582,9 @@ def run_l3_contextualizer(
                     file_path, v, entry["code_block"],
                     guideline_text=guideline_text,
                     use_cot=not _ablation_no_cot(),  # Direction 3: CoT for HIGH_ISOLATION_RULES
-                )
+                ),
+                candidate_ids=[_ledger_candidate_id(v, file_path)],
+                phase="l3_isolated",
             )
             if obj:
                 _l3_cache[entry["cache_key"]] = obj
@@ -582,7 +600,11 @@ def run_l3_contextualizer(
                     rejudge_prompt = _build_rejudge_prompt(
                         file_path, v, entry["code_block"], obj, guideline_text
                     )
-                    rejudge_obj = _call_gemini_with_retry(rejudge_prompt)
+                    rejudge_obj = _call_gemini_with_retry(
+                        rejudge_prompt,
+                        candidate_ids=[_ledger_candidate_id(v, file_path)],
+                        phase="l3_rejudge",
+                    )
                     if rejudge_obj:
                         obj = rejudge_obj
                         _l3_cache[entry["cache_key"]] = obj
@@ -607,7 +629,14 @@ def run_l3_contextualizer(
             chunk = batch_items[chunk_start: chunk_start + _BATCH_CHUNK]
             print(f"[L3] 배치 판정: {file_path} ({len(chunk)}건, {chunk_start+1}~{chunk_start+len(chunk)})")
             prompt = _build_batch_prompt(file_path, chunk)
-            arr = _call_gemini_batch_with_retry(prompt)
+            arr = _call_gemini_batch_with_retry(
+                prompt,
+                candidate_ids=[
+                    _ledger_candidate_id(entry["violation"], file_path)
+                    for entry in chunk
+                ],
+                phase="l3_batch",
+            )
 
             if arr is None:
                 print(f"[L3] 배치 응답 실패 → 개별 처리로 전환: {file_path}")
@@ -617,7 +646,9 @@ def run_l3_contextualizer(
                         _build_single_prompt(
                             file_path, v, entry["code_block"],
                             guideline_text=entry.get("guideline_text", ""),
-                        )
+                        ),
+                        candidate_ids=[_ledger_candidate_id(v, file_path)],
+                        phase="l3_batch_fallback",
                     )
                     if obj:
                         _l3_cache[entry["cache_key"]] = obj

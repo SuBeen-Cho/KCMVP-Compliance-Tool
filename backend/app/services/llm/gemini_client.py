@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from threading import Lock, local
 from typing import Any, Dict, List, Optional, Union
 
 try:
@@ -14,6 +15,7 @@ except ImportError:
     _HAS_GOOGLE_GENAI = False
 
 from app.config import settings
+from app.services.llm.request_ledger import record_request
 
 GEMINI_L3_MODEL = settings.GEMINI_L3_MODEL
 GOOGLE_API_KEY = settings.GOOGLE_API_KEY
@@ -29,17 +31,24 @@ OPENAI_PATCH_MODEL = settings.LLM_MODEL_PATCH # default: "gpt-4o"
 # 토큰 사용량 추적 (평가 전용)
 # ─────────────────────────────────────────────────────────────────
 _token_counter: Dict[str, int] = {"input": 0, "output": 0, "calls": 0}
+_token_lock = Lock()
+_telemetry_call_lock = Lock()
+_call_context = local()
 
 
 def reset_token_usage() -> None:
     """토큰 카운터를 초기화한다 (평가 루프 반복 시 사용)."""
     global _token_counter
-    _token_counter = {"input": 0, "output": 0, "calls": 0}
+    with _token_lock:
+        _token_counter = {"input": 0, "output": 0, "calls": 0}
 
 
-def get_token_usage() -> Dict[str, int]:
+def get_token_usage() -> Dict[str, Any]:
     """현재 누적 토큰 사용량을 반환한다."""
-    return dict(_token_counter)
+    with _token_lock:
+        result: Dict[str, Any] = dict(_token_counter)
+    result["usage_status"] = "available" if L3_PROVIDER == "gemini" else "unavailable"
+    return result
 
 
 # Ablation 플래그 — os.environ에서 매 호출 시 읽음 (평가 루프 중 동적 전환 가능)
@@ -149,22 +158,27 @@ def _call_llm(
     - L3_PROVIDER=local: local_llm_service.call_local()
     """
     if L3_PROVIDER == "local":
+        _call_context.provider, _call_context.model = "local", settings.LOCAL_LLM_HF_MODEL or settings.LOCAL_LLM_MODEL
         try:
             from app.services.local_llm_service import call_local
             return call_local(prompt)
         except Exception as e:
             if _allow_provider_fallback():
                 print(f"[LLM] local 호출 실패, 명시적으로 허용된 Gemini fallback 수행: {e}")
+                _call_context.provider, _call_context.model = "gemini", GEMINI_L3_MODEL
                 return _call_gemini(prompt, response_mime_type=response_mime_type)
             raise LLMProviderError("Local LLM failed; cross-provider fallback is disabled") from e
     if L3_PROVIDER == "openai":
+        _call_context.provider, _call_context.model = "openai", model or OPENAI_L3_MODEL
         result = _call_openai(prompt, model=model)
         if result is not None:
             return result
         if _allow_provider_fallback():
             print("[LLM] OpenAI 실패, 명시적으로 허용된 Gemini fallback 수행")
+            _call_context.provider, _call_context.model = "gemini", GEMINI_L3_MODEL
             return _call_gemini(prompt, response_mime_type=response_mime_type)
         raise LLMProviderError("OpenAI returned no result; cross-provider fallback is disabled")
+    _call_context.provider, _call_context.model = "gemini", GEMINI_L3_MODEL
     return _call_gemini(prompt, response_mime_type=response_mime_type)
 
 
@@ -224,10 +238,11 @@ def _call_gemini(
             config=config,
         )
         usage = getattr(response, "usage_metadata", None)
-        if usage is not None:
-            _token_counter["input"]  += getattr(usage, "prompt_token_count",     0) or 0
-            _token_counter["output"] += getattr(usage, "candidates_token_count", 0) or 0
-        _token_counter["calls"] += 1
+        with _token_lock:
+            if usage is not None:
+                _token_counter["input"]  += getattr(usage, "prompt_token_count",     0) or 0
+                _token_counter["output"] += getattr(usage, "candidates_token_count", 0) or 0
+            _token_counter["calls"] += 1
         text = getattr(response, "text", None)
         if text and isinstance(text, str):
             return text
@@ -268,14 +283,76 @@ _RETRY_SUFFIX_OBJ = "\n\n위 JSON 객체 형식만 출력하라. 다른 텍스�
 _RETRY_SUFFIX_ARR = "\n\n위 JSON 배열 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
 
 
-def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[str, Any]]:
+def _ledger_provider_model() -> tuple[str, str]:
+    if L3_PROVIDER == "openai":
+        return "openai", OPENAI_L3_MODEL
+    if L3_PROVIDER == "local":
+        return "local", settings.LOCAL_LLM_HF_MODEL or settings.LOCAL_LLM_MODEL
+    return "gemini", GEMINI_L3_MODEL
+
+
+def _call_llm_with_telemetry(
+    prompt: str,
+    *,
+    response_mime_type: Optional[str],
+    candidate_ids: Optional[List[str]],
+    phase: str,
+    attempt: int,
+) -> Optional[str]:
+    # Code-L3 experimental evaluation is serial by design.  Serialising the
+    # measured call makes a cumulative-counter delta attributable to one request.
+    with _telemetry_call_lock:
+        before = get_token_usage()
+        provider, model = _ledger_provider_model()
+        _call_context.provider, _call_context.model = provider, model
+        try:
+            raw = _call_llm(prompt, response_mime_type=response_mime_type)
+        except Exception as exc:
+            after = get_token_usage()
+            provider = getattr(_call_context, "provider", provider)
+            model = getattr(_call_context, "model", model)
+            if candidate_ids:
+                record_request(
+                    candidate_ids=candidate_ids, phase=phase, prompt=prompt, response=None,
+                    attempt=attempt, status=f"error:{type(exc).__name__}",
+                    input_tokens=after["input"] - before["input"],
+                    output_tokens=after["output"] - before["output"],
+                    provider=provider, model=model,
+                    usage_status="available" if provider == "gemini" else "unavailable",
+                )
+            raise
+        after = get_token_usage()
+        provider = getattr(_call_context, "provider", provider)
+        model = getattr(_call_context, "model", model)
+    if candidate_ids:
+        record_request(
+            candidate_ids=candidate_ids, phase=phase, prompt=prompt, response=raw,
+            attempt=attempt, status="response_received" if raw else "empty",
+            input_tokens=after["input"] - before["input"],
+            output_tokens=after["output"] - before["output"],
+            provider=provider, model=model,
+            usage_status="available" if provider == "gemini" else "unavailable",
+        )
+    return raw
+
+
+def _call_gemini_with_retry(
+    prompt: str,
+    max_retries: int = 2,
+    *,
+    candidate_ids: Optional[List[str]] = None,
+    phase: str = "unspecified",
+) -> Optional[Dict[str, Any]]:
     """재시도 포함 LLM 호출 → 단일 JSON 객체 반환. 503 시 GCFS 제거 후 재시도."""
     _mime = "application/json"
+    request_attempt = 0
     for attempt in range(max_retries + 1):
         try:
-            raw = _call_llm(
+            request_attempt += 1
+            raw = _call_llm_with_telemetry(
                 prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ,
                 response_mime_type=_mime,
+                candidate_ids=candidate_ids, phase=phase, attempt=request_attempt,
             )
         except GeminiTransientError:
             if attempt >= max_retries:
@@ -287,7 +364,12 @@ def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[
             if stripped != prompt:
                 print("[L3] 503 → GCFS 제거 후 재시도")
                 try:
-                    raw = _call_llm(stripped, response_mime_type=_mime)
+                    request_attempt += 1
+                    raw = _call_llm_with_telemetry(
+                        stripped, response_mime_type=_mime,
+                        candidate_ids=candidate_ids, phase=phase + ":gcfs_removed",
+                        attempt=request_attempt,
+                    )
                 except (_Gemini503Error, GeminiTransientError) as exc:
                     if attempt >= max_retries:
                         raise GeminiTransientError("Gemini retry exhausted after GCFS removal") from exc
@@ -310,14 +392,23 @@ def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[
     return None
 
 
-def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional[List[Any]]:
+def _call_gemini_batch_with_retry(
+    prompt: str,
+    max_retries: int = 2,
+    *,
+    candidate_ids: Optional[List[str]] = None,
+    phase: str = "unspecified_batch",
+) -> Optional[List[Any]]:
     """재시도 포함 LLM 호출 → JSON 배열 반환 (배치용). 503 시 GCFS 제거 후 재시도."""
     _mime = "application/json"
+    request_attempt = 0
     for attempt in range(max_retries + 1):
         try:
-            raw = _call_llm(
+            request_attempt += 1
+            raw = _call_llm_with_telemetry(
                 prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR,
                 response_mime_type=_mime,
+                candidate_ids=candidate_ids, phase=phase, attempt=request_attempt,
             )
         except GeminiTransientError:
             if attempt >= max_retries:
@@ -329,7 +420,12 @@ def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional
             if stripped != prompt:
                 print("[L3] 503 → GCFS 제거 후 배치 재시도")
                 try:
-                    raw = _call_llm(stripped, response_mime_type=_mime)
+                    request_attempt += 1
+                    raw = _call_llm_with_telemetry(
+                        stripped, response_mime_type=_mime,
+                        candidate_ids=candidate_ids, phase=phase + ":gcfs_removed",
+                        attempt=request_attempt,
+                    )
                 except (_Gemini503Error, GeminiTransientError) as exc:
                     if attempt >= max_retries:
                         raise GeminiTransientError("Gemini batch retry exhausted after GCFS removal") from exc

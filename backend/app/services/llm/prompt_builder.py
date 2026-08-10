@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from app.services.rag_service import rag_ablation_disabled, search_evidence
 from app.services.llm.prompt_templates import PROMPT_TEMPLATES, _get_prompt_template
 from app.services.llm.triage_memory import get_few_shot_examples
+from app.config import settings
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -251,8 +252,36 @@ _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
 _l3_cache: Dict[str, Dict[str, Any]] = {}
 
 
-def _l3_cache_key(rule_id: str, code_block: str) -> str:
-    return hashlib.sha256(f"{rule_id}:{code_block}".encode()).hexdigest()[:16]
+_L3_PROMPT_CACHE_VERSION = "2026-08-11-p1"
+
+
+def _l3_cache_key(
+    rule_id: str,
+    code_block: str,
+    *,
+    guideline_text: str = "",
+    violation_message: str = "",
+) -> str:
+    """Return a cache key namespaced by every input that can alter the verdict."""
+    provider = settings.L3_PROVIDER
+    if provider == "openai":
+        model = settings.LLM_MODEL_L3
+    elif provider == "local":
+        model = settings.LOCAL_LLM_HF_MODEL or settings.LOCAL_LLM_MODEL
+    else:
+        model = settings.GEMINI_L3_MODEL
+    rag_mode = "no-rag" if rag_ablation_disabled() else "rag"
+    payload = "\x1f".join((
+        _L3_PROMPT_CACHE_VERSION,
+        provider,
+        model,
+        rag_mode,
+        rule_id,
+        hashlib.sha256(violation_message.encode()).hexdigest(),
+        hashlib.sha256(guideline_text.encode()).hexdigest(),
+        hashlib.sha256(code_block.encode()).hexdigest(),
+    ))
+    return hashlib.sha256(payload.encode()).hexdigest()[:24]
 
 
 # ─────────────────────────────────────────────────────────────────

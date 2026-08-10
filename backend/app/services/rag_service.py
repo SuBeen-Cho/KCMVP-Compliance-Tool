@@ -76,12 +76,15 @@ def _extract_sections_from_md(content: str) -> List[Dict[str, str]]:
                 break
 
     sections = []
-    current_title = ""
+    # ``##``가 없는 짧은 author guideline도 검색 가능한 하나의 문서 청크로
+    # 보존한다. 첫 ``#`` 제목은 그 청크의 provenance-friendly title로 쓴다.
+    document_title = "본문"
+    current_title = document_title
     current_lines: List[str] = []
 
     for line in lines[start:]:
         if line.startswith("## "):
-            if current_title:
+            if current_lines:
                 sections.append({
                     "title": current_title,
                     "content": "\n".join(current_lines).strip(),
@@ -89,12 +92,13 @@ def _extract_sections_from_md(content: str) -> List[Dict[str, str]]:
             current_title = line[3:].strip()
             current_lines = []
         elif line.startswith("# "):
-            # 문서 제목 (# 레벨) — 섹션으로 취급하지 않음
-            pass
-        elif current_title:
+            document_title = line[2:].strip() or document_title
+            if not current_lines and current_title == "본문":
+                current_title = document_title
+        else:
             current_lines.append(line)
 
-    if current_title:
+    if current_lines:
         sections.append({
             "title": current_title,
             "content": "\n".join(current_lines).strip(),
@@ -141,6 +145,13 @@ def _build_keyword_index() -> None:
             continue
         sections = _extract_sections_from_md(content)
         meta = _parse_frontmatter(content)
+        # 짧은 author guideline은 frontmatter가 없을 수 있다. 안정적인 파일명
+        # prefix(AES-001_...)에서 rule id만 복구해 keyword/vector provenance를
+        # 보존한다.
+        inferred_rule_id = ""
+        if not meta.get("rule_id"):
+            match = re.match(r"^([A-Za-z]+-\d+)(?:_|\.|$)", md_path.name)
+            inferred_rule_id = match.group(1).upper() if match else ""
         # item_id가 리스트인 경우 처리 (예: ["AS03.01", "AS03.02"])
         raw_item_id = meta.get("item_id", "")
         if isinstance(raw_item_id, list):
@@ -152,7 +163,7 @@ def _build_keyword_index() -> None:
             tokens = _tokenize(doc_text)
             _keyword_index.append({
                 "path": str(md_path),
-                "rule_id": meta.get("rule_id", ""),
+                "rule_id": meta.get("rule_id", "") or inferred_rule_id,
                 "item_id": item_id_str,
                 "title": sec["title"],
                 "content": sec["content"],

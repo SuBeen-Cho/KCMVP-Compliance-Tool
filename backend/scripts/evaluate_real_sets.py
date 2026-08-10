@@ -14,7 +14,7 @@ Usage:
     python scripts/evaluate_real_sets.py [--no-l3] [--no-rag]
 """
 
-import argparse, sys, os, re, time, json, zipfile, tempfile, shutil, unicodedata
+import argparse, sys, os, re, time, json, zipfile, tempfile, shutil, unicodedata, hashlib, uuid
 from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -36,6 +36,10 @@ from app.services.doc_rule_service import load_doc_rules, run_doc_rule_engine
 from app.services.rag_service import run_l2_rag_context
 from experiments.manifest import build_manifest
 from app.services.llm.gemini_client import get_token_usage, reset_token_usage
+from app.services.llm.request_ledger import (
+    disable_request_ledger, enable_request_ledger, get_request_ledger_status,
+    request_ledger_file_sha256, reset_request_ledger,
+)
 
 try:
     from app.services.llm_service import run_l3_contextualizer, run_doc_l3_contextualizer
@@ -272,6 +276,17 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
 
         # L2 must run in both conditions; --no-rag makes this injection empty.
         l1_violations = run_l2_rag_context(l1_violations)
+        occurrence = defaultdict(int)
+        l3_candidate_ids = []
+        for violation in l1_violations:
+            stable_source = resolved_source_id(str(violation.get("file", "")), src_dir, source_ids)
+            rule_id = str(violation.get("rule_id", ""))
+            line = int(violation.get("line") or 0)
+            key = (stable_source, rule_id, line)
+            occurrence[key] += 1
+            candidate_id = f"{set_name}::{stable_source}::{rule_id}::{line}::{occurrence[key]}"
+            violation["candidate_id"] = candidate_id
+            l3_candidate_ids.append(candidate_id)
         pre_l3_candidate_keys = {
             (resolved_source_id(str(v.get('file', '')), src_dir, source_ids), v.get('rule_id', ''))
             for v in l1_violations
@@ -377,6 +392,7 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         "l3_wrong_removals": l3_wrong,
         "l3_rejected_detail": l3_rejected_detail,
         "pre_l3_candidate_ids": pre_l3_candidate_ids,
+        "l3_request_candidate_ids": l3_candidate_ids,
         "final_candidate_ids": final_candidate_ids,
         "l3_unique_removed_ids": unique_removed_ids,
         "l3_unique_author_gt_extra_removed": unique_author_gt_extra,
@@ -602,6 +618,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--code-only", action="store_true", help="Evaluate code only; skip document preprocessing and L3")
     parser.add_argument("--sets", default="1-7", help="Comma-separated numbers/ranges, e.g. 1,3-5")
     parser.add_argument("--output", type=Path, help="Result JSON path (overrides EVALUATION_OUTPUT)")
+    parser.add_argument(
+        "--request-ledger", type=Path,
+        help="Opt in to non-sensitive LLM request telemetry at this JSONL path",
+    )
     return parser.parse_args(argv)
 
 
@@ -627,6 +647,10 @@ def parse_set_selection(value: str) -> List[int]:
 def main(argv: Optional[List[str]] = None):
     global USE_L3, NO_RAG
     args = parse_args(argv)
+    output_override = os.environ.get("EVALUATION_OUTPUT")
+    json_path = args.output or (Path(output_override) if output_override else BACKEND_ROOT / "scripts" / "evaluation_results.json")
+    if args.request_ledger is not None and args.request_ledger.resolve() == json_path.resolve():
+        raise ValueError("--request-ledger must differ from the evaluation result path")
     USE_L3 = not args.no_l3
     NO_RAG = args.no_rag
     os.environ["ABLATION_NO_RAG"] = "1" if NO_RAG else "0"
@@ -652,6 +676,16 @@ def main(argv: Optional[List[str]] = None):
             if p.is_file()
         )
     manifest_start = build_manifest(BACKEND_ROOT.parent, expected_inputs)
+    ledger_run_id = uuid.uuid4().hex
+    ledger_snapshot_id = hashlib.sha256(
+        json.dumps(manifest_start, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+    if args.request_ledger is not None:
+        reset_request_ledger()
+        enable_request_ledger(
+            args.request_ledger, run_id=ledger_run_id,
+            snapshot_id=ledger_snapshot_id, truncate=True,
+        )
     t_start = time.perf_counter()
     reset_token_usage()
     all_code_results = []
@@ -724,6 +758,11 @@ def main(argv: Optional[List[str]] = None):
         run_status = "experimental_dirty"
     else:
         run_status = "experimental_unvalidated"
+    ledger_status = get_request_ledger_status() if args.request_ledger is not None else {
+        "scope": "code_l3_experiment_requests_only", "status": "disabled"
+    }
+    if args.request_ledger is not None:
+        ledger_status["jsonl_sha256"] = request_ledger_file_sha256()
     results = {
         "schema_version": "1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -751,20 +790,24 @@ def main(argv: Optional[List[str]] = None):
             "provider_calls": token_usage.get("calls", 0),
             "input_tokens": token_usage.get("input", 0),
             "output_tokens": token_usage.get("output", 0),
+            "usage_status": token_usage.get("usage_status", "unavailable"),
             "pricing_snapshot": None,
             "estimated_cost_usd": None,
             "cost_status": "not_computed_without_versioned_pricing",
         },
+        "request_ledger": ledger_status,
         "total_elapsed_s": round(total_elapsed, 1),
         "code_results": all_code_results,
         "doc_results": all_doc_results,
         "summary": summary,
     }
-    output_override = os.environ.get("EVALUATION_OUTPUT")
-    json_path = args.output or (Path(output_override) if output_override else BACKEND_ROOT / "scripts" / "evaluation_results.json")
     json_path.parent.mkdir(parents=True, exist_ok=True)
-    json_path.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str),
-                         encoding='utf-8')
+    # The ledger is scoped to this completed experiment only.  Disable it before
+    # any later report-writing code can accidentally append out-of-scope calls.
+    disable_request_ledger()
+    temp_json = json_path.with_name(f".{json_path.name}.{os.getpid()}.tmp")
+    temp_json.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str), encoding='utf-8')
+    os.replace(temp_json, json_path)
     print(f"\n결과 JSON 저장: {json_path}")
     return results
 
