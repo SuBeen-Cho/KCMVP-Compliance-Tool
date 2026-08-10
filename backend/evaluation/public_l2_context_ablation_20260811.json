@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "status": "exploratory_single_run",
+  "date": "2026-08-11",
+  "commit": "91cf6c4682d05a99f56710c97ba422ed0e22ce87",
+  "scope": "code_only_author_labeled_LEA_sets_1_to_7",
+  "ground_truth_units": 128,
+  "provenance": {
+    "workspace_sha256": "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456",
+    "input_sha256": [
+      "3ff4c0913ed79598f00a84498f56ad6dd3c76ac6cd887bf02eba801f7ec51c84",
+      "3ff5fb68a24511572649ea92435183e61b8cd80cdcd65323338d011cce6e4870",
+      "710eb6bd25921b8bb28262b1488bd0661f43e4965040e6531662516a30a6e001",
+      "99fcf97940355ac556b605e8c5c1a5853a8ece8c8699f53a8eda7877af27f0e0",
+      "ceaa8f4a71422fb2f424320890bcc6c2636c95c08036cf2e78b1650da88be370",
+      "0984ee6d2b4e4795759cb7e56e82790ad6fc70ff933716fbd209d9252ee3db8e",
+      "4043adc560940b2198ffaf2ed0a8eea69831f65c12c2c2a51972c875ff827cd0"
+    ],
+    "rules_tree_sha256": "d2e07e9818e4535c8ea42e1aca1bdc0e04ce60e6423a0a69cb08df2b41b953cb",
+    "prompts_sha256": "521b90857ed7cfb532ff09e35fea992125a84ca710410107d48b3afbc5c4ad35",
+    "guidelines_sha256": "1a05162267771f39512ed71b395492409b60990b236651843ebedcc1463ee5d9",
+    "mapping_sha256": "5d3965f93ad74a3ea20ce5aea358c14ed224f2e7e7ceb4da4ef67b7e6b35f3d5",
+    "requirements_sha256": "f2798fc0fc781a615bf974857a7da82936918d71b05a7da08ccff3bbfb356002",
+    "pip_freeze_sha256": "0d2ba09e2d109291326e16e25ea3f84918c7455285c3710a3c82d85c29f2a455"
+  },
+  "retrieval": {
+    "rag_condition": "direct_mapping_plus_tfidf_fallback",
+    "vector_store_enabled": false,
+    "claim_boundary": "conditional effect of retrieved evidence context on L3"
+  },
+  "conditions": {
+    "l1_only": {
+      "tp_against_author_labels": 121, "fp_extra_against_author_labels": 50, "fn_against_author_labels": 7,
+      "precision": 0.7076023392, "recall": 0.9453125, "f1": 0.8093645485,
+      "elapsed_seconds": 484.4, "provider_calls": 0,
+      "input_tokens": 0, "output_tokens": 0, "estimated_api_token_cost_usd": 0.0,
+      "raw_result_sha256": "62e540c06fc0129b3af0f81ff57dea1352009b61b141d91496191576ed9d730e"
+    },
+    "l3_with_rag": {
+      "tp_against_author_labels": 118, "fp_extra_against_author_labels": 45, "fn_against_author_labels": 10,
+      "precision": 0.7239263804, "recall": 0.921875, "f1": 0.8109965636,
+      "elapsed_seconds": 906.0, "provider_calls": 222,
+      "input_tokens": 568308, "output_tokens": 66083, "estimated_api_token_cost_usd": 0.083264,
+      "raw_rejection_events": 9, "final_unique_file_rule_candidates_eliminated": 8,
+      "author_gt_extra_candidates_eliminated": 5, "author_gt_matching_candidates_eliminated": 3,
+      "raw_result_sha256": "a3d7a19dbfd502bee6a865f03ffbe767f74a233bbccc66acbf41cbdf5394abea"
+    },
+    "l3_without_rag": {
+      "tp_against_author_labels": 120, "fp_extra_against_author_labels": 48, "fn_against_author_labels": 8,
+      "precision": 0.7142857143, "recall": 0.9375, "f1": 0.8108108108,
+      "elapsed_seconds": 986.4, "provider_calls": 218,
+      "input_tokens": 499129, "output_tokens": 63541, "estimated_api_token_cost_usd": 0.0753293,
+      "raw_rejection_events": 6, "final_unique_file_rule_candidates_eliminated": 3,
+      "author_gt_extra_candidates_eliminated": 2, "author_gt_matching_candidates_eliminated": 1,
+      "raw_result_sha256": "937268a7a768d9038a0c227d3c42029764bbf7bbb18dc6f258877263942c1829"
+    }
+  },
+  "rag_minus_no_rag": {
+    "tp_against_author_labels": -2, "fp_extra_against_author_labels": -3, "fn_against_author_labels": 2,
+    "precision": 0.0096406661, "recall": -0.015625, "f1": 0.0001857528,
+    "provider_calls": 4, "input_tokens": 69179, "output_tokens": 2542,
+    "estimated_api_token_cost_usd": 0.0079347
+  },
+  "pricing": {
+    "provider": "Google Gemini API",
+    "model": "gemini-2.5-flash-lite",
+    "tier": "standard",
+    "input_usd_per_million_tokens": 0.10,
+    "output_usd_per_million_tokens": 0.40,
+    "source": "https://ai.google.dev/gemini-api/docs/pricing",
+    "accessed": "2026-08-11",
+    "cost_kind": "api_token_estimate_excluding_local_compute_and_not_a_billing_record"
+  },
+  "limitations": [
+    "one sequential run per condition; no randomization or counterbalancing",
+    "author-constructed and author-labeled LEA corpus",
+    "no independent annotation or statistical significance test",
+    "remote model determinism is not guaranteed",
+    "raw rejection events and unique file-rule candidates are distinct units",
+    "FP_extra means an extra detection relative to author labels, not an independently adjudicated false positive",
+    "runtime differences include uncontrolled API latency",
+    "raw result files are retained outside Git"
+  ]
+}

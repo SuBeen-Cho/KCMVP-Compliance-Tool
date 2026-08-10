@@ -17,7 +17,7 @@ Usage:
 import argparse, sys, os, re, time, json, zipfile, tempfile, shutil, unicodedata
 from pathlib import Path
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Set, Tuple, Optional
 
 BACKEND_ROOT = Path(__file__).parent.parent
@@ -263,6 +263,12 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
 
         # L2 must run in both conditions; --no-rag makes this injection empty.
         l1_violations = run_l2_rag_context(l1_violations)
+        pre_l3_candidate_keys = {
+            (resolved_source_id(str(v.get('file', '')), src_dir, source_ids), v.get('rule_id', ''))
+            for v in l1_violations
+            if v.get("rule_id") and resolved_source_id(str(v.get("file", "")), src_dir, source_ids)
+        }
+        pre_l3_candidate_ids = sorted(f"{fname}::{rid}" for fname, rid in pre_l3_candidate_keys)
 
         # L3 (L3)
         t1 = time.time()
@@ -335,6 +341,14 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
     recall = TP / total_gt if total_gt > 0 else 0.0
     precision = TP / (TP + FP_extra) if (TP + FP_extra) > 0 else 1.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    final_candidate_ids = sorted({
+        f"{fname}::{rid}" for fname, rids in detected.items() for rid in rids
+    })
+    final_candidate_keys = {(fname, rid) for fname, rids in detected.items() for rid in rids}
+    unique_removed_keys = pre_l3_candidate_keys - final_candidate_keys
+    unique_removed_ids = sorted(f"{fname}::{rid}" for fname, rid in unique_removed_keys)
+    unique_author_gt_extra = sum(key not in gt_rules for key in unique_removed_keys)
+    unique_author_gt_match = len(unique_removed_keys) - unique_author_gt_extra
 
     print(f"  → GT={total_gt}, TP={TP}, FN={FN}, 추가탐지={FP_extra}")
     print(f"  → Recall={recall:.1%}, Precision={precision:.1%}, F1={f1:.1%}")
@@ -353,6 +367,11 @@ def evaluate_code_set(zip_path: Path, set_name: str) -> Dict:
         "l3_correct_removals": l3_correct,
         "l3_wrong_removals": l3_wrong,
         "l3_rejected_detail": l3_rejected_detail,
+        "pre_l3_candidate_ids": pre_l3_candidate_ids,
+        "final_candidate_ids": final_candidate_ids,
+        "l3_unique_removed_ids": unique_removed_ids,
+        "l3_unique_author_gt_extra_removed": unique_author_gt_extra,
+        "l3_unique_author_gt_match_removed": unique_author_gt_match,
         "final_count": len(final_violations),
         "tp_list": tp_list, "fn_list": fn_list, "fp_list": fp_list,
         "timing": {"l1_s": round(t_l1, 1), "l3_s": round(t_l3, 1),
@@ -484,6 +503,9 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
     total_l3_removed  = sum(r.get("l3_rejected", 0)         for r in all_code_results)
     total_l3_correct  = sum(r.get("l3_correct_removals", 0) for r in all_code_results)
     total_l3_wrong    = sum(r.get("l3_wrong_removals", 0)   for r in all_code_results)
+    total_unique_removed = sum(len(r.get("l3_unique_removed_ids", [])) for r in all_code_results)
+    total_unique_author_gt_extra = sum(r.get("l3_unique_author_gt_extra_removed", 0) for r in all_code_results)
+    total_unique_author_gt_match = sum(r.get("l3_unique_author_gt_match_removed", 0) for r in all_code_results)
     l3_correct_rate   = total_l3_correct / total_l3_removed if total_l3_removed else 0.0
     l3_wrong_rate     = total_l3_wrong   / total_l3_removed if total_l3_removed else 0.0
     l3_remove_rate    = total_l3_removed / (total_code_tp + total_fp_extra + total_l3_removed) \
@@ -553,6 +575,9 @@ def print_paper_table(all_code_results: List[Dict], all_doc_results: List[Dict])
         "l3_removed": total_l3_removed,
         "l3_correct": total_l3_correct, "l3_wrong": total_l3_wrong,
         "l3_correct_rate": l3_correct_rate, "l3_wrong_rate": l3_wrong_rate,
+        "l3_unique_removed": total_unique_removed,
+        "l3_unique_author_gt_extra_removed": total_unique_author_gt_extra,
+        "l3_unique_author_gt_match_removed": total_unique_author_gt_match,
         "doc_avg_per_set": doc_avg,
     }
 
@@ -692,7 +717,7 @@ def main(argv: Optional[List[str]] = None):
         run_status = "experimental_unvalidated"
     results = {
         "schema_version": "1.0",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "use_l3": USE_L3,
         "ablation": {"no_rag": NO_RAG},
         "scope": {"code_only": args.code_only},
@@ -704,6 +729,12 @@ def main(argv: Optional[List[str]] = None):
         "manifest": {
             "start": manifest_start,
             "end": manifest_end,
+            "experiment": {
+                "use_l3": USE_L3,
+                "no_rag": NO_RAG,
+                "code_only": args.code_only,
+                "requested_sets": selected_sets,
+            },
             "identity_checks": identity_checks,
             "identity_stable": identity_stable,
         },
