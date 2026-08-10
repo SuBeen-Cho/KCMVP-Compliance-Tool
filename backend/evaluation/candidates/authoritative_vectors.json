@@ -24,6 +24,46 @@
       "key": "000102030405060708090a0b0c0d0e0f",
       "plaintext": "00000000000000000000000000000000",
       "ciphertext": "c11f22f20140505084483597e4370f43"
+    },
+    {
+      "algorithm": "SEED",
+      "source": "IETF RFC 4269, Appendix B.3",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc4269.html#appendix-B.3",
+      "key": "4706480851e61be85d74bfb3fd956185",
+      "plaintext": "83a2f8a288641fb9a4e9a5cc2f131c7d",
+      "ciphertext": "ee54d13ebcae706d226bc3142cd40d4a"
+    },
+    {
+      "algorithm": "SEED",
+      "source": "IETF RFC 4269, Appendix B.4",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc4269.html#appendix-B.4",
+      "key": "28dbc3bc49ffd87dcfa509b11d422be7",
+      "plaintext": "b41e6be2eba84a148e2eed84593c5ec7",
+      "ciphertext": "9b9b7bfcd1813cb95d0b3618f40f5122"
+    },
+    {
+      "algorithm": "ARIA-128",
+      "source": "IETF RFC 5794, Appendix A.1",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc5794.html#appendix-A.1",
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "plaintext": "00112233445566778899aabbccddeeff",
+      "ciphertext": "d718fbd6ab644c739da95f3be6451778"
+    },
+    {
+      "algorithm": "ARIA-192",
+      "source": "IETF RFC 5794, Appendix A.2",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc5794.html#appendix-A.2",
+      "key": "000102030405060708090a0b0c0d0e0f1011121314151617",
+      "plaintext": "00112233445566778899aabbccddeeff",
+      "ciphertext": "26449c1805dbe7aa25a468ce263a9e79"
+    },
+    {
+      "algorithm": "ARIA-256",
+      "source": "IETF RFC 5794, Appendix A.3",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc5794.html#appendix-A.3",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "plaintext": "00112233445566778899aabbccddeeff",
+      "ciphertext": "f92bd7c79fb72e2f2b8f80c1972d24fc"
     }
   ]
 }

@@ -5,7 +5,8 @@
     "vendor_sources_in_git": false,
     "require_exact_commit": true,
     "require_license_copy": true,
-    "require_upstream_vector_validation": true
+    "system_reference_vector_validation": true,
+    "upstream_checkout_vector_validation": false
   },
   "sources": [
     {
@@ -15,7 +16,7 @@
       "tag_object": "6ca677c395a4ae4472a12c5857c122ec33b36f66",
       "commit": "8cf17aaeb4599f8af87fefd810b5b5fee90fe69e",
       "language": "C",
-      "algorithms": ["AES", "SEED"],
+      "algorithms": ["AES", "SEED", "ARIA"],
       "license": "Apache-2.0",
       "official_archive": "https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz",
       "archive_sha256": "a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8",
@@ -27,7 +28,7 @@
       "tag": "3.12.0",
       "commit": "45d6f286c320b2f2efd5373d195ec88c367e3071",
       "language": "C++",
-      "algorithms": ["AES", "SEED"],
+      "algorithms": ["AES", "SEED", "ARIA"],
       "license": "BSD-2-Clause",
       "official_archive": "https://botan.randombit.net/releases/Botan-3.12.0.tar.xz",
       "archive_signature": "https://botan.randombit.net/releases/Botan-3.12.0.tar.xz.asc",
@@ -40,7 +41,7 @@
       "tag_object": "041cf66ed64f28d89cc50b762cde0353cf85657c",
       "commit": "843d74c7c97f9e19a615b8ff3c0ca06599ca501b",
       "language": "C++",
-      "algorithms": ["AES", "SEED"],
+      "algorithms": ["AES", "SEED", "ARIA"],
       "license": "Boost-1.0 and file-level public-domain notices; verify copied files",
       "official_archive": "https://www.cryptopp.com/cryptopp890.zip",
       "archive_sha256": "4cc0ccc324625b80b695fcd3dee63a66f1a460d3e51b71640cdbfc4cd1a3779c",
@@ -53,9 +54,9 @@
       "tag_object": "627361b09e6f6e3eac756297a370a591cf310ab9",
       "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5",
       "language": "C",
-      "algorithms": ["AES"],
+      "algorithms": ["AES", "ARIA"],
       "license": "Apache-2.0 OR GPL-2.0-or-later unless file states otherwise",
-      "role": "independent_aes_c_candidate"
+      "role": "independent_aes_aria_c_candidate"
     }
   ],
   "authoritative_vectors": [
@@ -68,6 +69,11 @@
       "algorithm": "SEED",
       "source": "IETF RFC 4269 Appendix B",
       "url": "https://www.rfc-editor.org/rfc/rfc4269.html"
+    },
+    {
+      "algorithm": "ARIA",
+      "source": "IETF RFC 5794 Appendix A",
+      "url": "https://www.rfc-editor.org/rfc/rfc5794.html"
     }
   ],
   "excluded_pending_license_review": [
