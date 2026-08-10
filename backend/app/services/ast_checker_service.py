@@ -4288,68 +4288,7 @@ _COM003_SBOX_NAMES = frozenset({
 })
 
 
-def build_com003_decl_fact_index(
-    content: str,
-    filename: str,
-) -> tuple[tuple[Any, ...], ...]:
-    """Materialize immutable COM-003 declaration facts with one TU traversal.
-
-    The returned tuple is deliberately request-local data, not a module cache:
-    callers own its lifetime, so content/include/compiler changes cannot reuse a
-    stale TranslationUnit or fact set.
-    """
-    if not _HAS_LIBCLANG:
-        return ()
-    try:
-        tu = _parse_c_libclang(content, filename)
-    except Exception:
-        return ()
-    if tu is None:
-        return ()
-
-    facts: List[tuple[Any, ...]] = []
-
-    def _is_int_lit(c) -> bool:
-        k = c.kind
-        if k == _ci.CursorKind.INTEGER_LITERAL:
-            return True
-        wrapper_kinds = {_ci.CursorKind.UNEXPOSED_EXPR}
-        implicit_cast = getattr(_ci.CursorKind, "IMPLICIT_CAST_EXPR", None)
-        if implicit_cast is not None:
-            wrapper_kinds.add(implicit_cast)
-        if k in wrapper_kinds:
-            inner = list(c.get_children())
-            return bool(inner) and _is_int_lit(inner[0])
-        return False
-
-    for cursor in tu.cursor.walk_preorder():
-        if cursor.kind not in (_ci.CursorKind.PARM_DECL, _ci.CursorKind.VAR_DECL):
-            continue
-        line = cursor.location.line if cursor.location else 0
-        name = (cursor.spelling or "").lower()
-        if cursor.kind == _ci.CursorKind.PARM_DECL:
-            facts.append(("param", line, name, False, 0, False))
-            continue
-        init = next((c for c in cursor.get_children()
-                     if c.kind == _ci.CursorKind.INIT_LIST_EXPR), None)
-        if init is None:
-            facts.append(("var", line, name, False, 0, False))
-            continue
-        children = list(init.get_children())
-        facts.append((
-            "var", line, name, True, len(children),
-            bool(children) and all(_is_int_lit(c) for c in children),
-        ))
-    return tuple(facts)
-
-
-def com003_libclang_is_fp(
-    content: str,
-    filename: str,
-    line_num: int,
-    var_name: str,
-    fact_index: Optional[tuple[tuple[Any, ...], ...]] = None,
-) -> bool:
+def com003_libclang_is_fp(content: str, filename: str, line_num: int, var_name: str) -> bool:
     """COM-003 regex 히트가 FP인지 libclang으로 검증.
 
     CryptoGuard backward-slicing 방식:
@@ -4365,34 +4304,63 @@ def com003_libclang_is_fp(
         True  → FP 확정, 이 위반 제거해도 됨
         False → TP 유지 또는 판단 불가
     """
+    if not _HAS_LIBCLANG:
+        return False
+    try:
+        tu = _parse_c_libclang(content, filename)
+    except Exception:
+        return False
+    if tu is None:
+        return False
+
     name_lower = var_name.lower() if var_name else ""
 
     # S-box/LUT 이름 키워드 → 즉시 FP
     if any(kw in name_lower for kw in _COM003_SBOX_NAMES):
         return True
 
-    facts = fact_index if fact_index is not None else build_com003_decl_fact_index(content, filename)
-    for kind, loc_line, cur_name, has_init, arr_size, all_int in facts:
+    for cursor in tu.cursor.walk_preorder():
+        loc_line = cursor.location.line if cursor.location else 0
         if abs(loc_line - line_num) > 5:
             continue
 
         # Case 1: 함수 파라미터 선언 → 외부 주입 → FP
-        if kind == "param":
+        if cursor.kind == _ci.CursorKind.PARM_DECL:
+            cur_name = (cursor.spelling or "").lower()
             if cur_name == name_lower or (name_lower and name_lower in cur_name):
                 return True
 
         # Case 2: 변수 선언 + 초기화 리스트 분석
-        if kind == "var":
+        if cursor.kind == _ci.CursorKind.VAR_DECL:
+            cur_name = (cursor.spelling or "").lower()
             if cur_name != name_lower and not (name_lower and name_lower in cur_name):
                 continue
-            if not has_init:
+
+            init = next((c for c in cursor.get_children()
+                         if c.kind == _ci.CursorKind.INIT_LIST_EXPR), None)
+            if init is None:
                 return False  # 초기화 없음 → 판단 불가
-            if arr_size == 0:
+
+            children = list(init.get_children())
+            if not children:
                 return False
 
             # 배열 총 원소 수
+            arr_size = len(children)
             if arr_size >= 256:
                 return True  # S-box 크기 → FP
+
+            # 모든 자식이 INTEGER_LITERAL(또는 UNEXPOSED_EXPR 래핑)인지 확인
+            def _is_int_lit(c) -> bool:
+                k = c.kind
+                if k == _ci.CursorKind.INTEGER_LITERAL:
+                    return True
+                if k in (_ci.CursorKind.UNEXPOSED_EXPR, _ci.CursorKind.IMPLICIT_CAST_EXPR):
+                    inner = list(c.get_children())
+                    return bool(inner) and _is_int_lit(inner[0])
+                return False
+
+            all_int = all(_is_int_lit(c) for c in children)
             if not all_int:
                 # 동적 값 포함 → 이 배열은 상수가 아님
                 # 그러나 이미 regex가 히트한 상황 → FP로 처리 (진짜 키는 동적이어야 함)

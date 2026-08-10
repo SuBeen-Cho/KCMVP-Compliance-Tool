@@ -932,6 +932,114 @@ def _build_key_lifecycle(
     return "\n".join(parts)
 
 
+_COM003_DECL_PREFIX_RE = re.compile(
+    r"(?:(?:static|const|extern|volatile)\s+)*"
+    r"(?:unsigned\s+)?(?:int|char|uint\d+_t)\s+\w+\s*"
+    r"(?:\[[^\]]*\])+\s*=\s*\{"
+)
+_HEX_LITERAL_RE = re.compile(r"\b0[xX][0-9a-fA-F]+\b")
+
+
+class _SourceSpanMatch:
+    """Minimal immutable match interface used by the shared finding path."""
+
+    __slots__ = ("_content", "_start", "_end")
+
+    def __init__(self, content: str, start: int, end: int) -> None:
+        self._content = content
+        self._start = start
+        self._end = end
+
+    def start(self) -> int:
+        return self._start
+
+    def end(self) -> int:
+        return self._end
+
+    def group(self, index: int = 0) -> str:
+        if index != 0:
+            raise IndexError(index)
+        return self._content[self._start:self._end]
+
+
+def _mask_c_comments_and_literals(content: str) -> str:
+    """Mask comments and quoted literals while preserving offsets/newlines."""
+    out = list(content)
+    i, n = 0, len(content)
+    state = "code"
+    while i < n:
+        ch = content[i]
+        nxt = content[i + 1] if i + 1 < n else ""
+        if state == "code":
+            if ch == "/" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                i += 2
+                state = "line_comment"
+                continue
+            if ch == "/" and nxt == "*":
+                out[i] = out[i + 1] = " "
+                i += 2
+                state = "block_comment"
+                continue
+            if ch == '"':
+                out[i] = " "
+                state = "string"
+            elif ch == "'":
+                out[i] = " "
+                state = "char"
+        elif state == "line_comment":
+            if ch == "\n":
+                state = "code"
+            else:
+                out[i] = " "
+        elif state == "block_comment":
+            if ch == "*" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                i += 2
+                state = "code"
+                continue
+            if ch != "\n":
+                out[i] = " "
+        else:  # string or character literal
+            if ch == "\\" and i + 1 < n:
+                out[i] = " "
+                if content[i + 1] != "\n":
+                    out[i + 1] = " "
+                i += 2
+                continue
+            closing = '"' if state == "string" else "'"
+            if ch == closing:
+                out[i] = " "
+                state = "code"
+            elif ch != "\n":
+                out[i] = " "
+        i += 1
+    return "".join(out)
+
+
+def _iter_com003_initializer_matches(content: str):
+    """Yield qualifying array initializer spans in linear scan time."""
+    masked = _mask_c_comments_and_literals(content)
+    for prefix in _COM003_DECL_PREFIX_RE.finditer(masked):
+        open_brace = prefix.end() - 1
+        depth = 0
+        end = None
+        for pos in range(open_brace, len(masked)):
+            ch = masked[pos]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = pos + 1
+                    break
+        if end is None:
+            continue
+        if len(_HEX_LITERAL_RE.findall(masked[open_brace:end])) < 8:
+            continue
+        yield _SourceSpanMatch(content, prefix.start(), end)
+
+
 def _apply_rule_to_file(
     file_path: Path,
     content: str,
@@ -1072,10 +1180,12 @@ def _apply_rule_to_file(
         # COM-003처럼 여러 줄에 걸친 블록(하드코딩 배열 등)을 한 덩어리로 다루기 위해
         # 매칭 시작 줄(line)과 끝 줄(end_line)을 함께 기록한다.
         lines = content.splitlines()
-        # COM-003 may have many regex hits in one file. Build the immutable
-        # declaration/init fact index lazily once, then reuse it for all hits.
-        _com003_fact_index = None
-        for match in compiled.finditer(content):
+        matches = (
+            _iter_com003_initializer_matches(content)
+            if rule.get("id") == "COM-003"
+            else compiled.finditer(content)
+        )
+        for match in matches:
             try:
                 rel_path = file_path.resolve().relative_to(job_root.resolve())
                 file_display = str(rel_path)
@@ -1116,16 +1226,8 @@ def _apply_rule_to_file(
                         continue
                 # P0: libclang InitListExpr/PARM_DECL 기반 FP 검증 (CryptoGuard backward slicing)
                 try:
-                    from app.services.ast_checker_service import (
-                        build_com003_decl_fact_index as _c003_build_facts,
-                        com003_libclang_is_fp as _c003_lc_fp,
-                    )
-                    if _com003_fact_index is None:
-                        _com003_fact_index = _c003_build_facts(content, str(file_path))
-                    if _c003_lc_fp(
-                        content, str(file_path), start_line, var_name,
-                        fact_index=_com003_fact_index,
-                    ):
+                    from app.services.ast_checker_service import com003_libclang_is_fp as _c003_lc_fp
+                    if _c003_lc_fp(content, str(file_path), start_line, var_name):
                         continue
                 except Exception:
                     pass  # libclang 실패 → 기존 필터 결과 따름
