@@ -244,23 +244,23 @@ def run_experiment(
         total_usage["input_tokens"] * input_usd_per_million
         + total_usage["output_tokens"] * output_usd_per_million
     ) / 1_000_000
-    by_condition = {}
+    condition_totals = {}
     for condition in CONDITIONS:
         members = [item for item in executions if item["condition"] == condition]
-        by_condition[condition] = {
+        condition_totals[condition] = {
             key: sum(item["outcomes"][key] for item in members)
             for key in ("selected", "retained", "rejected", "unresolved", "request_covered")
         }
     pair_summaries = []
     for pair_index in range(1, pairs + 1):
-        by_condition = {
+        pair_members = {
             item["condition"]: item for item in executions if item["pair_index"] == pair_index
         }
-        rag_outcomes = by_condition["rag"]["outcomes"]
-        no_rag_outcomes = by_condition["no_rag"]["outcomes"]
+        rag_outcomes = pair_members["rag"]["outcomes"]
+        no_rag_outcomes = pair_members["no_rag"]["outcomes"]
         pair_summaries.append({
             "pair_index": pair_index,
-            "seed": by_condition["rag"]["seed"],
+            "seed": pair_members["rag"]["seed"],
             "rag_minus_no_rag": {
                 key: rag_outcomes[key] - no_rag_outcomes[key]
                 for key in ("retained", "rejected", "unresolved", "request_covered")
@@ -295,7 +295,7 @@ def run_experiment(
         "aggregate": {
             "usage": total_usage,
             "estimated_cost_usd": round(aggregate_cost, 10),
-            "outcomes_by_condition": by_condition,
+            "outcomes_by_condition": condition_totals,
         },
     }
     _assert_safe_serialized(manifest)

@@ -116,6 +116,16 @@ def test_fake_integration_records_hashes_usage_cost_and_no_secrets(tmp_path, mon
         "provider_calls": 4, "input_tokens": 400, "output_tokens": 100,
     }
     assert manifest["aggregate"]["estimated_cost_usd"] == pytest.approx(0.00008)
+    assert manifest["aggregate"]["outcomes_by_condition"] == {
+        "rag": {
+            "selected": 2, "retained": 2, "rejected": 0,
+            "unresolved": 0, "request_covered": 2,
+        },
+        "no_rag": {
+            "selected": 2, "retained": 0, "rejected": 2,
+            "unresolved": 0, "request_covered": 2,
+        },
+    }
     assert manifest["pair_summaries"][0]["rag_minus_no_rag"]["retained"] == 1
     assert all(item["outcomes"]["selected"] == 1 for item in manifest["executions"])
     assert calls[0]["seed"] == calls[1]["seed"]
