@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "vectors": [
+    {
+      "algorithm": "AES-128",
+      "source": "NIST FIPS 197, Appendix B",
+      "source_url": "https://doi.org/10.6028/NIST.FIPS.197-upd1",
+      "key": "2b7e151628aed2a6abf7158809cf4f3c",
+      "plaintext": "3243f6a8885a308d313198a2e0370734",
+      "ciphertext": "3925841d02dc09fbdc118597196a0b32"
+    },
+    {
+      "algorithm": "SEED",
+      "source": "IETF RFC 4269, Appendix B.1",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc4269.html#appendix-B.1",
+      "key": "00000000000000000000000000000000",
+      "plaintext": "000102030405060708090a0b0c0d0e0f",
+      "ciphertext": "5ebac6e0054e166819aff1cc6d346cdb"
+    },
+    {
+      "algorithm": "SEED",
+      "source": "IETF RFC 4269, Appendix B.2",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc4269.html#appendix-B.2",
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "plaintext": "00000000000000000000000000000000",
+      "ciphertext": "c11f22f20140505084483597e4370f43"
+    }
+  ]
+}

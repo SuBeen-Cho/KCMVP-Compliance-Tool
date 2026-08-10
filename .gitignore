@@ -30,8 +30,16 @@ docker-compose.yml
 backend/Dockerfile
 frontend/Dockerfile
 
-# Evaluation & testdata (keep only lea_cbc_only.zip + fake_design_doc.pdf)
-backend/evaluation/
+# Evaluation labels/results are ignored by default.  Reproducibility metadata,
+# schemas, and explicitly curated public labels are tracked via exceptions.
+backend/evaluation/*
+!backend/evaluation/README.md
+!backend/evaluation/*.schema.json
+!backend/evaluation/public_*.json
+!backend/evaluation/candidates/
+backend/evaluation/candidates/*
+!backend/evaluation/candidates/sources.lock.json
+!backend/evaluation/candidates/authoritative_vectors.json
 backend/testdata/*
 !backend/testdata/lea_cbc_only.zip
 !backend/testdata/fake_design_doc.pdf
@@ -45,8 +53,14 @@ backend/docs/
 # Sensitive local inputs
 0_KCMVP.zip
 
-# Scripts (evaluation/test utilities, local only)
+# Legacy local evaluation artifacts remain ignored.  New reproducible runners
+# live in backend/experiments/ and are tracked normally.
 backend/scripts/
+!backend/scripts/
+backend/scripts/*
+!backend/scripts/evaluate_real_sets.py
+!backend/scripts/fetch_cipher_candidates.py
+!backend/scripts/verify_cipher_vectors.py
 
 # Frontend generated README
 frontend/README.md
