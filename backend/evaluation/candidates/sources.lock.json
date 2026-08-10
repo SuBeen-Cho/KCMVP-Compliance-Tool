@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-11",
+  "policy": {
+    "vendor_sources_in_git": false,
+    "require_exact_commit": true,
+    "require_license_copy": true,
+    "require_upstream_vector_validation": true
+  },
+  "sources": [
+    {
+      "id": "openssl-3.5.7",
+      "upstream": "https://github.com/openssl/openssl.git",
+      "tag": "openssl-3.5.7",
+      "tag_object": "6ca677c395a4ae4472a12c5857c122ec33b36f66",
+      "commit": "8cf17aaeb4599f8af87fefd810b5b5fee90fe69e",
+      "language": "C",
+      "algorithms": ["AES", "SEED"],
+      "license": "Apache-2.0",
+      "official_archive": "https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz",
+      "archive_sha256": "a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8",
+      "role": "primary_c_candidate"
+    },
+    {
+      "id": "botan-3.12.0",
+      "upstream": "https://github.com/randombit/botan.git",
+      "tag": "3.12.0",
+      "commit": "45d6f286c320b2f2efd5373d195ec88c367e3071",
+      "language": "C++",
+      "algorithms": ["AES", "SEED"],
+      "license": "BSD-2-Clause",
+      "official_archive": "https://botan.randombit.net/releases/Botan-3.12.0.tar.xz",
+      "archive_signature": "https://botan.randombit.net/releases/Botan-3.12.0.tar.xz.asc",
+      "role": "independent_cpp_candidate"
+    },
+    {
+      "id": "cryptopp-8.9.0",
+      "upstream": "https://github.com/weidai11/cryptopp.git",
+      "tag": "CRYPTOPP_8_9_0",
+      "tag_object": "041cf66ed64f28d89cc50b762cde0353cf85657c",
+      "commit": "843d74c7c97f9e19a615b8ff3c0ca06599ca501b",
+      "language": "C++",
+      "algorithms": ["AES", "SEED"],
+      "license": "Boost-1.0 and file-level public-domain notices; verify copied files",
+      "official_archive": "https://www.cryptopp.com/cryptopp890.zip",
+      "archive_sha256": "4cc0ccc324625b80b695fcd3dee63a66f1a460d3e51b71640cdbfc4cd1a3779c",
+      "role": "secondary_cpp_candidate"
+    },
+    {
+      "id": "mbedtls-3.6.7",
+      "upstream": "https://github.com/Mbed-TLS/mbedtls.git",
+      "tag": "mbedtls-3.6.7",
+      "tag_object": "627361b09e6f6e3eac756297a370a591cf310ab9",
+      "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5",
+      "language": "C",
+      "algorithms": ["AES"],
+      "license": "Apache-2.0 OR GPL-2.0-or-later unless file states otherwise",
+      "role": "independent_aes_c_candidate"
+    }
+  ],
+  "authoritative_vectors": [
+    {
+      "algorithm": "AES",
+      "source": "NIST FIPS 197 and NIST CAVP AES KAT/MCT/MMT",
+      "url": "https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/block-ciphers"
+    },
+    {
+      "algorithm": "SEED",
+      "source": "IETF RFC 4269 Appendix B",
+      "url": "https://www.rfc-editor.org/rfc/rfc4269.html"
+    }
+  ],
+  "excluded_pending_license_review": [
+    {
+      "source": "KISA SEED source-code ZIP",
+      "url": "https://seed.kisa.or.kr/kisa/Board/190/detailView.do",
+      "reason": "The official download page identifies the artifact but does not expose sufficiently clear redistribution terms for vendoring."
+    }
+  ]
+}
