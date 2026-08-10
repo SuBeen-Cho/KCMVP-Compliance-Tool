@@ -14,6 +14,14 @@ from experiments.l1_snapshot import (
 )
 
 
+def test_source_label_guard_does_not_confuse_c_pointer_named_fp(tmp_path):
+    root = tmp_path / "sources"
+    root.mkdir()
+    (root / "a.c").write_text("int read(FILE *fp);\n", encoding="utf-8")
+    snapshot = build_snapshot(root, [], set_id="set-1", provenance=PROVENANCE)
+    assert snapshot["sources"][0]["source_id"] == "a.c"
+
+
 PROVENANCE = {
     "git_commit": "a" * 40,
     "workspace_sha256": "b" * 64,

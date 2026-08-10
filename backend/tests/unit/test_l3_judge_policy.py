@@ -144,11 +144,24 @@ def test_occurrence_rejection_key_is_opt_in_and_legacy_default_remains(monkeypat
     }
     judgment = {"is_real_issue": False, "confidence": 10}
     occurrence_tracker = set()
+    records = []
+    judgment.update({
+        "_initial_violation_probability": 90,
+        "_rejudge_violation_probability": 15,
+        "_rejudge_applied": True,
+    })
     l3_judge._apply_l3_decision(
         v=violation, obj=judgment, code_block="code", file_path="a.c",
         results=[], rejected_tracker=occurrence_tracker, rejected_candidate_ids=True,
+        decision_records=records,
     )
     assert occurrence_tracker == {"occurrence-2"}
+    assert records == [{
+        "candidate_id": "occurrence-2", "initial_violation_probability": 90,
+        "rejudge_violation_probability": 15, "rejudge_applied": True,
+        "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability",
+        "decision": "rejected",
+    }]
     assert l3_judge._reject_key(violation) == ("a.c", "X-1", 4)
 
 
@@ -180,6 +193,15 @@ def test_rejudge_merge_preserves_omitted_structured_evidence():
     assert merged["is_real_issue"] is False
     assert merged["evidence_type"] == "direct_violation"
     assert merged["supporting_symbol"] == "rounds"
+
+
+def test_violation_confidence_proxy_is_not_inverted_by_binary_verdict():
+    assert l3_judge._violation_confidence_proxy({
+        "is_real_issue": False, "confidence": 20,
+    }) == 20
+    assert l3_judge._violation_confidence_proxy({
+        "is_real_issue": True, "confidence": 80,
+    }) == 80
 
 
 def test_unknown_detection_semantics_is_never_removed(monkeypatch):

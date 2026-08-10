@@ -66,6 +66,10 @@ backend/scripts/*
 !backend/scripts/check_policy_freshness.py
 !backend/scripts/l1_snapshot.py
 !backend/scripts/l3_snapshot_run.py
+!backend/scripts/run_paired_l2_ablation.py
+!backend/scripts/export_real_sets_l1_snapshot.py
+!backend/scripts/calibrate_threshold.py
+!backend/scripts/evaluate_cipher_implementations.py
 
 # Frontend generated README
 frontend/README.md

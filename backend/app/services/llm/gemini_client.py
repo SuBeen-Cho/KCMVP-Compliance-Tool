@@ -66,6 +66,18 @@ def _grounded_artifact_relax() -> bool: return os.environ.get("L3_GROUNDED_ARTIF
 def _allow_provider_fallback() -> bool: return os.environ.get("LLM_ALLOW_PROVIDER_FALLBACK", "0") == "1"
 
 
+def _generation_seed() -> int:
+    """Return the recorded experiment seed, retaining 42 in normal operation."""
+    raw = os.environ.get("KCMVP_L3_SEED", "42")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise GeminiConfigurationError("KCMVP_L3_SEED must be an integer") from exc
+    if not 0 <= value <= 2_147_483_647:
+        raise GeminiConfigurationError("KCMVP_L3_SEED is outside the supported range")
+    return value
+
+
 def _extract_json_from_text(raw: str) -> Optional[Dict[str, Any]]:
     """Gemini 응답에서 JSON 객체 하나 추출."""
     if not raw or not raw.strip():
@@ -222,7 +234,7 @@ def _call_gemini(
 
         config = types.GenerateContentConfig(
             temperature=0,
-            seed=42,
+            seed=_generation_seed(),
         )
         if response_mime_type:
             config.response_mime_type = response_mime_type

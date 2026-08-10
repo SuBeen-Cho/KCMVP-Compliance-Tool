@@ -142,6 +142,11 @@ def _score(obj: Dict[str, Any], default: int = 50) -> int:
     return max(0, min(100, value))
 
 
+def _violation_confidence_proxy(obj: Dict[str, Any]) -> int:
+    """Return the prompt-defined 0=non-violation, 100=violation score directly."""
+    return _score(obj)
+
+
 def _file_role(file_path: str) -> str:
     fname = os.path.basename(file_path or "").lower()
     if fname in _CORE_CRYPTO_FILES:
@@ -344,6 +349,7 @@ def _apply_l3_decision(
     results: List[Dict[str, Any]],
     rejected_tracker: Optional[set],
     rejected_candidate_ids: bool = False,
+    decision_records: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     """Risk-tier 정책에 따라 L3 결과를 유지/제거한다."""
     # 캐시된 판정에 파일별 정책 메타데이터가 누적되지 않도록 복사한다.
@@ -354,6 +360,18 @@ def _apply_l3_decision(
     score = _score(obj)
     fp_threshold = 25 if pat_type in ("ast", "semantic") else 40
     fp_high = (82 if rule_id in _AST_TP_PROTECT else 80) if pat_type == "ast" else 70
+
+    def record(decision: str) -> None:
+        if decision_records is None:
+            return
+        decision_records.append({
+            "candidate_id": v.get("candidate_id"),
+            "initial_violation_probability": obj.get("_initial_violation_probability"),
+            "rejudge_violation_probability": obj.get("_rejudge_violation_probability"),
+            "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability",
+            "rejudge_applied": bool(obj.get("_rejudge_applied", False)),
+            "decision": decision,
+        })
 
     if rule_id in _L3_NEVER_REMOVE:
         risk_tier = "D"
@@ -372,6 +390,7 @@ def _apply_l3_decision(
             removal_allowed=False, blocked_reason="l3_real_issue",
         )
         results.append(_make_l3_result(v, obj))
+        record("retained")
         print(f"[L3] 확정 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
         return
 
@@ -384,6 +403,7 @@ def _apply_l3_decision(
             blocked_reason="unknown_semantics" if semantics == "unknown" else "missing_protect",
         )
         results.append(_make_l3_result(v, obj))
+        record("retained")
         print(f"[L3] missing타입→유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
         return
 
@@ -393,6 +413,7 @@ def _apply_l3_decision(
             removal_allowed=False, blocked_reason="never_remove",
         )
         results.append(_make_l3_result(v, obj))
+        record("retained")
         print(f"[L3] 제거차단→유지 (NEVER_REMOVE, score={score}): {rule_id} @ {file_path}:{v.get('line')}")
         return
 
@@ -410,12 +431,14 @@ def _apply_l3_decision(
             print(f"[L3] 오탐 제거 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
             if rejected_tracker is not None:
                 rejected_tracker.add(_reject_key(v, prefer_candidate_id=rejected_candidate_ids))
+            record("rejected")
         else:
             _mark_l3_decision(
                 obj, file_path=file_path, risk_tier=risk_tier,
                 removal_allowed=False, blocked_reason="dual_verify_failed",
             )
             results.append(_make_l3_result(v, obj))
+            record("retained")
             print(f"[L3] FP재검증 실패→유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
         return
 
@@ -424,6 +447,7 @@ def _apply_l3_decision(
         removal_allowed=False, blocked_reason="uncertain",
     )
     results.append(_make_l3_result(v, obj))
+    record("retained")
     print(f"[L3] 불확실 FP→보수적 유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
 
 
@@ -435,6 +459,7 @@ def run_l3_contextualizer(
     symbol_graph: Optional[Dict[str, Any]] = None,
     _preselected: bool = False,
     _rejected_candidate_ids: bool = False,
+    _decision_records: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
     L3: 의미적(맥락 기반) 위반 재판정.
@@ -548,6 +573,15 @@ def run_l3_contextualizer(
                     _rejected_tracker.add(_reject_key(
                         v, prefer_candidate_id=_rejected_candidate_ids,
                     ))
+                if _decision_records is not None:
+                    _decision_records.append({
+                        "candidate_id": v.get("candidate_id"),
+                        "initial_violation_probability": None,
+                        "rejudge_violation_probability": None,
+                        "score_provenance": "not_available_precondition_rejection",
+                        "rejudge_applied": False,
+                        "decision": "rejected_precondition",
+                    })
                 continue
             # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
             structured_ev = _build_structured_evidence(v, symbol_graph)
@@ -598,6 +632,7 @@ def run_l3_contextualizer(
                     results=results,
                     rejected_tracker=_rejected_tracker,
                     rejected_candidate_ids=_rejected_candidate_ids,
+                    decision_records=_decision_records,
                 )
             else:
                 entry = {
@@ -628,6 +663,10 @@ def run_l3_contextualizer(
                 phase="l3_isolated",
             )
             if obj:
+                initial_score = _violation_confidence_proxy(obj)
+                obj["_initial_violation_probability"] = initial_score
+                obj["_rejudge_violation_probability"] = None
+                obj["_rejudge_applied"] = False
                 _l3_cache[entry["cache_key"]] = obj
                 score = obj.get("confidence", 80)
                 try:
@@ -647,9 +686,12 @@ def run_l3_contextualizer(
                         phase="l3_rejudge",
                     )
                     if rejudge_obj:
+                        rejudge_probability = _violation_confidence_proxy(rejudge_obj)
                         # Preserve structured evidence when a provider omits
                         # optional fields in the second response.
                         obj = _merge_rejudge_result(obj, rejudge_obj)
+                        obj["_rejudge_violation_probability"] = rejudge_probability
+                        obj["_rejudge_applied"] = True
                         _l3_cache[entry["cache_key"]] = obj
                         score = obj.get("confidence", score)
                         print(f"[L3] 재판정 완료 (score={score}): {rule_id}")
@@ -662,6 +704,7 @@ def run_l3_contextualizer(
                     results=results,
                     rejected_tracker=_rejected_tracker,
                     rejected_candidate_ids=_rejected_candidate_ids,
+                    decision_records=_decision_records,
                 )
 
         if not batch_items:
@@ -695,6 +738,10 @@ def run_l3_contextualizer(
                         phase="l3_batch_fallback",
                     )
                     if obj:
+                        initial_score = _violation_confidence_proxy(obj)
+                        obj["_initial_violation_probability"] = initial_score
+                        obj["_rejudge_violation_probability"] = None
+                        obj["_rejudge_applied"] = False
                         _l3_cache[entry["cache_key"]] = obj
                         _apply_l3_decision(
                             v=v,
@@ -704,6 +751,7 @@ def run_l3_contextualizer(
                             results=results,
                             rejected_tracker=_rejected_tracker,
                             rejected_candidate_ids=_rejected_candidate_ids,
+                            decision_records=_decision_records,
                         )
                 continue
 
@@ -723,6 +771,10 @@ def run_l3_contextualizer(
                     continue
 
                 _l3_cache[entry["cache_key"]] = obj
+                initial_score = _violation_confidence_proxy(obj)
+                obj["_initial_violation_probability"] = initial_score
+                obj["_rejudge_violation_probability"] = None
+                obj["_rejudge_applied"] = False
                 _apply_l3_decision(
                     v=v,
                     obj=obj,
@@ -731,6 +783,7 @@ def run_l3_contextualizer(
                     results=results,
                     rejected_tracker=_rejected_tracker,
                     rejected_candidate_ids=_rejected_candidate_ids,
+                    decision_records=_decision_records,
                 )
 
     rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0

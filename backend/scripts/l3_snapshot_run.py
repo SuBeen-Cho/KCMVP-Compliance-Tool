@@ -101,6 +101,13 @@ def run_condition(
     l3_runner = l3_runner or run_l3_contextualizer
     rag_runner = rag_runner or run_l2_rag_context
     run_id = uuid.uuid4().hex
+    raw_seed = os.environ.get("KCMVP_L3_SEED", "42")
+    try:
+        generation_seed = int(raw_seed)
+    except ValueError as exc:
+        raise SnapshotError("KCMVP_L3_SEED must be an integer") from exc
+    if not 0 <= generation_seed <= 2_147_483_647:
+        raise SnapshotError("KCMVP_L3_SEED is outside the supported range")
     if ledger_path is not None:
         enable_request_ledger(
             ledger_path, run_id=run_id, snapshot_id=snapshot["snapshot_id"], truncate=True,
@@ -128,12 +135,14 @@ def run_condition(
             selected = _select_l3_candidates(enriched)
             selected_ids = [item["candidate_id"] for item in selected]
             rejected: set[tuple[str, str, int | None]] = set()
+            decision_records: list[dict[str, Any]] = []
             l3_results = l3_runner(
                 preprocess_result={"files": list(files.values())},
                 l1_violations=selected,
                 _rejected_tracker=rejected,
                 _preselected=True,
                 _rejected_candidate_ids=True,
+                _decision_records=decision_records,
             )
         result_ids = [str(item["candidate_id"]) for item in l3_results if item.get("candidate_id")]
         selected_set = set(selected_ids)
@@ -177,6 +186,7 @@ def run_condition(
             "run_id": run_id,
             "snapshot_id": snapshot["snapshot_id"],
             "condition": {"no_rag": no_rag},
+            "generation_seed": generation_seed,
             "candidate_ids": list(snapshot["l3_candidate_ids"]),
             "selected_candidate_ids": selected_ids,
             "l3_result_candidate_ids": result_ids,
@@ -184,6 +194,7 @@ def run_condition(
             "unresolved_candidate_ids": unresolved_ids,
             "request_covered_candidate_ids": requested_ids,
             "candidate_dispositions": dispositions,
+            "l3_decision_records": decision_records,
             "l3_results": l3_results,
             "request_ledger": ledger,
         }

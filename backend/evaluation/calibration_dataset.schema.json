@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/kcmvp/calibration-dataset-1.0.schema.json",
+  "title": "KCMVP violation-probability calibration dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "score_semantics", "rows"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "score_semantics": {"const": "violation_probability"},
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/row"}
+    }
+  },
+  "$defs": {
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "violation_probability"],
+      "properties": {
+        "verdict": {"enum": ["violation", "not_violation"]},
+        "violation_probability": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id", "candidate_id", "group_id", "condition", "repeat",
+        "ground_truth_violation", "initial", "rejudge"
+      ],
+      "properties": {
+        "observation_id": {"type": "string", "minLength": 1},
+        "candidate_id": {"type": "string", "minLength": 1},
+        "group_id": {"type": "string", "minLength": 1},
+        "condition": {"type": "string", "minLength": 1},
+        "repeat": {"type": "integer", "minimum": 0},
+        "ground_truth_violation": {"type": "boolean"},
+        "initial": {"$ref": "#/$defs/judgment"},
+        "rejudge": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/judgment"}]}
+      }
+    }
+  }
+}

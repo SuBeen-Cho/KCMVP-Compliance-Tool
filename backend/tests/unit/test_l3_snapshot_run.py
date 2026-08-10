@@ -52,7 +52,7 @@ def test_rehydrates_one_condition_without_api_and_joins_ledger(tmp_path, monkeyp
         observed["rag_env"] = MODULE.os.environ["ABLATION_NO_RAG"]
         return [{**item, "rag_guideline_text": ""} for item in items]
 
-    def fake_l3(*, preprocess_result, l1_violations, _rejected_tracker, **kwargs):
+    def fake_l3(*, preprocess_result, l1_violations, _rejected_tracker, _decision_records, **kwargs):
         observed["paths"] = [item["path"] for item in preprocess_result["files"]]
         observed["content"] = preprocess_result["files"][0]["content"]
         observed["ids"] = [item["candidate_id"] for item in l1_violations]
@@ -61,6 +61,14 @@ def test_rehydrates_one_condition_without_api_and_joins_ledger(tmp_path, monkeyp
             attempt=1, status="response_received", input_tokens=1, output_tokens=1,
             provider="gemini", model="fake-model",
         )
+        _decision_records.extend({
+            "candidate_id": item["candidate_id"],
+            "initial_violation_probability": 80,
+            "rejudge_violation_probability": None,
+            "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability",
+            "rejudge_applied": False,
+            "decision": "retained",
+        } for item in l1_violations)
         return [
             {"candidate_id": item["candidate_id"], "file": item["file"], "rule_id": item["rule_id"]}
             for item in l1_violations
@@ -82,6 +90,8 @@ def test_rehydrates_one_condition_without_api_and_joins_ledger(tmp_path, monkeyp
     assert result["request_ledger"]["record_count"] == 1
     assert result["request_covered_candidate_ids"] == observed["ids"]
     assert all(item["status"] == "retained" for item in result["candidate_dispositions"])
+    assert len(result["l3_decision_records"]) == 2
+    assert all(item["initial_violation_probability"] == 80 for item in result["l3_decision_records"])
     assert len(result["request_ledger"]["jsonl_sha256"]) == 64
     line = json.loads(ledger.read_text(encoding="utf-8"))
     assert line["snapshot_id"] == snapshot["snapshot_id"]

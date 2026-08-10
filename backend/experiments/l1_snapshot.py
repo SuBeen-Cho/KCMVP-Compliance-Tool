@@ -13,7 +13,9 @@ from typing import Any, Iterable
 SCHEMA_VERSION = "1.0"
 SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp"}
 SOURCE_LABEL_MARKER_RE = re.compile(
-    r"(?:^|//|/\*|\*)\s*(?:\[\s*)?(?:위반|정답|TP|FP|FN|true[ _-]?positive|"
+    # A bare `*` is only a comment leader at the beginning of a line. Treating
+    # every `*` as one falsely classified ordinary C pointers such as `FILE *fp`.
+    r"(?:(?://|/\*)\s*|^\s*\*\s*)(?:\[\s*)?(?:위반|정답|TP|FP|FN|true[ _-]?positive|"
     r"false[ _-]?positive|false[ _-]?negative|ground[ _-]?truth|expected[ _-]?label|"
     r"verdict|answer)\b",
     re.IGNORECASE | re.MULTILINE,
