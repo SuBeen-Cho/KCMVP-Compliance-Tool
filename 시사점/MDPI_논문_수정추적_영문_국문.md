@@ -67,7 +67,7 @@
 
 <span style="color:red">The Korean Cryptographic Module Validation Program (KCMVP) is a national certification system that verifies cryptographic modules deployed in government and public institutions. Its review and supplementation cycles motivate tools that can identify candidate issues before submission. We propose a framework combining rule-based detection (L1), RAG-based evidence retrieval (L2), and LLM-based re-evaluation (L3). The current repository snapshot encodes 161 YAML assets: 92 code-analysis rules, 65 document rules, and four traceability rules executed separately. A legacy author-constructed evaluation on 128 LEA-based labeled cases reported 128 detections and removal of 9 among 46 author-labeled FP candidates without removing a labeled violation. Because that run predates immutable experiment manifests, these figures are preliminary legacy observations rather than reproducible estimates for the current snapshot. Independent labeling, controlled L2 ablation, and cross-algorithm evaluation are required before broader generalization.</span>
 
-**한국어 번역:** 한국 암호모듈 검증제도(KCMVP)는 정부 및 공공기관에 배치되는 암호모듈을 검증하는 국가 인증제도이다. 검토 및 보완 절차는 제출 전에 잠재적 문제를 식별할 수 있는 도구의 필요성을 제기한다. 본 연구는 규칙 기반 탐지(L1), 검색 증강 생성 기반 증거 검색(L2), 대규모 언어 모델 기반 재평가(L3)를 결합한 프레임워크를 제안한다. 현재 저장소 스냅샷은 코드 분석 규칙 92개, 문서 규칙 65개, 별도로 실행되는 추적성 규칙 4개로 구성된 총 161개의 YAML 자산을 포함한다. LEA 기반 라벨링 사례 128개를 대상으로 저자가 구축한 과거 평가에서는 128개 사례가 모두 탐지되었으며, 라벨링된 위반 사례를 제거하지 않으면서 저자가 오탐으로 라벨링한 후보 46개 중 9개가 제거된 것으로 보고되었다. 그러나 해당 실행은 불변 실험 매니페스트가 도입되기 전에 수행되었으므로, 이 수치는 현재 스냅샷에 대한 재현 가능한 추정치가 아니라 예비적인 과거 관찰 결과에 해당한다. 보다 광범위한 일반화를 주장하기 위해서는 독립 라벨링, 통제된 L2 절제 실험 및 알고리즘 간 평가가 필요하다.
+**한국어 번역:** 한국 암호모듈 검증제도(KCMVP)는 정부 및 공공기관에 배치되는 암호모듈을 검증하는 국가 인증제도이다. 검토 및 보완 절차는 제출 전에 잠재적 문제를 식별할 수 있는 도구의 필요성을 제기한다. 본 연구는 규칙 기반 탐지(L1), 검색 증강 생성 기반 증거 검색(L2), 대규모 언어 모델 기반 재평가(L3)를 결합한 프레임워크를 제안한다. 현재 저장소 스냅샷은 코드 분석 규칙 92개, 문서 규칙 65개, 별도로 실행되는 추적성 규칙 4개로 구성된 총 161개의 YAML 자산을 포함한다. 저자가 구축한 LEA 기반 정답 라벨 사례 128개를 대상으로 한 과거 평가에서는 128개 사례가 모두 탐지되었으며, 라벨링된 위반 사례를 제거하지 않으면서 저자가 오탐(FP)으로 라벨링한 후보 46개 중 9개가 제거된 것으로 보고되었다. 그러나 해당 실행은 불변 실험 매니페스트가 도입되기 전에 수행되었으므로, 이 수치는 현재 스냅샷에 대한 재현 가능한 추정치가 아니라 예비적인 과거 관찰 결과에 해당한다. 보다 광범위한 일반화를 주장하기 위해서는 독립 라벨링, 통제된 L2 절제 실험 및 알고리즘 간 평가가 필요하다.
 
 **Keywords:** KCMVP; artificial intelligence; large language model; pre-certification; retrieval-augmented generation; rule-based detection; abstract syntax tree; multi-layer analysis; semantic verification; pre-conformance inspection
 
@@ -111,7 +111,7 @@ In particular, at the technical review stage, the validator analyzes the source 
 
 <span style="color:red">We propose a funnel-shaped three-stage architecture that combines rule-based static detection (L1), evidence retrieval and augmentation (L2), and generative-model-based final decision (L3). In a legacy author-constructed evaluation, 128 labeled cases were reported as detected, and L3 removed 9 of 46 candidates labeled as false positives (19.6%), with no author-labeled TP removed; the reported precision and F1-score were 77.6% and 87.4%. That run lacks an immutable manifest tying it to the current repository snapshot, so these figures are retained as provisional feasibility evidence rather than a general performance estimate.</span>
 
-**한국어 번역:** 본 연구는 규칙 기반 정적 탐지(L1), 증거 검색 및 증강(L2), 생성 모델 기반 최종 판단(L3)을 결합한 퍼널형 3단계 아키텍처를 제안한다. 저자가 구축한 과거 평가에서는 라벨링 사례 128개가 탐지된 것으로 보고되었으며, L3는 오탐으로 라벨링된 후보 46개 중 9개(19.6%)를 제거하되 저자가 라벨링한 참양성은 제거하지 않았다. 보고된 정밀도와 F1 점수는 각각 77.6%와 87.4%이다. 해당 실행을 현재 저장소 스냅샷과 연결하는 불변 매니페스트가 존재하지 않으므로, 이 수치는 일반적인 성능 추정치가 아니라 잠정적인 실행 가능성 근거로 유지한다.
+**한국어 번역:** 본 연구는 규칙 기반 정적 탐지(L1), 증거 검색 및 증강(L2), 생성 모델 기반 최종 판단(L3)을 결합한 퍼널형 3단계 아키텍처를 제안한다. 저자가 구축한 과거 평가에서는 정답 라벨 사례 128개가 탐지된 것으로 보고되었으며, L3는 오탐(FP)으로 라벨링된 후보 46개 중 9개(19.6%)를 제거하되 저자가 라벨링한 참양성(TP)은 제거하지 않았다. 보고된 정밀도와 F1 점수는 각각 77.6%와 87.4%이다. 해당 실행을 현재 저장소 스냅샷과 연결하는 불변 매니페스트가 존재하지 않으므로, 이 수치는 일반적인 성능 추정치가 아니라 잠정적인 실행 가능성 증거로 유지한다.
 
 **Systematized KCMVP inspection rule set and domain-specific false-positive mitigation.**
 
@@ -119,7 +119,7 @@ In particular, at the technical review stage, the validator analyzes the source 
 
 <span style="color:red">We encode 161 YAML rule assets across five categories (common security, algorithms, modes of operation, documentation, and traceability), comprising 92 code-oriented rules, 65 document rules, and four traceability rules. The present implementation and quantitative evaluation are LEA-centered; support for other KCMVP algorithms is treated as future work. A commercial-module case study is retained as a qualitative stress test rather than as an independently labeled FP benchmark.</span>
 
-**한국어 번역:** 본 연구는 공통 보안, 알고리즘, 운용 모드, 문서 및 추적성의 다섯 범주에 걸쳐 총 161개의 YAML 규칙 자산을 인코딩한다. 이는 코드 지향 규칙 92개, 문서 규칙 65개 및 추적성 규칙 4개로 구성된다. 현재 구현과 정량 평가는 LEA를 중심으로 하며, 다른 KCMVP 알고리즘에 대한 지원은 향후 연구로 다룬다. 상용 모듈 사례 연구는 독립적으로 라벨링된 오탐 벤치마크가 아니라 정성적 스트레스 시험으로 제시한다.
+**한국어 번역:** 본 연구는 공통 보안, 알고리즘, 운용 모드, 문서 및 추적성의 다섯 범주에 걸쳐 총 161개의 YAML 규칙 자산을 인코딩한다. 이는 코드 지향 규칙 92개, 문서 규칙 65개 및 추적성 규칙 4개로 구성된다. 현재 구현과 정량 평가는 LEA를 중심으로 하며, 다른 KCMVP 알고리즘에 대한 지원은 향후 연구로 다룬다. 상용 모듈 사례 연구는 독립적으로 라벨링된 오탐(FP) 벤치마크가 아니라 정성적 스트레스 시험으로 제시한다.
 
 **Simultaneous validation of source code and submitted documents.**
 
@@ -634,17 +634,17 @@ However, the current traceability-verification implementation has limitations be
 
 ## 3. 시스템 설계 (System Design)
 
-탐지 정확도를 극대화하는 동시에 오탐(False Positive)을 최소화하기 위해, 본 사전 검증 시스템은 전체 검증 프로세스를 상호 보완적인 세 단계, 즉 규칙 기반 결정론적 탐지(L1), RAG 기반 지침 근거 검색(L2), LLM 기반 최종 판정(L3)으로 세분화한다.
+탐지 정확도를 높이는 동시에 오탐(FP)을 줄이기 위해, 본 사전 검증 시스템은 전체 검증 프로세스를 상호 보완적인 세 단계, 즉 규칙 기반 결정론적 탐지(L1), RAG 기반 지침 증거 검색(L2), LLM 기반 최종 판정(L3)으로 세분화한다.
 
 ### 3.1 설계 목표 (Design Goals)
 
-본 시스템의 설계는 다음 세 가지 목표를 달성하기 위해 구성되었다.
+본 시스템은 다음 세 가지 설계 목표를 달성하도록 구성한다.
 
-**목표 1. 높은 Recall 확보.** 본 연구는 패턴 기반의 결정론적 탐지를 통해 높은 recall을 확보하고자 하였다. 특히 missing(필수 패턴의 부재)과 regex(문자열 패턴 일치) 유형을 명시적으로 정의된 규칙으로 적용함으로써, 규칙으로 표현 가능한 위반에 대한 누락을 줄이는 방향의 광범위 탐색(broad-coverage search)을 지향한다.
+**목표 1. 높은 재현율 확보.** 본 연구는 패턴 기반의 결정론적 탐지를 통해 높은 재현율을 확보하는 것을 목표로 한다. 특히 `missing`(필수 패턴의 부재)과 `regex`(문자열 패턴 일치) 유형을 명시적으로 정의된 규칙으로 적용함으로써, 규칙으로 표현 가능한 위반의 누락을 줄이는 광범위 탐색을 지향한다.
 
-**목표 2. 오탐(FP) 최소화.** 단순 규칙 기반 탐지는 구조적으로 오탐(유사 패턴, 상수, 시험 코드)을 포함할 수 있으므로, 본 연구는 도메인 특화 필터와 LLM의 최종 판정을 통해 코드와 문서 맥락 및 근거를 함께 검토함으로써 오탐을 최소화하는 것을 목표로 한다.
+**목표 2. 오탐(FP) 최소화.** 단순 규칙 기반 탐지는 구조적으로 오탐(FP)(유사 패턴, 상수, 시험 코드)을 포함할 수 있으므로, 본 연구는 도메인 특화 필터와 LLM의 최종 판정을 통해 코드와 문서 맥락 및 증거를 함께 검토함으로써 오탐(FP)을 최소화하는 것을 목표로 한다.
 
-**목표 3. 근거 기반 코드·문서 동시 검증.** 본 프레임워크는 소스코드(ZIP)와 제출 문서(PDF)를 단일 파이프라인에서 통합 처리하며, L2 단계의 3계층(three-tier) RAG 검색을 통해 탐지된 각 위반 항목에 실제 KCMVP 지침 조항을 자동으로 부착함으로써 검증 결과의 해석 가능성(interpretability)을 확보한다.
+**목표 3. 증거 기반 코드·문서 동시 검증.** 본 프레임워크는 소스 코드(ZIP)와 제출 문서(PDF)를 단일 파이프라인에서 통합 처리하며, L2 단계의 3계층 RAG 검색을 통해 탐지된 각 위반 항목에 KCMVP 요구사항에서 도출한 저자 작성 지침을 자동으로 부착함으로써 검증 결과의 해석 가능성을 높인다. 해당 지침은 공식 원문 자체가 아니라 판정을 지원하는 증거임을 전제로 한다.
 
 ### 3.2 전체 시스템 아키텍처 (Overall System Architecture)
 
@@ -652,25 +652,25 @@ However, the current traceability-verification implementation has limitations be
 
 이어지는 L1 단계에서는 YAML로 정의된 점검 규칙을 네 가지 패턴 유형으로 적용한다. missing은 필수 요소의 부재를, regex는 문자열 패턴 일치를, semantic은 키워드·문맥 단서를, ast는 구문/구조 단서를 각각 처리한다. 이 단계가 휴리스틱 필터(heuristic filter)를 거치면, 넓게 포착된 오류 의심 목록이 하나의 후보 집합(candidate set)으로 통합된다.
 
-다음 단계에서는 규칙 식별자와 의심 코드/문단(suspect part)을 중심으로 KCMVP 지침 근거를 검색·매칭한다. ChromaDB 등 저장소에 적재된 근거 문서를 활용할 수 있다. 근거 문서는 KCMVP 규격 문서를 주제와 조항 단위로 나누어 마크다운으로 저장한다.
+다음 단계에서는 규칙 식별자와 의심 코드·문단을 중심으로 KCMVP 지침 증거를 검색하고 매칭한다. ChromaDB 등의 저장소에 적재된 증거 문서를 활용할 수 있다. 현재 증거 문서는 인용한 KCMVP 요구사항에서 도출하여 저자가 작성한 자료이며, 공식 지침 원문 자체로 간주하지 않는다.
 
-이어서 생성형 모델이 의심 파트, 판정 지시, 근거를 함께 받아 최종적으로 오탐과 실제 위반을 구분한다. 앞 단계에서 넓게 포착된 후보를 근거·맥락 기반 판정으로 정밀하게 줄여 나가는 흐름이 퍼널의 축소 구간에 해당한다. 최종적으로 그 결과는 패치 노트(patch note)와 보고서 같은 산출물로 통합되며, 기각된 항목도 필요하면 후보 이력(candidate history)으로 남겨 추적할 수 있게 한다.
+이어서 생성형 모델은 의심 부분, 판정 지시 및 증거를 함께 입력받아 오탐(FP)과 실제 위반을 구분한다. 앞 단계에서 넓게 포착한 후보를 증거·맥락 기반 판정으로 정제하는 흐름이 퍼널의 축소 구간에 해당한다. 최종 결과는 수정 권고와 보고서 등의 산출물로 통합하며, 기각한 항목도 필요한 경우 후보 이력으로 보존하여 추적한다.
 
-또한 그림에서는 명료성을 위해 생략하였으나, 구현에서 근거 검색은 두 번 호출된다: 한 번은 LLM 판정용 프롬프트를 구성할 때, 또 한 번은 동일 모듈에 의해 최종 위반 목록에 근거 필드를 붙일 때이다. 전자는 판정 맥락에 규격 근거를 주입하기 위함이고, 후자는 보고서와 UI에서 위반별 근거를 확인할 수 있게 하기 위함이다.
+또한 그림에서는 명료성을 위해 생략하였으나, 구현에서는 증거 검색을 두 번 호출한다. 첫 번째 호출은 LLM 판정용 프롬프트를 구성하며, 두 번째 호출은 동일 모듈이 최종 위반 목록에 증거 필드를 추가한다. 전자는 판정 맥락에 규격 증거를 주입하고, 후자는 보고서와 사용자 인터페이스에서 위반별 증거를 확인하도록 한다.
 
 표 2는 각 단계의 주요 기능과 역할을 요약한 것이다.
 
-**[그림 1] 전체 파이프라인 구성도(Overall pipeline configuration diagram).** — 상단에 입력으로 Source Code(.zip)와 Documents가 들어가 Preprocessing을 거쳐 Symbol Graph와 Section List를 생성하고, 이어 L1. Static Analysis(missing/regex/semantic/ast → Regex Matching, Heuristic Filtering → Suspected Violation List), L2. Evidence Mapping(RAG)(Rule ID, Target Segment, Violation Evidence ← Reference Documents DB), L3. LLM Re-evaluation(False Positive(FP) / Confirmed Violation)을 거쳐, 최종 산출물로 Remediation Notes와 Pre-validation Report가 나오는 퍼널형 흐름을 도식화한 그림.
+**[그림 1] 전체 파이프라인 구성도.** — 소스 코드(.zip)와 문서를 입력받아 전처리를 거쳐 심볼 그래프와 절 목록을 생성한다. 이후 L1 정적 분석(`missing`/`regex`/`semantic`/`ast`, 정규표현식 매칭 및 휴리스틱 필터링), L2 증거 매핑(RAG), L3 LLM 재평가(오탐(FP) 또는 확정 위반)를 수행하고, 최종 산출물로 수정 권고와 사전 검증 보고서를 생성하는 퍼널형 흐름을 나타낸다.
 
 **표 2: 제안하는 KCMVP 사전 검증 파이프라인의 단계별 요약.**
 
-| Stage | Analysis method | Main objective |
+| 단계 | 분석 방법 | 주요 목적 |
 |---|---|---|
-| Preprocessing | Source file normalization; Four-stage AST fallback; Symbol graph construction; Document body, tables, OCR sectioning | Generating file, line, section, and call-relationship coordinates for rule application |
-| L1 | Per-pattern-type rule application; Domain-anchor-based candidate refinement | Deterministic primary candidate detection and reduction of obvious false positives |
-| L2 | Three-tier RAG retrieval | Attaching KCMVP evidence and decision context for each candidate |
-| L3 | Semantic re-evaluation | Distinguishing actual violations from false positives and conservatively removing candidates |
-| TRC | Cross-comparison (header API, source definitions, documents) | Traceability inspection across design specifications, code, and test specifications |
+| 전처리 | 소스 파일 정규화, 4단계 AST 대체 경로, 심볼 그래프 구축, 문서 본문·표·OCR 절 분할 | 규칙 적용을 위한 파일·행·절·호출 관계 좌표 생성 |
+| L1 | 패턴 유형별 규칙 적용, 도메인 앵커 기반 후보 정제 | 결정론적 1차 후보 탐지 및 명백한 오탐(FP) 감소 |
+| L2 | 3계층 RAG 검색 | 후보별 KCMVP 증거 및 판정 맥락 첨부 |
+| L3 | 의미론적 재평가 | 실제 위반과 오탐(FP)의 구분 및 보수적인 후보 제거 |
+| TRC | 헤더 API·소스 정의·문서 간 교차 비교 | 설계 명세서·코드·시험 명세서 간 추적성 검사 |
 
 ### 3.3 검증 파이프라인 단계별 설계
 
@@ -680,7 +680,7 @@ However, the current traceability-verification implementation has limitations be
 
 **AST 및 심볼 그래프(AST and Symbol Graph).** 추상 구문 트리(Abstract Syntax Tree, AST)는 소스코드의 구문 구조를 트리 형태로 표현한 중간 표현(intermediate representation)으로, 컴파일러 설계 분야에서 구문 분석(parsing) 단계의 표준 출력물이다 [1]. 심볼 그래프는 여러 소스 파일에서 추출한 함수 정의, 함수 호출, 전역 상수 배열 등의 심볼 정보를 노드와 엣지로 연결한 구조화 표현이다.
 
-AST는 한 파일 또는 한 함수 내부에서 연산과 문장이 어떤 구조로 배치되는지에 초점을 두므로 함수 내부의 구현 불변식(implementation invariant)을 검사하는 데 적합하고, 반면 심볼 그래프는 각 함수가 어디에 정의되어 있고 다른 파일의 어떤 함수를 호출하는지를 보여주므로 cross-file zeroization, wrapper 호출과 같은 파일 경계를 넘는 관계를 판단하는 데 사용된다.
+AST는 한 파일 또는 한 함수 내부에서 연산과 문장이 배치되는 구조에 초점을 두므로 함수 내부의 구현 불변식을 검사하는 데 적합하다. 반면 심볼 그래프는 각 함수의 정의 위치와 다른 파일의 함수 호출 관계를 나타내므로 파일 간 영구 삭제 및 래퍼 호출과 같이 파일 경계를 넘는 관계를 판단하는 데 사용한다.
 
 C 전처리 단계는 분석 결과에 직접적인 영향을 준다. C/C++에서 표준 전처리기(#define, #include, #ifdef)는 파싱 이전에 토큰 수준에서 소스 구조를 직접 변경할 수 있으며, 이로 인해 원본 소스의 위치 정보와 전처리 이후의 실제 구문 구조가 어긋날 수 있다. C 파서와 규칙 엔진은 단순한 토큰 나열이 아니라 타입, 상수 값, 매크로 확장 결과에 의존하므로, 흩어진 헤더가 적절히 복원되지 않으면 식별자 해석이 어려워지고 잘못된 형태의 노드 구조가 생성될 수 있다.
 
@@ -690,7 +690,7 @@ C 전처리 단계는 분석 결과에 직접적인 영향을 준다. C/C++에�
 
    libclang 파싱 경로에서 시스템은 단순한 호출 정보뿐 아니라 타입 정보와 cross-file 연결 정보까지 수집한다. libclang으로 생성한 심볼 그래프에서 핵심은 Unified Symbol Resolution(USR)에 기반한 연결이다. 같은 이름의 함수가 여러 파일에 존재하거나 헤더 선언과 구현 정의가 분리된 경우, 단순 이름 매칭만으로는 호출 대상이 모호해질 수 있다. libclang은 함수 정의와 호출 표현식의 referenced 커서에서 USR을 얻을 수 있으므로, 본 시스템은 먼저 USR로 호출을 정의 위치에 연결하고, USR이 비어 있는 경우에만 이름 기반 매칭으로 폴백한다. 이 때문에 심볼 그래프의 호출 관계에는 호출 파일, 호출 줄, 피호출 함수명뿐 아니라, 가능한 경우 피호출 함수의 정의 파일과 정의 줄도 함께 포함된다.
 
-   또한 libclang 경로는 typedef 별칭과 정적 상수 배열의 초기화 값을 별도의 증거로 저장한다. typedef는 uint32_t, 함수 포인터 타입, 공개 API 시그니처를 해석하는 데 쓰이고, 정적 상수 배열은 LEA delta, S-box, lookup table, KAT/vector와 같은 공개 상수(public constant)를 비밀 키 후보(candidate secret key)와 구분하는 데 쓰인다. 배열의 경우, 시스템은 VAR_DECL 중 CONSTANTARRAY 타입의 항목을 찾아 초기화 리스트에서 토큰을 추출하고, 변수명·원소 타입·크기·초기값 샘플을 array_inits에 저장한다. 이 값은 이후 하드코딩 키 후보가 실제 비밀 키인지 공개 알고리즘 상수인지 판별하는 핵심 근거가 된다.
+   또한 libclang 경로는 typedef 별칭과 정적 상수 배열의 초기화 값을 별도의 증거로 저장한다. typedef는 uint32_t, 함수 포인터 타입, 공개 API 시그니처를 해석하는 데 쓰이고, 정적 상수 배열은 LEA delta, S-box, lookup table, KAT/vector와 같은 공개 상수(public constant)를 비밀 키 후보(candidate secret key)와 구분하는 데 쓰인다. 배열의 경우, 시스템은 VAR_DECL 중 CONSTANTARRAY 타입의 항목을 찾아 초기화 리스트에서 토큰을 추출하고, 변수명·원소 타입·크기·초기값 샘플을 array_inits에 저장한다. 이 값은 이후 하드코딩 키 후보가 실제 비밀 키인지 공개 알고리즘 상수인지 판별하는 핵심 증거가 된다.
 
 2. **2단계. gcc -E + pycparser 전처리(gcc -E + pycparser Preprocessing):** libclang을 사용할 수 없거나 pycparser 기반 fallback이 필요한 경우, 시스템은 먼저 컴파일러의 gcc -E 전처리를 사용하여 매크로가 확장된 C 텍스트를 생성한 뒤 이를 pycparser로 파싱한다.
 
@@ -780,13 +780,13 @@ L1은 전처리가 넘겨준 산출물을 받아, 저장소에 정의된 점검 
 | semantic | keyword + AI | Context-required pattern | Priority |
 | ast | AST analysis | Structural inspection | Priority |
 
-**도메인 앵커 기반 후보 정제(Domain-Anchor-based Candidate Refinement).** 본 연구에서 도메인 앵커(domain anchor)는 특정 규칙을 적용하기 전에, 분석 대상 파일 또는 코드 조각이 해당 규칙의 의미 범위(semantic scope)에 속하는지를 판단하기 위한 구조적·문맥적 단서이다. L1 규칙 엔진은 높은 recall을 위해 후보를 넓게 생성하지만, 암호모듈 제출물에는 공개 상수, 시험 벡터, wrapper, 벤치마크, 운용 모드별 파일이 함께 존재하므로 단순 규칙 적용만으로는 오탐이 증가한다. 이에 본 시스템은 규칙 적용 전후에 앵커를 사용하여 후보를 정제한다.
+**도메인 앵커 기반 후보 정제(Domain-Anchor-based Candidate Refinement).** 본 연구에서 도메인 앵커(domain anchor)는 특정 규칙을 적용하기 전에, 분석 대상 파일 또는 코드 조각이 해당 규칙의 의미 범위(semantic scope)에 속하는지를 판단하기 위한 구조적·문맥적 단서이다. L1 규칙 엔진은 높은 recall을 위해 후보를 넓게 생성하지만, 암호모듈 제출물에는 공개 상수, 시험 벡터, wrapper, 벤치마크, 운용 모드별 파일이 함께 존재하므로 단순 규칙 적용만으로는 오탐(FP)이 증가한다. 이에 본 시스템은 규칙 적용 전후에 앵커를 사용하여 후보를 정제한다.
 
 도메인 앵커는 크게 식별 앵커(identification anchor)와 배제 앵커(exclusion anchor)로 나뉜다. 식별 앵커는 특정 코드가 실제 규칙 적용 대상임을 강화하는 증거이다. 예를 들어 LEA 라운드 루프, 라운드 키 배열 접근, ROL/ROR 기반 ARX 연산, delta 상수 참조가 함께 나타나면 해당 파일은 LEA 구현 파일일 가능성이 높다. 반대로 배제 앵커는 표면적으로는 위반처럼 보이지만 실제 검증 맥락에서는 위반이 아닌 대상을 제외하는 증거이다. LEA delta 상수, KAT 입력값, S-box, wrapper의 단순 위임 함수, 벤치마크 전용 고정 평문이 이에 해당한다.
 
-본 시스템의 후보 정제는 두 종류의 앵커를 함께 사용하여, 탐지해야 할 구조 위반은 유지하면서 가치가 낮은 오탐 증거는 줄인다. 이를 통해 L1의 후보 품질이 향상되고, 실제로 문맥 판단이 필요한 후보만 L3로 전달된다.
+본 시스템의 후보 정제는 두 종류의 앵커를 함께 사용하여, 탐지해야 할 구조 위반은 유지하면서 가치가 낮은 오탐(FP) 증거는 줄인다. 이를 통해 L1의 후보 품질이 향상되고, 실제로 문맥 판단이 필요한 후보만 L3로 전달된다.
 
-**YAML 룰셋 구조(YAML Rule-Set Structure).** 리스팅 2는 표 4 패턴을 기반으로 생성된 YAML 기반 룰셋의 예시를 보여준다. 규칙은 id, name, category, scope로 식별·분류되고, 패턴은 pattern_type에 설정하며, 정규식은 pattern에 입력한다. severity와 kcmvp_ref는 심각도 등급화와 근거 인용을 위한 부가 정보이다.
+**YAML 룰셋 구조(YAML Rule-Set Structure).** 리스팅 2는 표 4 패턴을 기반으로 생성된 YAML 기반 룰셋의 예시를 보여준다. 규칙은 id, name, category, scope로 식별·분류되고, 패턴은 pattern_type에 설정하며, 정규식은 pattern에 입력한다. severity와 kcmvp_ref는 심각도 등급화와 증거 인용을 위한 부가 정보이다.
 
 **Listing 2: COM-001 규칙의 YAML 구조 요약.**
 ```yaml
@@ -800,11 +800,11 @@ L1은 전처리가 넘겨준 산출물을 받아, 저장소에 정의된 점검 
   kcmvp_ref: "KS X ISO/IEC 19790:2015 ..."
 ```
 
-#### 3.3.3 L2: RAG 기반 근거 매칭 (RAG-based Evidence Matching)
+#### 3.3.3 L2: RAG 기반 증거 매칭 (RAG-based Evidence Matching)
 
-L2는 근거 검색과 입력 구성을 통해 맥락을 공급하는 단계이다. 그림 3은 L2 단계의 전체 흐름을 나타낸다. L1에서 식별된 위반 후보는 개별 인스턴스로 전달되며, 각 항목에 대해 판정에 필요한 최소 메타데이터—규칙 식별자, 패턴 유형, 파일 및 줄 위치, 위반 설명 등—를 정리한다. 동시에 해당 위치 주변의 소스(또는 문서) 구간을 코드/문서 슬라이스로 추출하여, 맥락을 유지하면서도 모델 입력 토큰을 줄인다.
+L2는 증거 검색과 입력 구성을 통해 맥락을 공급하는 단계이다. 그림 3은 L2 단계의 전체 흐름을 나타낸다. L1에서 식별된 위반 후보는 개별 인스턴스로 전달되며, 각 항목에 대해 판정에 필요한 최소 메타데이터—규칙 식별자, 패턴 유형, 파일 및 줄 위치, 위반 설명 등—를 정리한다. 동시에 해당 위치 주변의 소스(또는 문서) 구간을 코드/문서 슬라이스로 추출하여, 맥락을 유지하면서도 모델 입력 토큰을 줄인다.
 
-다음으로, rule id를 키로 매칭하여 DB에 저장된 KCMVP 관련 지침·기술 자료에서 근거 문서를 첨부한다. 최종적으로 수집된 슬라이스, 위반 설명, 검색된 근거를 헤더, 시스템 역할(system role), 출력 형식 지시와 함께 하나의 프롬프트로 묶어 언어 모델에 제출하고, 그 응답을 L3로 넘긴다.
+다음으로, 규칙 식별자를 키로 매칭하여 데이터베이스에 저장된 KCMVP 관련 저자 작성 지침·기술 자료에서 증거 문서를 첨부한다. 최종적으로 수집한 슬라이스, 위반 설명 및 검색 증거를 헤더, 시스템 역할 및 출력 형식 지시와 함께 하나의 프롬프트로 구성하여 언어 모델에 제출하고, 그 응답을 L3로 전달한다.
 
 **[그림 3] L2 파이프라인 흐름(L2 pipeline flow).** — L1 Validation Candidates → Code Chunking(Pattern type, File/Line, Violation Description, Rule ID) → Prompt Construction(Header, System role, Context: Code Non-compliant Segments, Violation Description, Enforced \<JSON\> Output → Validation Criteria) → L3로 이어지며, 하단에 DB와 Direct Mapping / Chroma DB / TF-IDF의 3계층 검색이 Validation Criteria로 연결되는 흐름을 도식화한 그림.
 
@@ -814,23 +814,23 @@ L2는 근거 검색과 입력 구성을 통해 맥락을 공급하는 단계이�
 
 2. **문서 발췌(Document Excerption).** 문서 재판정의 경우, 시스템은 전처리로 얻은 절 단위 구조를 활용하되 특정 절만 보여주는 데 그치지 않고, 동일 문서 유형에 속한 여러 절을 묶어 하나의 맥락 덩어리를 만든다. 이는 위반으로 표시된 절에 키워드가 없더라도, 동등한 내용이 다른 절에 서술되어 있는지를 함께 검토하려는 의도이다. 다만 각 절의 본문이 매우 길 수 있으므로, 절마다 앞부분만 잘라 한 절이 입력 전체를 차지하지 않게 하고, 여러 절을 이어 붙일 때에는 결합 문자열 전체에 상한을 두어 모델이 한 번에 처리할 분량과 비용을 통제한다.
 
-**3계층 검색 구조(Three-Tier Retrieval Structure).** 근거 검색은 세 단계로 나뉘며, 가장 신뢰할 만한 경로를 먼저 시도한다. 규칙이 공식 지침 원문과 직접 연결된 경우를 출처를 명확히 하기 위해 최우선으로 두고, 그 결과가 없거나 부족할 때만 의미 기반 검색으로 관련 구절을 보강하거나 대체한다. 그래도 공백이 남으면, 키워드 및 통계적 유사도로 더 넓은 문서 집합을 훑는 경로로 폴백하여, 최종적으로 근거 공백을 줄이는 데 초점을 둔다.
+**3계층 검색 구조(Three-Tier Retrieval Structure).** 증거 검색은 세 단계로 구분하며 직접 매핑을 우선 적용한다. 현재 코퍼스는 인용한 요구사항에서 도출하여 저자가 작성한 지침과 매핑으로 구성하며, 공식 지침 원문 자체로 해석하지 않는다. 직접 매핑이 없거나 불충분하면 의미 검색으로 관련 구절을 검색하고, 이후 더 넓은 키워드 및 유사도 검색을 수행한다. 검색 구절은 독립적인 검증 결과가 아니라 판정을 지원하는 맥락으로 사용한다.
 
-1. **Direct 매핑(1계층):** 룰셋 식별자(id)에 대응하여, 그 관계에 따라 지정된 마크다운 지침을 로드한다. 지침은 암호모듈 지침 문서 [7, 22, 21]의 항목을 분절하여 근거 후보 청크(candidate evidence chunk)로 구성하였다. 절 제목이 요구사항, 위반 양상, 해설 등 판정에 직접 유용한 의미를 드러내는 경우 우선순위를 부여하여 앞쪽에 배치하고, 나머지 절은 후순위로 이어 붙이며, 최종적으로 반환할 청크 수는 상한에 맞춰 절단한다. 이는 검토자가 규칙과 공식 문서를 명시적으로 연결했음을 전제하므로, 출처의 특정성과 재현성을 높인다.
+1. **Direct 매핑(1계층):** 룰셋 식별자(id)에 대응하여, 그 관계에 따라 지정된 마크다운 지침을 로드한다. 지침은 암호모듈 지침 문서 [7, 22, 21]의 항목을 분절하여 증거 후보 청크(candidate evidence chunk)로 구성하였다. 절 제목이 요구사항, 위반 양상, 해설 등 판정에 직접 유용한 의미를 드러내는 경우 우선순위를 부여하여 앞쪽에 배치하고, 나머지 절은 후순위로 이어 붙이며, 최종적으로 반환할 청크 수는 상한에 맞춰 절단한다. 이는 검토자가 규칙과 공식 문서를 명시적으로 연결했음을 전제하므로, 출처의 특정성과 재현성을 높인다.
 
-2. **ChromaDB 벡터 검색(2계층):** 지침 마크다운을 절/문단 단위로 벡터 저장소(ChromaDB)에 나누어 두고, 각 조각을 임베딩 모델로 실수 벡터에 올린 뒤, 질의 문장도 같은 공간에 투영하여 의미론적으로 유사한 조각을 선택하는 경로이다. 특정 지침 절이 이미 Direct 매핑으로 확보된 경우에는 기존 목록을 대체하지 않고, 동일 질의로 벡터 검색을 수행하여 출처가 다른 소수의 조각만 덧붙여 근거의 폭을 넓힌다. Direct 매핑이 비어 있는 경우에는 조항 식별자 등의 메타데이터를 필터로 삼아 질의와 의미적으로 가까운 청크를 찾아 주된 반환 결과로 삼는다. 이를 통해 규칙-문서의 명시적 연결을 깨뜨리지 않으면서 의미 있는 근거를 보강하거나 대체한다.
+2. **ChromaDB 벡터 검색(2계층):** 지침 마크다운을 절·문단 단위로 벡터 저장소(ChromaDB)에 분할하고, 각 조각과 질의 문장을 동일한 임베딩 공간에 투영하여 의미론적으로 유사한 조각을 선택한다. 특정 지침 절을 직접 매핑으로 확보한 경우에는 기존 목록을 대체하지 않고, 동일 질의로 벡터 검색을 수행하여 출처가 다른 소수의 조각을 추가함으로써 증거의 범위를 넓힌다. 직접 매핑이 비어 있는 경우에는 조항 식별자 등의 메타데이터를 필터로 사용하여 질의와 의미적으로 가까운 청크를 주된 반환 결과로 삼는다. 이를 통해 규칙과 문서의 명시적 연결을 유지하면서 의미 있는 증거를 보강하거나 대체한다.
 
-3. **TF-IDF 키워드 폴백(3계층):** TF-IDF 경로는 각 청크를 용어 빈도(term frequency)와 문서 집합 전체에서의 희소성을 반영한 유사도 점수로 순위화하여 상위 소수(top-k)만 반환한다. 질의는 호출 시 주어지거나 규칙 매핑에 저장된 검색 문구를 사용한다. 이 경로는 벡터 검색이 비활성이거나 유효한 결과를 내지 못할 때 최후의 수단으로 호출된다. 의미적 일치까지 보장하지는 않으나, 광범위한 문서 집합에서 어휘적으로 근접한 절을 신속히 건져 근거 공백을 줄이는 보수적 안전망(conservative safety net) 역할을 한다.
+3. **TF-IDF 키워드 대체 경로(3계층):** TF-IDF 경로는 각 청크를 용어 빈도와 문서 집합 전체의 희소성을 반영한 유사도 점수로 순위화하여 상위 소수만 반환한다. 질의는 호출 시 입력하거나 규칙 매핑에 저장한 검색 문구를 사용한다. 이 경로는 벡터 검색이 비활성이거나 유효한 결과를 반환하지 못할 때 호출한다. 의미적 일치를 보장하지는 않지만, 광범위한 문서 집합에서 어휘적으로 근접한 절을 검색하여 증거 공백을 줄이는 보수적 안전망으로 사용한다.
 
-위와 같이 선별·정렬된 근거 청크는 참고 지침 블록으로 프롬프트에 주입되며, 최종 보고 JSON의 evidence 필드에도 요약 형태로 추가되어 근거를 제공한다.
+위와 같이 선별·정렬한 증거 청크는 참고 지침 블록으로 프롬프트에 주입하며, 최종 보고 JSON의 `evidence` 필드에도 요약 형태로 추가하여 증거를 제공한다.
 
-**프롬프트 구성(Prompt Construction).** 위의 발췌와 근거 검색을 거친 뒤 프롬프트를 구성한다. 본 시스템의 프롬프트 설계는 단순한 역할 지시와 코드 삽입 구조를 넘어, 판정 정확도와 오탐 억제를 동시에 달성하기 위해 3개 계층(tier)에 걸쳐 8가지 기법을 결합한 계층적 하이브리드 프롬프팅(Hierarchical Hybrid Prompting) 아키텍처를 채택한다. 1계층(Tier 1)은 모든 후보에 공통으로 적용되는 판단 프레임을 설정하고, 2계층(Tier 2)은 규칙의 특성에 따라 선택적으로 판단을 실행하며, 3계층(Tier 3)은 모델 출력에 적용되는 후처리 안전망이다. 각 기법의 구성은 표 5와 같다.
+**프롬프트 구성(Prompt Construction).** 위의 발췌와 증거 검색을 거친 뒤 프롬프트를 구성한다. 본 시스템의 프롬프트 설계는 단순한 역할 지시와 코드 삽입 구조를 넘어, 판정 정확도와 오탐(FP) 억제를 동시에 달성하기 위해 3개 계층(tier)에 걸쳐 8가지 기법을 결합한 계층적 하이브리드 프롬프팅(Hierarchical Hybrid Prompting) 아키텍처를 채택한다. 1계층(Tier 1)은 모든 후보에 공통으로 적용되는 판단 프레임을 설정하고, 2계층(Tier 2)은 규칙의 특성에 따라 선택적으로 판단을 실행하며, 3계층(Tier 3)은 모델 출력에 적용되는 후처리 안전망이다. 각 기법의 구성은 표 5와 같다.
 
-1계층은 판단 관점을 고정하는 프레임 역할을 한다. Persona Prompting은 모델에 "KCMVP 암호모듈 보안 검토 전문가" 역할을 부여하여, 일반적인 보안 지식이 아니라 KCMVP 규칙에 따라 판정하도록 한다. RAG Guideline Injection은 L2 근거 검색에서 수집한 KCMVP 지침 발췌를 프롬프트 앞부분에 삽입하여 규칙 출처와 판정 기준을 명시한다. GCFS(Global Code Flow Context Injection)는 심볼 그래프의 함수 정의와 호출 관계를 파일별 키 생명주기 흐름(key-lifecycle flow)으로 압축하여, 단일 스니펫만으로는 보이지 않는 프로젝트 전체의 키 생성–사용–제거 흐름을 모델에 전달한다.
+1계층은 판단 관점을 고정하는 프레임 역할을 한다. Persona Prompting은 모델에 "KCMVP 암호모듈 보안 검토 전문가" 역할을 부여하여, 일반적인 보안 지식이 아니라 KCMVP 규칙에 따라 판정하도록 한다. RAG Guideline Injection은 L2 증거 검색에서 수집한 KCMVP 지침 발췌를 프롬프트 앞부분에 삽입하여 규칙 출처와 판정 기준을 명시한다. GCFS(Global Code Flow Context Injection)는 심볼 그래프의 함수 정의와 호출 관계를 파일별 키 생명주기 흐름(key-lifecycle flow)으로 압축하여, 단일 스니펫만으로는 보이지 않는 프로젝트 전체의 키 생성–사용–제거 흐름을 모델에 전달한다.
 
 2계층은 각 규칙의 특성에 따라 선택적으로 적용된다. Few-shot 예시는 문맥적으로 파악하기 어려운 18개 규칙에 대해 위반·정상·FP 코드 예시를 제시하여 경계 케이스(boundary-case) 판정 기준을 구체적인 코드 패턴으로 보여준다. Structured evidence는 AST 검사기와 심볼 그래프에 의존하는 규칙에 대해 타입 별칭, 배열 초기화 값, 함수 파라미터, 호출 경로를 명시적으로 삽입한다. CoT(Chain-of-Thought)는 LEA 라운드 키 인덱스 경계나 CBC/CTR/GCM 초기화 순서처럼 다단계 문맥 이해가 핵심인 23개 규칙에 적용되며, 단계적 추론 순서를 명시하여 모델의 추론 사슬(chain of reasoning)을 유도한다. 확신도 요청(confidence request)은 모든 후보에 대해 confidence 필드에 0~100 정수를 요구하며, 이 값은 3계층 후처리에 활용된다.
 
-3계층은 판정 결과의 안전성을 검증하는 후처리 계층이다. 비대칭 FP 임계값(asymmetric FP threshold)은 ast/semantic 후보에 대해 confidence < 25, regex 후보에 대해 confidence < 40을 FP 제거 기준으로 설정하고, confidence ≥ 80인 경우에는 모델 판정과 무관하게 위반을 강제 유지하여 recall을 보호한다. 이중 검증(Double verification)은 FP 제거 방향으로 기우는 판정에 대해 "시니어 감사자(senior auditor)" 페르소나로 2차 검증을 수행하여, 실제 위반이 오탐으로 잘못 제거되는 FN 위험을 차단한다.
+3계층은 판정 결과를 보수적으로 후처리하는 계층이다. 비대칭 오탐(FP) 임계값은 `ast`/`semantic` 후보에서 확신도 25 미만, `regex` 후보에서 확신도 40 미만인 경우를 오탐(FP) 제거 기준으로 설정하며, 확신도 80 이상인 후보는 유지한다. 이중 검증은 오탐(FP) 제거 방향의 판정에 2차 검토를 적용하여 실제 위반을 제거할 미탐(FN) 위험을 줄이는 것을 목적으로 하지만, 해당 위험을 완전히 제거하지는 못한다.
 
 **표 5: 계층적 하이브리드 프롬프팅 아키텍처 구성.**
 
@@ -849,11 +849,11 @@ L2는 근거 검색과 입력 구성을 통해 맥락을 공급하는 단계이�
 
 #### 3.3.4 L3: LLM 기반 의미론적 재판정 (LLM-based Semantic Re-evaluation)
 
-L3은 언어 모델이 프롬프트를 통해 받은 위반 후보의 맥락을 읽고, 각 후보가 오탐인지 위반인지 최종 판정하는 단계이다. L1과 L2의 결과를 프롬프트 입력으로 받아, Gemini 2.5 Flash Lite를 사용하여 최종 판정을 수행한다. 그림 4는 L3 단계의 전체 흐름을 나타낸다.
+L3은 언어 모델이 프롬프트를 통해 받은 위반 후보의 맥락을 읽고, 각 후보가 오탐(FP)인지 위반인지 최종 판정하는 단계이다. L1과 L2의 결과를 프롬프트 입력으로 받아, Gemini 2.5 Flash Lite를 사용하여 최종 판정을 수행한다. 그림 4는 L3 단계의 전체 흐름을 나타낸다.
 
-**LLM 판정(LLM Decision).** 모델의 판정 기준은 다음과 같이 프롬프트에 내장된다. rule_id에 대응하는 규칙 서술은 규칙별 판정용 문자열 사전과 YAML 등에서 넘어온 ai_context(규정 상세)로 구성되며, 필요 시 L2(근거 검색) 단계에서 RAG로 가져온 KCMVP 지침 발췌가 같은 프롬프트 블록에 실린다. 프롬프트는 pattern_type에 따라 유형별 지침으로 분기되어, 존재형(regex 등)과 부재형(semantic, ast)마다 오탐/위반 조건과 확신도 하한이 다르도록 설계된다.
+**LLM 판정(LLM Decision).** 모델의 판정 기준은 다음과 같이 프롬프트에 내장된다. rule_id에 대응하는 규칙 서술은 규칙별 판정용 문자열 사전과 YAML 등에서 넘어온 ai_context(규정 상세)로 구성되며, 필요 시 L2(증거 검색) 단계에서 RAG로 가져온 KCMVP 지침 발췌가 같은 프롬프트 블록에 실린다. 프롬프트는 pattern_type에 따라 유형별 지침으로 분기되어, 존재형(regex 등)과 부재형(semantic, ast)마다 오탐(FP)/위반 조건과 확신도 하한이 다르도록 설계된다.
 
-LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제 위반인지 오탐인지 판별한다. 구조화 출력(structured output)의 is_real_issue 필드가 true이면 위반을 유지하고, false이면 오탐으로 최종 배제한다. 판정 근거는 description에 작성되어, 사용자가 패치·권고를 검토할 때 근거를 확인할 수 있게 함으로써 LLM 판정의 설명 가능성을 높인다.
+LLM은 프롬프트와 코드 슬라이스를 읽고 실제 위반인지 오탐(FP)인지 판별한다. 구조화 출력의 `is_real_issue` 필드가 `true`이면 위반을 유지하고, `false`이면 오탐(FP)으로 배제한다. 판정 이유는 `description`에 기록하며, 사용자가 수정 권고를 검토할 때 판단 맥락을 확인하도록 한다.
 
 또한 1차 응답의 confidence가 대략 65~74 범위에 걸치는 경우, 재판정 프롬프트를 한 번 더 보내 이유와 점수를 재정리한다. L2에서 충분한 맥락이 제공되지 않은 경우에는 insufficient_context를 true로 설정할 수 있으며, 이를 통해 짧은 발췌만으로 위반을 단정하지 않고 보수적으로 남기거나 후속 검토로 넘긴다.
 
@@ -861,7 +861,7 @@ LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제
 
 **최종 출력(Final Output).** 리스팅 3은 구현체가 모델에게 요구하는 구조화된 최종 응답의 뼈대를 보여준다. 자유 서술(free-form description)만 허용하면 보고서 집계와 패치/권고 문구 연계를 안정적으로 자동화하기 어렵고 판정이 까다로우므로, 최종 출력은 JSON 형식으로 LLM에게 강제한다.
 
-최종 출력에서 is_real_issue는 해당 후보를 최종 위반 집합에 남길지 목록에서 제거할지를 결정하는 플래그이고, confidence는 동일 불리언 분류 안에서도 판단의 수치적 강도를 보존하여 재검토 메타데이터로 쓰인다. suggestion은 수정 방향을 한 줄로 고정하여 패치 생성 프롬프트나 UI 권고에 그대로 실을 수 있게 한다. 앞서 서술한 대로 description은 판정 근거를 사람이 읽을 수 있게 기록하는 필드이며, insufficient_context는 슬라이스가 너무 짧아 이번 호출만으로 판단을 확정하지 않겠다는 신호로서 후속 처리·표시에 쓰인다.
+최종 출력에서 is_real_issue는 해당 후보를 최종 위반 집합에 남길지 목록에서 제거할지를 결정하는 플래그이고, confidence는 동일 불리언 분류 안에서도 판단의 수치적 강도를 보존하여 재검토 메타데이터로 쓰인다. suggestion은 수정 방향을 한 줄로 고정하여 패치 생성 프롬프트나 UI 권고에 그대로 실을 수 있게 한다. 앞서 서술한 대로 description은 판정 증거를 사람이 읽을 수 있게 기록하는 필드이며, insufficient_context는 슬라이스가 너무 짧아 이번 호출만으로 판단을 확정하지 않겠다는 신호로서 후속 처리·표시에 쓰인다.
 
 **Listing 3: LLM 출력 구조 예시.**
 ```json
@@ -874,7 +874,7 @@ LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제
 }
 ```
 
-**패치 노트 및 보고서 작성(Patch Notes and Report Generation).** L3 최종 판정 후, 위반 목록을 심각도와 확신도 순으로 정렬하고 LLM 기반의 코드 및 문서 패치를 자동 생성한다. 코드 패치는 L2의 RAG 근거와 위반 코드를 바탕으로 수정 예시를 도출하며, 문서 패치는 설계 누락 항목에 대해 KCMVP 지침 기반의 작성 예시를 제공한다. 최종적으로 위반 통계와 LLM의 종합 평가(합격 가능성 및 수정 우선순위)가 포함된 검증 보고서를 마크다운 및 PDF 형태로 산출한다.
+**패치 노트 및 보고서 작성(Patch Notes and Report Generation).** L3 최종 판정 후, 위반 목록을 심각도와 확신도 순으로 정렬하고 LLM 기반의 코드 및 문서 패치를 자동 생성한다. 코드 패치는 L2의 RAG 증거와 위반 코드를 바탕으로 수정 예시를 도출하며, 문서 패치는 설계 누락 항목에 대해 KCMVP 지침 기반의 작성 예시를 제공한다. 최종적으로 위반 통계와 LLM의 종합 평가(합격 가능성 및 수정 우선순위)가 포함된 검증 보고서를 마크다운 및 PDF 형태로 산출한다.
 
 **추적성 검증(Traceability Verification).** KCMVP 인증에서는 소스코드뿐 아니라 설계서, 형상관리 문서, 시험서, 모듈이 서로 일관성을 유지해야 한다. 코드에 구현된 API가 설계서에 명시되어 있는지, 설계서에 언급된 에러 코드가 실제 소스에 정의되어 있는지, 공개 함수가 시험서에 충분히 드러나는지는 기술 검토 단계에서 반드시 확인해야 하는 항목이다. 본 시스템의 추적성 검증은 전처리 단계에서 생성된 코드 요약과 문서 전처리 결과를 입력받아, 설계서–코드–시험서의 세 축 간 교차 대조(cross-comparison)를 수행한다.
 
@@ -932,13 +932,13 @@ LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제
 
 한국어 번역: 현재 전용 검사기 매핑은 24개의 고유 검사기 구현을 통해 25개의 LEA 규칙 식별자를 포괄하며, 이는 하나의 규칙 식별자가 구현을 공유하기 때문이다.
 
-### 변경 3-5. 3계층 검색 근거의 지위
+### 변경 3-5. 3계층 검색 증거의 지위
 
 ~~Evidence retrieval is divided into three stages, with the most reliable path attempted first. The case in which a rule is directly linked to the original text of an official guideline is prioritized highest in order to clarify provenance; only when that result is absent or insufficient does semantic search reinforce or replace it with related passages. If gaps still remain, the procedure falls back to a path that sweeps a broader document set by keyword and statistical similarity, ultimately focused on reducing evidence gaps.~~
 
 <span style="color:red">Evidence retrieval is divided into three stages, with a direct mapping attempted first. The current corpus contains author-prepared guidance and mappings derived from the cited requirements; it must not be interpreted as a verbatim or authoritative reproduction of an official guideline. When a direct mapping is absent or insufficient, semantic search retrieves related passages, followed by a broader keyword and similarity search. Retrieved passages are supporting context rather than independent validation.</span>
 
-한국어 번역: 근거 검색은 세 단계로 구분하며 직접 매핑을 먼저 시도한다. 현재 코퍼스는 인용한 요구사항으로부터 도출하여 저자가 작성한 지침 및 매핑으로 구성하며, 공식 지침을 그대로 재현한 자료 또는 권위 있는 원문으로 해석해서는 안 된다. 직접 매핑이 없거나 불충분한 경우 의미 검색을 통해 관련 구절을 검색하고, 이후 더 넓은 키워드 및 유사도 검색을 수행한다. 검색한 구절은 독립적인 검증 결과가 아니라 판정을 지원하는 맥락으로 사용한다.
+한국어 번역: 증거 검색은 세 단계로 구분하며 직접 매핑을 먼저 시도한다. 현재 코퍼스는 인용한 요구사항으로부터 도출하여 저자가 작성한 지침 및 매핑으로 구성하며, 공식 지침을 그대로 재현한 자료 또는 권위 있는 원문으로 해석해서는 안 된다. 직접 매핑이 없거나 불충분한 경우 의미 검색을 통해 관련 구절을 검색하고, 이후 더 넓은 키워드 및 유사도 검색을 수행한다. 검색한 구절은 독립적인 검증 결과가 아니라 판정을 지원하는 맥락으로 사용한다.
 
 ### 변경 3-6. Direct Mapping의 지위
 
@@ -946,7 +946,7 @@ LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제
 
 <span style="color:red">Corresponding to the rule-set identifier (`id`), designated author-prepared guidance is loaded. It was constructed as candidate evidence chunks derived from cited cryptographic-module documents. An explicit author-maintained rule--guidance link makes the mapping inspectable, but it is neither an independent validation nor an authoritative reproduction of the source.</span>
 
-한국어 번역: 룰셋 식별자(`id`)에 대응하여 저자가 작성한 지정 지침을 불러온다. 해당 지침은 인용한 암호모듈 문서로부터 도출한 근거 후보 청크로 구성한다. 저자가 명시적으로 유지·관리하는 규칙--지침 연결을 통해 매핑을 점검할 수 있으나, 이를 독립적인 검증이나 권위 있는 원문의 재현으로 간주하지 않는다.
+한국어 번역: 룰셋 식별자(`id`)에 대응하여 저자가 작성한 지정 지침을 불러온다. 해당 지침은 인용한 암호모듈 문서로부터 도출한 증거 후보 청크로 구성한다. 저자가 명시적으로 유지·관리하는 규칙--지침 연결을 통해 매핑을 점검할 수 있으나, 이를 독립적인 검증이나 권위 있는 원문의 재현으로 간주하지 않는다.
 
 ### 변경 3-7. 이중 검증의 효과 표현
 
@@ -970,9 +970,9 @@ LLM은 이 프롬프트와 함께 주어진 코드 슬라이스를 읽고 실제
 
 <span style="color:red">Tier 3 is a conservative post-processing layer. The asymmetric FP threshold sets confidence < 25 for ast/semantic candidates and confidence < 40 for regex candidates as the criterion for FP removal, and retains candidates when confidence ≥ 80. Double verification applies a second pass to decisions that lean toward FP removal; it is intended to reduce, but cannot eliminate, the risk of removing a true issue.</span>
 
-한국어 번역: Tier 3은 보수적인 후처리 계층이다. 비대칭 오탐 임계값은 `ast`/`semantic` 후보의 확신도가 25 미만이고 `regex` 후보의 확신도가 40 미만인 경우를 오탐 제거 기준으로 설정하며, 확신도가 80 이상인 후보는 유지한다. 이중 검증은 오탐 제거 방향의 판정에 2차 검토를 적용하며, 실제 위반을 제거할 위험을 줄이려는 목적을 가지지만 해당 위험을 완전히 제거하지는 못한다.
+한국어 번역: Tier 3은 보수적인 후처리 계층이다. 비대칭 오탐(FP) 임계값은 `ast`/`semantic` 후보의 확신도가 25 미만이고 `regex` 후보의 확신도가 40 미만인 경우를 오탐(FP) 제거 기준으로 설정하며, 확신도가 80 이상인 후보는 유지한다. 이중 검증은 오탐(FP) 제거 방향의 판정에 2차 검토를 적용하며, 실제 위반을 제거할 위험을 줄이려는 목적을 가지지만 해당 위험을 완전히 제거하지는 못한다.
 
-### 변경 3-10. LLM 판정 기준의 근거 표현
+### 변경 3-10. LLM 판정 기준의 증거 표현
 
 ~~The model's decision criteria are built into the prompt as follows. The rule statement corresponding to `rule_id` is composed of a per-rule decision-use string dictionary and the `ai_context` (specification details) carried over from YAML and similar sources, and when necessary, KCMVP guideline excerpts retrieved by RAG during the L2 (evidence retrieval) stage are placed in the same prompt block. The prompt branches into per-type instructions according to `pattern_type`, designed so that the false-positive/violation conditions and the lower bound of confidence differ between absence types (`semantic`, `ast`) and presence types (`regex`, etc.).~~
 
@@ -1085,7 +1085,7 @@ LEA의 C 언어 구현과 검증된 모듈의 보안 정책을 바탕으로 저�
 
 <span style="color:red">This initial evaluation characterizes detection on the author-constructed dataset and the L3 filtering behavior recorded in a legacy run. Recall measures missed labeled violations, while the filtering indicator records removed author-labeled FP candidates and removed labeled TPs. It does not directly measure human review time. Table 2 reports the legacy values; the original run lacks an immutable manifest tying it to the current repository snapshot.</span>
 
-초기 평가는 저자 구축 데이터셋의 탐지 특성과 기존 실행에서 기록한 L3 필터링 동작을 분석한다. 재현율은 누락된 라벨 위반을 측정하고, 필터링 지표는 제거된 저자 라벨 오탐 후보와 제거된 참양성을 기록한다. 이 지표는 인간 검토 시간을 직접 측정하지 않는다. 표 2는 기존 값을 보고하며, 원 실행과 현재 저장소 스냅샷을 연결하는 불변 매니페스트는 존재하지 않는다.
+초기 평가는 저자 구축 데이터셋의 탐지 특성과 기존 실행에서 기록한 L3 필터링 동작을 분석한다. 재현율은 누락된 라벨 위반을 측정하고, 필터링 지표는 제거된 저자 라벨 오탐(FP) 후보와 제거된 참양성(TP)을 기록한다. 이 지표는 인간 검토 시간을 직접 측정하지 않는다. 표 2는 기존 값을 보고하며, 원 실행과 현재 저장소 스냅샷을 연결하는 불변 매니페스트는 존재하지 않는다.
 
 **Table 2. Code violation detection performance (Sets 1--7, based on 128 GT cases). / 표 2. 코드 위반 탐지 성능.**
 
@@ -1103,13 +1103,13 @@ LEA의 C 언어 구현과 검증된 모듈의 보안 정책을 바탕으로 저�
 
 <span style="color:red">On this dataset, the legacy run recorded all 128 labeled code cases and L3 removed 9 of 46 author-labeled FP candidates without removing an author-labeled TP. These observations motivate the layered design but do not isolate L2 or establish reduced human review effort. Document-rule outputs were inspected qualitatively; no independently labeled document confusion matrix is claimed. Because `missing`-type rules judge absence as a violation, delegation to other files can still yield false candidates.</span>
 
-이 데이터셋에서 기존 실행은 라벨된 코드 사례 128건을 모두 기록하였으며, L3는 저자 라벨 오탐 후보 46건 중 9건을 제거하고 저자 라벨 참양성은 제거하지 않았다. 이 관찰은 계층 구조의 동기를 제공하지만 L2를 분리하거나 인간 검토 노력의 감소를 입증하지 않는다. 문서 규칙 출력은 정성적으로 검토하며 독립 라벨이 부여된 문서 혼동행렬을 주장하지 않는다. `missing` 유형 규칙은 부재를 위반으로 판단하므로 다른 파일에 기능을 위임한 경우에도 오탐 후보가 발생할 수 있다.
+이 데이터셋에서 기존 실행은 라벨된 코드 사례 128건을 모두 기록하였으며, L3는 저자 라벨 오탐(FP) 후보 46건 중 9건을 제거하고 저자 라벨 참양성(TP)은 제거하지 않았다. 이 관찰은 계층 구조의 동기를 제공하지만 L2를 분리하거나 인간 검토 노력의 감소를 입증하지 않는다. 문서 규칙 출력은 정성적으로 검토하며 독립 라벨이 부여된 문서 혼동행렬을 주장하지 않는다. `missing` 유형 규칙은 부재를 위반으로 판단하므로 다른 파일에 기능을 위임한 경우에도 오탐(FP) 후보가 발생할 수 있다.
 
 ### Case Study on a Real Cryptographic Module / 실제 암호 모듈 사례 연구
 
 <span style="color:red">In addition to the synthetic dataset, we inspected a commercial cryptographic module developed for KCMVP submission. A reproducibility audit found that the earlier draft mixed two counting scopes: the archive contains 34 C files with 11,983 physical lines, whereas including 25 header files produces 59 C/H files with 14,511 physical lines. The earlier value of 0.58 cases/KLOC therefore combined a C-only numerator/denominator with a C/H description. Moreover, saved legacy runs contained different candidate counts and lacked immutable code/input/prompt manifests. We consequently withdraw the candidate-frequency value from the performance claims and retain this dataset only as a qualitative case study until a manifest-bound rerun and independent labeling are completed. Certification status alone is not used to label every static-analysis candidate as an FP.</span>
 
-합성 데이터셋과 함께 KCMVP 제출을 위해 개발한 상용 암호 모듈을 검사한다. 재현성 감사 결과, 이전 초안은 C 파일 34개의 11,983 물리적 LOC와 헤더 25개를 포함한 C/H 파일 59개의 14,511 물리적 LOC라는 두 집계 범위를 혼합한다. 따라서 기존의 0.58건/KLOC는 C 전용 분자·분모와 C/H 설명을 결합한 값이다. 저장된 기존 실행의 후보 수 또한 서로 다르고 불변 코드·입력·프롬프트 매니페스트가 없다. 이에 후보 빈도를 성능 주장으로부터 철회하며, 매니페스트 기반 재실행과 독립 라벨링을 완료할 때까지 해당 데이터셋을 정성적 사례 연구로만 유지한다. 인증 상태만으로 모든 정적 분석 후보를 오탐으로 라벨링하지 않는다.
+합성 데이터셋과 함께 KCMVP 제출을 위해 개발한 상용 암호 모듈을 검사한다. 재현성 감사 결과, 이전 초안은 C 파일 34개의 11,983 물리적 LOC와 헤더 25개를 포함한 C/H 파일 59개의 14,511 물리적 LOC라는 두 집계 범위를 혼합한다. 따라서 기존의 0.58건/KLOC는 C 전용 분자·분모와 C/H 설명을 결합한 값이다. 저장된 기존 실행의 후보 수 또한 서로 다르고 불변 코드·입력·프롬프트 매니페스트가 없다. 이에 후보 빈도를 성능 주장으로부터 철회하며, 매니페스트 기반 재실행과 독립 라벨링을 완료할 때까지 해당 데이터셋을 정성적 사례 연구로만 유지한다. 인증 상태만으로 모든 정적 분석 후보를 오탐(FP)으로 라벨링하지 않는다.
 
 **Table 3. Re-audited scope of the commercial-module case study. / 표 3. 상용 모듈 사례 연구의 재감사 범위.**
 
@@ -1123,7 +1123,7 @@ LEA의 C 언어 구현과 검증된 모듈의 보안 정책을 바탕으로 저�
 
 <span style="color:red">Accordingly, this case study cannot presently establish a real-world FP rate or generalization performance. It remains useful for identifying parser, naming, and cross-file limitations, but not for estimating predictive accuracy.</span>
 
-따라서 이 사례 연구는 현재 실제 환경의 오탐률이나 일반화 성능을 확립하지 못한다. 파서, 명명 및 파일 간 분석의 한계를 식별하는 데에는 유용하지만 예측 정확도를 추정하는 근거로 사용하지 않는다.
+따라서 이 사례 연구는 현재 실제 환경의 오탐(FP)률이나 일반화 성능을 확립하지 못한다. 파서, 명명 및 파일 간 분석의 한계를 식별하는 데에는 유용하지만 예측 정확도를 추정하는 근거로 사용하지 않는다.
 
 <span style="color:red">Illustrative candidate classes observed in legacy runs, but not independently labeled, include residual-data clearing items (COM-001). Even when source code contains zeroization, a compiler may eliminate it as a dead store. Future intermediate-representation or symbolic-execution analysis should account for compiler optimization.</span>
 
@@ -1145,11 +1145,11 @@ Items corresponding to the absence of test infrastructure do not surface in func
 
 3. <span style="color:red">**Author-constructed Ground Truth and algorithm scope.** The 128 labeled cases were constructed and reviewed by the authors and are centered on LEA. Independent blinded annotation and algorithm-specific test sets for AES, SEED, and other KCMVP algorithms are required before the reported recall and precision can be generalized.</span>
 
-   **저자 구축 정답 데이터와 알고리즘 범위.** 라벨 사례 128건은 저자가 구축하고 검토하였으며 LEA를 중심으로 한다. 보고한 재현율과 정밀도를 일반화하기 전에 독립 블라인드 주석과 AES, SEED 및 기타 KCMVP 알고리즘별 시험 세트가 요구된다.
+   **저자 구축 정답 라벨과 알고리즘 범위.** 정답 라벨 사례 128건은 저자가 구축하고 검토하였으며 LEA를 중심으로 한다. 보고한 재현율과 정밀도를 일반화하기 전에 독립 블라인드 주석과 AES, SEED 및 기타 KCMVP 알고리즘별 시험 세트가 요구된다.
 
 4. <span style="color:red">**Unisolated contribution of L2.** The reported end-to-end results do not independently quantify the effect of RAG evidence. A controlled paired comparison between L1+L3 without retrieved evidence and L1+L2+L3, holding candidates, prompts, model parameters, and repetitions constant, is required. Until then, L2 is supported as an evidence-provision mechanism rather than as a demonstrated accuracy improvement.</span>
 
-   **분리되지 않은 L2 기여도.** 보고한 종단 간 결과는 RAG 근거의 효과를 독립적으로 정량화하지 않는다. 후보, 프롬프트, 모델 매개변수 및 반복 횟수를 고정한 상태에서 검색 근거를 제외한 L1+L3와 L1+L2+L3를 통제된 쌍으로 비교해야 한다. 그 전까지 L2는 입증된 정확도 향상이 아니라 근거 제공 메커니즘으로 간주한다.
+   **분리되지 않은 L2 기여도.** 보고한 종단 간 결과는 RAG 증거의 효과를 독립적으로 정량화하지 않는다. 후보, 프롬프트, 모델 매개변수 및 반복 횟수를 고정한 상태에서 검색 증거를 제외한 L1+L3와 L1+L2+L3를 통제된 쌍으로 비교해야 한다. 그 전까지 L2는 입증된 정확도 향상이 아니라 증거 제공 메커니즘으로 간주한다.
 
 5. <span style="color:red">**Threshold calibration and operational cost.** The 65--74 re-evaluation interval was selected heuristically. A calibration and threshold-sensitivity analysis is required together with manifest-bound measurements of elapsed time, API calls, tokens, and pricing snapshots. Legacy telemetry is not promoted to a final cost claim because it cannot be tied to an immutable experiment version.</span>
 
@@ -1157,19 +1157,19 @@ Items corresponding to the absence of test infrastructure do not surface in func
 
 6. **Evidence extraction limitations due to document expression diversity.** Security policy documents and design specifications may describe identical requirements using different terminology and structures depending on the authoring organization, format, and version. In particular, for documents centered on tables, appendices, scanned images, and abbreviations, context may become fragmented or inter-item relationships may be lost during the PDF text extraction process. In such cases, the system may fail to retrieve relevant evidence sufficiently, or may link sentences that are semantically adjacent but are not direct evidence. Accordingly, future work requires reinforcement of document structure recognition, table-level parsing, and per-requirement evidence normalization techniques.
 
-   **문서 표현 다양성에 따른 근거 추출 한계.** 보안 정책 문서와 설계 명세서는 작성 기관, 형식 및 버전에 따라 동일한 요구사항을 서로 다른 용어와 구조로 기술할 수 있다. 표, 부록, 스캔 이미지 및 약어 중심의 문서에서는 PDF 텍스트 추출 과정에서 문맥이 단편화되거나 항목 간 관계가 손실될 수 있다. 이 경우 관련 근거를 충분히 검색하지 못하거나 의미상 인접하지만 직접 근거가 아닌 문장을 연결할 수 있다. 따라서 문서 구조 인식, 표 단위 파싱 및 요구사항별 근거 정규화 기법의 강화가 요구된다.
+   **문서 표현 다양성에 따른 증거 추출 한계.** 보안 정책 문서와 설계 명세서는 작성 기관, 형식 및 버전에 따라 동일한 요구사항을 서로 다른 용어와 구조로 기술할 수 있다. 표, 부록, 스캔 이미지 및 약어 중심의 문서에서는 PDF 텍스트 추출 과정에서 문맥이 단편화되거나 항목 간 관계가 손실될 수 있다. 이 경우 관련 증거를 충분히 검색하지 못하거나 의미상 인접하지만 직접 증거가 아닌 문장을 연결할 수 있다. 따라서 문서 구조 인식, 표 단위 파싱 및 요구사항별 증거 정규화 기법의 강화가 요구된다.
 
 # 6. Conclusion / 결론
 
 In this study, we proposed and implemented a hybrid framework for KCMVP pre-compliance inspection that ties rule-based static analysis (L1), RAG-based guideline-evidence attachment (L2), and LLM-based semantic re-evaluation (L3) into a single funnel-shaped pipeline. The system applies rules---covering common security, LEA implementation constraints, multiple modes of operation, submission-document formats, and code--document traceability---that are formalized in YAML, and through the KCMVP guideline mapping linked to the rule identifiers, it allows evidence to be attached to the interpretation of the results.
 
-본 연구에서는 규칙 기반 정적 분석(L1), RAG 기반 지침 근거 첨부(L2) 및 LLM 기반 의미론적 재평가(L3)를 하나의 퍼널형 파이프라인으로 결합한 KCMVP 사전 적합성 검사 하이브리드 프레임워크를 제안하고 구현한다. 시스템은 공통 보안, LEA 구현 제약, 복수 운용 모드, 제출 문서 형식 및 코드-문서 추적성을 포괄하는 YAML 규칙을 적용하며, 규칙 식별자와 연결된 KCMVP 지침 매핑을 통해 결과 해석에 근거를 첨부한다.
+본 연구에서는 규칙 기반 정적 분석(L1), RAG 기반 지침 증거 첨부(L2) 및 LLM 기반 의미론적 재평가(L3)를 하나의 퍼널형 파이프라인으로 결합한 KCMVP 사전 적합성 검사 하이브리드 프레임워크를 제안하고 구현한다. 시스템은 공통 보안, LEA 구현 제약, 복수 운용 모드, 제출 문서 형식 및 코드-문서 추적성을 포괄하는 YAML 규칙을 적용하며, 규칙 식별자와 연결된 KCMVP 지침 매핑을 통해 결과 해석에 증거를 첨부한다.
 
 ~~Through the prototype evaluation, we confirmed the effectiveness of the complementary structure in which the deterministic L1 secures a broad detection coverage and L3 reduces false positives through contextual reasoning. The multi-layered evidence retrieval at the L2 stage attaches standards and guideline citations to the violation items, aiding interpretability and the prioritization of remediation.~~
 
 <span style="color:red">Through the initial LEA-centered prototype evaluation, we observed the complementary behavior in which deterministic L1 provides broad candidate coverage and L3 can remove some labeled false positives through contextual reasoning. The multi-layered evidence retrieval at L2 attaches standards and guideline citations to violation items, but its independent effect on decision accuracy has not yet been established.</span> In addition, the system incorporates practical mechanisms tailored to the non-standard nature of real code, such as preprocessing/parsing fallbacks, domain-oriented false-positive mitigation, and multi-stage detection of common-security rules.
 
-초기 LEA 중심 프로토타입 평가에서는 결정론적 L1이 폭넓은 후보 범위를 제공하고 L3가 문맥적 추론을 통해 일부 라벨 오탐을 제거할 수 있는 상호 보완적 동작을 관찰한다. L2의 다층 근거 검색은 위반 항목에 표준 및 지침 인용을 첨부하지만, 판단 정확도에 대한 독립적 효과는 아직 확립되지 않았다. 또한 시스템은 전처리·파싱 대체 경로, 도메인 중심 오탐 완화 및 공통 보안 규칙의 다단계 탐지 등 비표준적인 실제 코드에 대응하는 실무적 메커니즘을 포함한다.
+초기 LEA 중심 프로토타입 평가에서는 결정론적 L1이 폭넓은 후보 범위를 제공하고 L3가 문맥적 추론을 통해 일부 라벨 오탐(FP)을 제거할 수 있는 상호 보완적 동작을 관찰한다. L2의 다층 증거 검색은 위반 항목에 표준 및 지침 인용을 첨부하지만, 판단 정확도에 대한 독립적 효과는 아직 확립되지 않았다. 또한 시스템은 전처리·파싱 대체 경로, 도메인 중심 오탐(FP) 완화 및 공통 보안 규칙의 다단계 탐지 등 비표준적인 실제 코드에 대응하는 실무적 메커니즘을 포함한다.
 
 On the other hand, this system still remains a pre-certification auxiliary tool. Some of the AST rules rely on a regex fallback, the traceability verification has limitations centered on declaration and text matching, and the experiments were conducted primarily on publicly available and synthetic materials, so they cannot be regarded as representative of the entire set of actually submitted modules. Future work is as follows.
 
@@ -1836,4 +1836,3 @@ On the other hand, this system still remains a pre-certification auxiliary tool.
 
 Building on these directions, we expect that this work can lead to subsequent standardization and tool development aimed at reducing the review costs entailed by certification preparation.
 ```
-
