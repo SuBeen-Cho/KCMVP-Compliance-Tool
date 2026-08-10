@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-11",
+  "sources": [
+    {
+      "id": "kisa-kcmvp-aes-status",
+      "authority": "KISA",
+      "url": "https://seed.kisa.or.kr/kisa/kcmvp/EgovVerification.do",
+      "checked_on": "2026-08-11",
+      "expected": {
+        "algorithm": "AES",
+        "validation_system": "TBD",
+        "test_vectors": "TBD"
+      },
+      "claim_limit": "AES is listed as a KCMVP target, but the official validation system and test vectors were not published at the check date."
+    },
+    {
+      "id": "nist-fips-140-3-ig-version",
+      "authority": "NIST",
+      "url": "https://csrc.nist.gov/projects/cryptographic-module-validation-program/fips-140-3-ig-announcements",
+      "checked_on": "2026-08-11",
+      "expected": {
+        "latest_version_date": "2026-04-09",
+        "displayed_version": "April 9, 2026"
+      },
+      "claim_limit": "The snapshot records the latest version observed on the announcement page; the downloaded guidance document must be separately hash-locked before use as RAG evidence."
+    }
+  ]
+}
