@@ -565,6 +565,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate KCMVP code/design sets reproducibly")
     parser.add_argument("--no-l3", action="store_true", help="Run deterministic L1 only")
     parser.add_argument("--no-rag", action="store_true", help="Disable L2 retrieval/evidence")
+    parser.add_argument("--code-only", action="store_true", help="Evaluate code only; skip document preprocessing and L3")
     parser.add_argument("--sets", default="1-7", help="Comma-separated numbers/ranges, e.g. 1,3-5")
     parser.add_argument("--output", type=Path, help="Result JSON path (overrides EVALUATION_OUTPUT)")
     return parser.parse_args(argv)
@@ -612,8 +613,7 @@ def main(argv: Optional[List[str]] = None):
         expected_inputs.extend(
             p for p in (
                 set_dir / "kcmvp_combined.zip",
-                set_dir / "kcmvp_violations_design.pdf",
-                normalized_child(set_dir, "정답지_위반목록.md"),
+                *((set_dir / "kcmvp_violations_design.pdf", normalized_child(set_dir, "정답지_위반목록.md")) if not args.code_only else ()),
             )
             if p.is_file()
         )
@@ -654,6 +654,9 @@ def main(argv: Optional[List[str]] = None):
             break
         all_code_results.append(code_result)
 
+        if args.code_only:
+            continue
+
         # 설계서 평가
         design_gt = parse_design_gt(gt_path) if gt_path.exists() else []
         if pdf_path.exists():
@@ -692,6 +695,7 @@ def main(argv: Optional[List[str]] = None):
         "timestamp": datetime.now().isoformat(),
         "use_l3": USE_L3,
         "ablation": {"no_rag": NO_RAG},
+        "scope": {"code_only": args.code_only},
         "requested_sets": selected_sets,
         "skipped_sets": skipped_sets,
         "failed_sets": failed_sets,

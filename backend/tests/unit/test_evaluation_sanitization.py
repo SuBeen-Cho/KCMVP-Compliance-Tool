@@ -63,7 +63,8 @@ def test_evaluator_physically_sanitizes_input_and_counts_gt_free_file_as_fp(tmp_
 
 
 def test_cli_set_selection_and_output_parsing(tmp_path):
-    args = MODULE.parse_args(["--no-l3", "--no-rag", "--sets", "1,3-4", "--output", str(tmp_path / "r.json")])
+    args = MODULE.parse_args(["--no-l3", "--no-rag", "--code-only", "--sets", "1,3-4", "--output", str(tmp_path / "r.json")])
     assert MODULE.parse_set_selection(args.sets) == [1, 3, 4]
     assert args.no_l3 and args.no_rag
+    assert args.code_only
     assert args.output == tmp_path / "r.json"
