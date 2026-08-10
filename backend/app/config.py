@@ -5,7 +5,7 @@
 """
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 # backend/.env 를 항상 사용 (uvicorn 실행 디렉터리와 무관)
@@ -61,9 +61,7 @@ class Settings(BaseSettings):
     RAG_TOP_K: int = 5
     CHROMA_PERSIST_DIR: str = "./data/chroma"
 
-    class Config:
-        env_file = str(_ENV_FILE)
-        extra = "ignore"
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
 
 settings = Settings()

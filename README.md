@@ -41,7 +41,7 @@
 
 |  | Feature | Description |
 |--|---------|-------------|
-| **L1** | Static Code Analysis | Parses C/C++ source via AST + regex. Checks LEA/ARIA + 8 operation modes with 170+ rules |
+| **L1** | Static Code Analysis | Parses C/C++ source via AST + regex. Runs 160+ YAML checks centered on LEA across 8 operation modes |
 | **L1** | Document Validation | Parses design docs, configuration management, and test report PDFs by section/table structure |
 | **L2** | Evidence Mapping | Links each rule to KCMVP guideline references via RAG |
 | **L3** | LLM Re-evaluation | Gemini verifies semantic validity of candidate violations and filters out false positives |
