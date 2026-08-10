@@ -21,8 +21,11 @@ SOURCE_LABEL_MARKER_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 CANDIDATE_LABEL_MARKER_RE = re.compile(
-    r"(?<![A-Za-z0-9_])(?:위반|정답|TP|FP|FN|true[ _-]?positive|false[ _-]?positive|"
-    r"false[ _-]?negative|ground[ _-]?truth|expected[ _-]?label|verdict|answer)\b",
+    # A generated detector message may legitimately describe a "위반".  Only
+    # the answer-annotation form is label bearing; the physical source sanitizer
+    # removes it before L1, and this check prevents it from being reintroduced.
+    r"(?:\[\s*위반\b|(?<![A-Za-z0-9_])(?:정답|TP|FP|FN|true[ _-]?positive|false[ _-]?positive|"
+    r"false[ _-]?negative|ground[ _-]?truth|expected[ _-]?label|verdict|answer)\b)",
     re.IGNORECASE,
 )
 SECRET_MARKER_RE = re.compile(r"AIza[0-9A-Za-z_-]{20,}")

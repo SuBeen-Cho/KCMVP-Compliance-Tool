@@ -214,6 +214,24 @@ def test_source_identifier_named_ground_truth_is_not_a_label(tmp_path):
     assert build_snapshot(root, [], set_id="set-1", provenance=PROVENANCE)["sources"]
 
 
+def test_generated_violation_message_is_not_treated_as_answer_label(tmp_path):
+    snapshot = build_snapshot(
+        _sources(tmp_path),
+        [{"file": "src/a.c", "rule_id": "X-1", "message": "라운드 경계 조건 위반"}],
+        set_id="set-1", provenance=PROVENANCE,
+    )
+    assert snapshot["candidates"][0]["payload"]["message"].endswith("위반")
+
+
+def test_bracketed_violation_annotation_is_rejected_from_candidate(tmp_path):
+    with pytest.raises(SnapshotError, match="label marker"):
+        build_snapshot(
+            _sources(tmp_path),
+            [{"file": "src/a.c", "rule_id": "X-1", "snippet": "// [위반: X-1]"}],
+            set_id="set-1", provenance=PROVENANCE,
+        )
+
+
 def test_noncanonical_json_and_malformed_items_are_rejected(tmp_path):
     root = _sources(tmp_path)
     with pytest.raises(SnapshotError, match="canonical JSON"):
