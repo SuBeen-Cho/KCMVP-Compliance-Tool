@@ -9,8 +9,139 @@
 """
 
 import re
+from pathlib import Path
 
 import pytest
+
+
+class TestAlgorithmDomainAnchor:
+    """알고리즘 규칙이 관련 구현 파일에만 적용되는지 검증한다."""
+
+    @pytest.mark.rule_engine
+    def test_lea_filename_behavior_is_preserved(self):
+        from app.services.rule_engine_service import _is_algorithm_impl_file
+
+        assert _is_algorithm_impl_file("src/lea_core.c", "", "LEA")
+        assert _is_algorithm_impl_file("src/my_lea_port.c", "", "lea")
+        assert not _is_algorithm_impl_file("src/aes_core.c", "lea_encrypt();", "LEA")
+
+    @pytest.mark.rule_engine
+    def test_aes_filename_and_established_symbol_anchors(self):
+        from app.services.rule_engine_service import _is_algorithm_impl_file
+
+        assert _is_algorithm_impl_file("src/aes_core.c", "", "AES")
+        assert _is_algorithm_impl_file("src/rijndael_port.cpp", "", "AES")
+        assert _is_algorithm_impl_file(
+            "src/cipher.c", "int AES_set_encrypt_key(void);", "AES"
+        )
+        assert _is_algorithm_impl_file(
+            "src/cipher.c", "int mbedtls_aes_setkey_enc(void);", "AES"
+        )
+        for filename in ("vpaes.c", "bsaes.c", "aesni.c"):
+            assert _is_algorithm_impl_file(filename, "", "AES")
+        assert not _is_algorithm_impl_file(
+            "src/aria_core.c", "/* AES is supported by another module. */", "AES"
+        )
+
+    @pytest.mark.rule_engine
+    def test_algorithm_anchors_cover_seed_aria_and_path_edges(self):
+        from app.services.rule_engine_service import _is_algorithm_impl_file
+
+        assert _is_algorithm_impl_file("crypto\\seed\\seed.c", "", "SEED")
+        assert _is_algorithm_impl_file("ARIA implementation/core.c", "", "ARIA")
+        assert _is_algorithm_impl_file("cipher.c", "SEED_set_key(key, &ks);", "SEED")
+        assert _is_algorithm_impl_file("cipher.c", "EVP_aria_128_gcm();", "ARIA")
+        assert _is_algorithm_impl_file("cipher.cpp", "ARIA::Base::UncheckedSetKey();", "ARIA")
+        assert not _is_algorithm_impl_file("not-aes.c", "int helper(void);", "AES")
+        assert not _is_algorithm_impl_file("non_seed.c", "int helper(void);", "SEED")
+
+    @pytest.mark.rule_engine
+    def test_registry_strings_and_unknown_algorithms_fail_closed(self):
+        from app.services.rule_engine_service import _is_algorithm_impl_file
+
+        assert not _is_algorithm_impl_file(
+            "cipher_registry.c", 'const char *name = "EVP_aes_128_gcm()";', "AES"
+        )
+        assert not _is_algorithm_impl_file(
+            "cipher_registry.c", 'const char *name = "EVP_seed_cbc()";', "SEED"
+        )
+        assert not _is_algorithm_impl_file(
+            "cipher_registry.c", "/* EVP_aes_128_gcm(); */", "AES"
+        )
+        assert not _is_algorithm_impl_file(
+            "cipher_registry.c", "// SEED_set_key(key, &ks);", "SEED"
+        )
+        assert not _is_algorithm_impl_file("foo.c", "foo_encrypt();", "FOO")
+        assert not _is_algorithm_impl_file("aes.c", "AES_encrypt();", "")
+
+    @pytest.mark.rule_engine
+    def test_aes_rule_is_gated_away_from_non_aes_file(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        rules_dir = tmp_path / "rules"
+        algorithm_dir = rules_dir / "algorithm"
+        algorithm_dir.mkdir(parents=True)
+        (algorithm_dir / "aes.yaml").write_text(
+            """rules:
+- id: AES-TEST-001
+  category: algorithm
+  algorithm: AES
+  name: AES domain gate test
+  pattern_type: regex
+  pattern: BAD_AES_VALUE
+  severity: high
+""",
+            encoding="utf-8",
+        )
+        aes_file = tmp_path / "aes_core.c"
+        aria_file = tmp_path / "aria_core.c"
+        aes_file.write_text("int BAD_AES_VALUE = 1;\n", encoding="utf-8")
+        aria_file.write_text("int BAD_AES_VALUE = 1;\n", encoding="utf-8")
+        preprocess_result = {
+            "files": [{"path": str(aes_file)}, {"path": str(aria_file)}]
+        }
+
+        findings = run_rule_engine(
+            preprocess_result, rules_dir, tmp_path, algorithms=["AES"]
+        )
+
+        assert [finding["file"] for finding in findings] == ["aes_core.c"]
+
+    @pytest.mark.rule_engine
+    def test_project_missing_rule_search_is_algorithm_scoped(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        rules_dir = tmp_path / "rules"
+        algorithm_dir = rules_dir / "algorithm"
+        algorithm_dir.mkdir(parents=True)
+        (algorithm_dir / "aes.yaml").write_text(
+            """rules:
+- id: AES-TEST-002
+  category: algorithm
+  algorithm: AES
+  name: AES project domain gate test
+  pattern_type: missing
+  pattern: AES_REQUIRED_MARKER
+  scope: project
+  severity: high
+""",
+            encoding="utf-8",
+        )
+        aes_file = tmp_path / "aes_core.c"
+        aria_file = tmp_path / "aria_core.c"
+        aes_file.write_text("int aes_impl(void) { return 0; }\n", encoding="utf-8")
+        aria_file.write_text("int AES_REQUIRED_MARKER = 1;\n", encoding="utf-8")
+
+        findings = run_rule_engine(
+            {"files": [{"path": str(aes_file)}, {"path": str(aria_file)}]},
+            rules_dir,
+            tmp_path,
+            algorithms=["AES"],
+        )
+
+        assert len(findings) == 1
+        assert findings[0]["rule_id"] == "AES-TEST-002"
+        assert findings[0]["file"] == "aes_core.c"
 
 
 # ======================================================================

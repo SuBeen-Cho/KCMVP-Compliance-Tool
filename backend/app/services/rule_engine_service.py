@@ -80,6 +80,86 @@ def _is_lea_impl_file(fname_lower: str) -> bool:
     return "lea" in fname_lower
 
 
+# Algorithm-specific source anchors.  These are deliberately identifiers used
+# by established implementations rather than bare prose keywords: comments that
+# merely mention an algorithm must not opt an unrelated file into its rules.
+_ALGORITHM_CONTENT_ANCHORS: Dict[str, re.Pattern] = {
+    "AES": re.compile(
+        r"(?:\bAES_(?:set_(?:encrypt|decrypt)_key|encrypt|decrypt)\s*\(|"
+        r"\bmbedtls_aes_\w+\s*\(|\bEVP_aes_\w+\s*\(|"
+        r"\bRijndael(?:::\w+)+\s*\(|"
+        r"\bAES_(?:128|192|256)(?:::\w+)+\s*\()",
+        re.IGNORECASE,
+    ),
+    "SEED": re.compile(
+        r"(?:\bSEED_(?:set_key|encrypt|decrypt)\s*\(|"
+        r"\bEVP_seed_\w+\s*\(|\bSEED(?:::\w+)+\s*\()",
+        re.IGNORECASE,
+    ),
+    "ARIA": re.compile(
+        r"(?:\bARIA_(?:set_(?:encrypt|decrypt)_key|encrypt|decrypt)\s*\(|"
+        r"\bEVP_aria_\w+\s*\(|\bARIA(?:::\w+)+\s*\()",
+        re.IGNORECASE,
+    ),
+}
+
+_ALGORITHM_FILENAME_ALIASES: Dict[str, tuple[str, ...]] = {
+    "AES": ("aes", "rijndael", "vpaes", "bsaes", "aesni"),
+    "SEED": ("seed",),
+    "ARIA": ("aria",),
+}
+
+_SUPPORTED_ALGORITHM_ANCHORS = frozenset({"LEA", "AES", "SEED", "ARIA"})
+_C_STRING_OR_CHAR_LITERAL_RE = re.compile(
+    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.DOTALL
+)
+
+
+def _is_algorithm_impl_file(
+    filename: str,
+    content: str,
+    algorithm: str,
+) -> bool:
+    """Return whether a file is an implementation of ``algorithm``.
+
+    LEA retains its historical filename-only behavior exactly.  Other
+    algorithms use a token-bounded path anchor; a small allow-list of
+    implementation symbols additionally covers generic filenames such as
+    ``cipher.c`` without treating a prose mention as implementation evidence.
+    Unknown or empty algorithm names fail closed.
+    """
+    algorithm_upper = (algorithm or "").strip().upper()
+    filename_lower = (filename or "").lower()
+    if algorithm_upper not in _SUPPORTED_ALGORITHM_ANCHORS:
+        return False
+    if algorithm_upper == "LEA":
+        return _is_lea_impl_file(filename_lower)
+
+    tokens = _ALGORITHM_FILENAME_ALIASES[algorithm_upper]
+    for token in tokens:
+        filename_anchor = re.compile(
+            rf"(?:^|[\\/_.\s-]){re.escape(token)}(?:[\\/_.\s-]|$)",
+            re.IGNORECASE,
+        )
+        match = filename_anchor.search(filename_lower)
+        if match:
+            prefix = filename_lower[:match.start()].rstrip("\\/")
+            basename_prefix = re.split(r"[\\/]", prefix)[-1]
+            # A basename such as not-aes.c/non_aes.c explicitly negates the
+            # token. Content evidence may still identify a real implementation.
+            if re.search(r"(?:^|[_.\s-])(?:not|non)$", basename_prefix):
+                continue
+            return True
+
+    content_anchor = _ALGORITHM_CONTENT_ANCHORS.get(algorithm_upper)
+    # Keep this helper safe for direct callers as well as run_rule_engine,
+    # which already supplies stripped_content.
+    code_only = _C_STRING_OR_CHAR_LITERAL_RE.sub(
+        "", _strip_c_comments(content or "")
+    )
+    return bool(content_anchor and content_anchor.search(code_only))
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 파일 분류: impl / test / data / benchmark / wrapper
 # 테스트/벤치마크/데이터/wrapper 파일에는 missing 규칙을 적용하지 않음.
@@ -1929,18 +2009,23 @@ def run_rule_engine(
         pattern      = rule.get("pattern")
 
         # ── 알고리즘 스코프 사전 필터 ─────────────────────────────────────────
-        # algorithm 카테고리(LEA 전용) 및 mode 카테고리 규칙은 LEA 관련 파일에만 적용.
+        # algorithm 카테고리는 rule.algorithm에 해당하는 구현 파일에만 적용.
+        # mode 카테고리는 현재 LEA 중심 파이프라인의 기존 필터를 유지한다.
         # LEA 관련 파일 = "lea" 포함 OR 비-LEA 알고리즘 키워드(aria, sha, drbg 등) 미포함.
         # COM-* (common 카테고리)은 모든 파일에 적용 유지.
         _rc = rule.get("category", "")
         _ri = rule.get("id", "").upper()
-        _is_lea_scoped = _rc == "algorithm" or _rc == "mode"
         if _rc == "algorithm":
-            # algorithm 카테고리: LEA 내부 구현 파일(파일명에 'lea' 포함)에만 적용
-            # violations_cbc.c, violations_ctr.c 등 모드 시연 파일 제외
+            # 알고리즘 내부 규칙은 해당 구현 파일에만 적용한다. 규칙에 algorithm
+            # 메타데이터가 없거나 알고리즘을 식별할 수 없으면 fail closed 한다.
+            _algorithm = str(rule.get("algorithm") or "")
             _active_cache = [
                 item for item in file_cache
-                if _is_lea_impl_file((item.get("display") or "").lower())
+                if _is_algorithm_impl_file(
+                    item.get("display") or "",
+                    item.get("stripped_content") or "",
+                    _algorithm,
+                )
             ]
         elif _rc == "mode":
             # mode 카테고리: LEA 관련 파일 모두 포함 (cipher.c, violations_cbc.c 등)
@@ -2001,7 +2086,14 @@ def run_rule_engine(
                         return  # 이 모드를 구현하는 파일 없음 → missing 규칙 skip
 
             _target_files = _ci_files if _is_submission_artifact_rule(_ri) and _ci_files else _active_cache
-            _search_files = _ci_files if _is_submission_artifact_rule(_ri) and _ci_files else file_cache
+            # Algorithm rules must not be satisfied by a different algorithm's
+            # files. Submission-artifact rules preserve their check_in scope.
+            if _is_submission_artifact_rule(_ri) and _ci_files:
+                _search_files = _ci_files
+            elif _rc == "algorithm":
+                _search_files = _active_cache
+            else:
+                _search_files = file_cache
 
             violations.extend(
                 _apply_project_missing_rule(
