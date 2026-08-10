@@ -75,3 +75,80 @@ def test_l3_cache_key_changes_with_prompt_namespace(monkeypatch):
     first = prompt_builder._l3_cache_key("LEA-010", "code")
     monkeypatch.setattr(prompt_builder, "_L3_PROMPT_CACHE_VERSION", "next-version")
     assert first != prompt_builder._l3_cache_key("LEA-010", "code")
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("detection_semantics", "structural_violation"),
+        ("pattern_type", "ast"),
+        ("ast_evidence", "round mismatch"),
+        ("ai_context", "FIPS table"),
+    ],
+)
+def test_l3_cache_key_isolates_detection_inputs(field, value):
+    base = prompt_builder._l3_cache_key("AES-001", "code")
+    assert base != prompt_builder._l3_cache_key("AES-001", "code", **{field: value})
+
+
+def test_semantic_order_violation_is_not_prompted_as_absence():
+    candidate = {
+        "rule_id": "COM-005", "pattern_type": "semantic",
+        "detection_semantics": "structural_violation", "message": "호출 순서 오류",
+    }
+    prompt = prompt_builder._build_single_prompt("online.c", candidate, "update(); init();")
+    assert "탐지 의미: 구조 위반" in prompt
+    assert "이 위반은 \"필수 보안 패턴의 부재\"" not in prompt
+
+
+def test_semantic_absence_keeps_absence_guidance():
+    candidate = {
+        "rule_id": "LEA-061", "pattern_type": "semantic",
+        "detection_semantics": "required_absence", "message": "키 길이 지원 부재",
+    }
+    prompt = prompt_builder._build_single_prompt("lea.c", candidate, "void f(void) {}")
+    assert "탐지 의미: 패턴 부재 위반" in prompt
+    assert "confidence ≥ 65" in prompt
+
+
+def test_ast_contradiction_is_structural_in_single_and_batch_prompts():
+    candidate = {
+        "rule_id": "AES-001", "pattern_type": "ast",
+        "detection_semantics": "structural_violation", "message": "키 길이-라운드 모순",
+        "ast_evidence": "16-byte key selects 14 rounds",
+    }
+    single = prompt_builder._build_single_prompt("aes.c", candidate, "rounds = 14;")
+    batch = prompt_builder._build_batch_prompt(
+        "aes.c", [{"violation": candidate, "code_block": "rounds = 14;"}],
+    )
+    assert "탐지 의미: 구조 위반" in single
+    assert "탐지 의미: 구조 위반" in batch
+    assert "[패턴 부재 위반" not in batch
+    assert "[구조 위반 — 명시적 구조 모순이 확인되고 confidence≥75" in batch
+
+
+def test_ast_fallback_without_evidence_is_not_described_as_ast_fact():
+    candidate = {
+        "rule_id": "X-AST", "pattern_type": "ast",
+        "detection_semantics": "required_absence", "message": "fallback only",
+    }
+    single = prompt_builder._build_single_prompt("x.c", candidate, "void f(void) {}")
+    batch = prompt_builder._build_batch_prompt(
+        "x.c", [{"violation": candidate, "code_block": "void f(void) {}"}],
+    )
+    assert "C&A Phase 1: AST 구조 분석 결과" not in single
+    assert "C&A AST 분석 결과" not in batch
+    assert "탐지 의미: 패턴 부재 위반" in single
+
+
+def test_required_absence_rejudge_is_recall_first_and_requests_evidence():
+    candidate = {
+        "rule_id": "LEA-061", "pattern_type": "semantic",
+        "detection_semantics": "required_absence",
+    }
+    prompt = prompt_builder._build_rejudge_prompt(
+        "lea.c", candidate, "code", {"confidence": 70, "description": "first"},
+    )
+    assert "불확실성만으로 false로 변경하지 말고" in prompt
+    assert "insufficient_context=true로 표시하고 후보를 유지" in prompt
+    assert '"evidence_type"' in prompt

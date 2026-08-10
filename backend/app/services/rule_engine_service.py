@@ -1072,6 +1072,9 @@ def _apply_rule_to_file(
         # COM-003처럼 여러 줄에 걸친 블록(하드코딩 배열 등)을 한 덩어리로 다루기 위해
         # 매칭 시작 줄(line)과 끝 줄(end_line)을 함께 기록한다.
         lines = content.splitlines()
+        # COM-003 may have many regex hits in one file. Build the immutable
+        # declaration/init fact index lazily once, then reuse it for all hits.
+        _com003_fact_index = None
         for match in compiled.finditer(content):
             try:
                 rel_path = file_path.resolve().relative_to(job_root.resolve())
@@ -1113,8 +1116,16 @@ def _apply_rule_to_file(
                         continue
                 # P0: libclang InitListExpr/PARM_DECL 기반 FP 검증 (CryptoGuard backward slicing)
                 try:
-                    from app.services.ast_checker_service import com003_libclang_is_fp as _c003_lc_fp
-                    if _c003_lc_fp(content, str(file_path), start_line, var_name):
+                    from app.services.ast_checker_service import (
+                        build_com003_decl_fact_index as _c003_build_facts,
+                        com003_libclang_is_fp as _c003_lc_fp,
+                    )
+                    if _com003_fact_index is None:
+                        _com003_fact_index = _c003_build_facts(content, str(file_path))
+                    if _c003_lc_fp(
+                        content, str(file_path), start_line, var_name,
+                        fact_index=_com003_fact_index,
+                    ):
                         continue
                 except Exception:
                     pass  # libclang 실패 → 기존 필터 결과 따름
@@ -1442,6 +1453,8 @@ def _apply_ast_rule(
                     "snippet":         snippet,
                     "needs_ai_review": True,
                     "pattern_type":    "ast",
+                    "detection_semantics": "structural_violation",
+                    "ast_evidence":    finding.get("ast_evidence") or msg,
                     "ai_context":      desc,
                     "func_name":       func_name,
                 })
@@ -1506,6 +1519,7 @@ def _apply_ast_rule(
                         "snippet":         line_text[:200].strip(),
                         "needs_ai_review": True,
                         "pattern_type":    "ast",
+                        "detection_semantics": "prohibited_presence",
                         "ai_context":      desc,
                     })
 
@@ -1526,6 +1540,7 @@ def _apply_ast_rule(
                     "snippet":         (item.get("content") or "")[:300].strip(),
                     "needs_ai_review": True,
                     "pattern_type":    "ast",
+                    "detection_semantics": "required_absence",
                     "ai_context":      desc,
                 })
     else:
@@ -2228,6 +2243,26 @@ def run_rule_engine(
     # 근접 라인 중복 제거: 같은 rule_id + 같은 파일 + 20라인 이내 연속 위반 → 첫 번째만 유지
     # (배열 초기화값 각 줄이 별도 위반으로 탐지되는 노이즈 방지)
     deduped = _dedup_nearby_violations(deduped, window=20)
+
+    # `pattern_type` describes the detector implementation, whereas this field
+    # describes the logical condition that caused the candidate.  Keep the
+    # vocabulary closed so downstream prompts cannot infer AST == absence.
+    for violation in deduped:
+        pattern_type = (violation.get("pattern_type") or "").lower()
+        explicit = violation.get("detection_semantics")
+        if explicit in {
+            "prohibited_presence", "required_absence", "structural_violation", "unknown",
+        }:
+            semantics = explicit
+        elif pattern_type == "regex":
+            semantics = "prohibited_presence"
+        elif pattern_type == "ast" or violation.get("rule_id") == "COM-005":
+            semantics = "structural_violation"
+        else:
+            # The current semantic handler emits candidates on a missing
+            # pattern, except for the explicit COM-005 ordering branch above.
+            semantics = "required_absence"
+        violation["detection_semantics"] = semantics
 
     return deduped
 

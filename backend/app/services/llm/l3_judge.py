@@ -87,6 +87,7 @@ from app.services.llm.prompt_builder import (
     _l3_cache, _l3_cache_key,
     _build_single_prompt, _build_batch_prompt, _build_rejudge_prompt,
     _make_l3_result, _build_structured_evidence, _build_global_flow_summary,
+    _detection_semantics, _semantics_note,
     _build_flow_context,
 )
 
@@ -230,7 +231,9 @@ def _mark_l3_decision(
     obj["removal_blocked_reason"] = blocked_reason
 
 
-def _reject_key(v: Dict[str, Any]) -> tuple:
+def _reject_key(v: Dict[str, Any], *, prefer_candidate_id: bool = False) -> Any:
+    if prefer_candidate_id and v.get("candidate_id"):
+        return str(v["candidate_id"])
     return (
         (v.get("file") or v.get("file_path") or "").strip(),
         (v.get("rule_id") or "").strip(),
@@ -248,6 +251,7 @@ _FP_VERIFY_PROMPT_TEMPLATE = """당신은 KCMVP(KS X 19790) 암호모듈 보안 
 파일: {file_path}
 라인: {line}
 L1 탐지 메시지: {message}
+탐지 의미: {detection_semantics}
 
 1차 AI 판정 이유: {first_description}
 
@@ -258,11 +262,12 @@ L1 탐지 메시지: {message}
 
 【재검증 기준】
 - 1차 판정의 오탐 근거가 코드에서 실제로 확인되는가?
+- 필수 요건 부재 후보는 동등 구현·위임의 구체적 근거가 없으면 유지하라.
 - "잘 모르겠다" 또는 "증거 불충분"이면 is_real_issue=true로 보수적 판정하라.
 - 1차 판정에 동의하면 is_real_issue=false, 동의하지 않으면 is_real_issue=true.
 
 반드시 아래 JSON만 출력:
-{{"is_real_issue": true/false, "confidence": 0~100, "description": "한글 설명"}}"""
+{{"is_real_issue": true/false, "confidence": 0~100, "description": "한글 설명", "insufficient_context": false, "evidence_type": "equivalent_impl", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": ""}}"""
 
 
 def _verify_fp_removal(
@@ -278,6 +283,7 @@ def _verify_fp_removal(
         file_path=file_path,
         line=v.get("line", "?"),
         message=v.get("message", "")[:200],
+        detection_semantics=_semantics_note(v),
         first_description=first_obj.get("description", "")[:300],
         code_block=code_block[:2000],
     )
@@ -293,6 +299,19 @@ def _verify_fp_removal(
     if verify_obj.get("is_real_issue"):
         print(f"[L3][FP검증] 재검증 결과 위반 확정 (제거 취소): {rule_id} @ {file_path}:{v.get('line')}")
         return False
+    if _detection_semantics(v) == "required_absence":
+        evidence = str(verify_obj.get("evidence_type") or "").strip()
+        grounded = any(
+            str(verify_obj.get(key) or "").strip()
+            for key in ("concrete_evidence_line", "delegated_target", "supporting_symbol")
+        )
+        if (
+            verify_obj.get("insufficient_context")
+            or evidence not in _SAFE_MISSING_EVIDENCE_TYPES
+            or not grounded
+        ):
+            print(f"[L3][FP검증] 부재 오탐 근거 불충분 → 유지: {rule_id} @ {file_path}:{v.get('line')}")
+            return False
     print(f"[L3][FP검증] 재검증 동의 → 오탐 제거 확정: {rule_id} @ {file_path}:{v.get('line')}")
     return True
 
@@ -309,6 +328,13 @@ def _fp_removal_verified(
     return _verify_fp_removal(v, obj, code_block, file_path)
 
 
+def _merge_rejudge_result(
+    first_obj: Dict[str, Any], rejudge_obj: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Overlay the second verdict without dropping omitted structured evidence."""
+    return {**first_obj, **rejudge_obj}
+
+
 def _apply_l3_decision(
     *,
     v: Dict[str, Any],
@@ -317,12 +343,14 @@ def _apply_l3_decision(
     file_path: str,
     results: List[Dict[str, Any]],
     rejected_tracker: Optional[set],
+    rejected_candidate_ids: bool = False,
 ) -> None:
     """Risk-tier 정책에 따라 L3 결과를 유지/제거한다."""
     # 캐시된 판정에 파일별 정책 메타데이터가 누적되지 않도록 복사한다.
     obj = dict(obj)
     rule_id = v.get("rule_id") or ""
     pat_type = v.get("pattern_type", "")
+    semantics = _detection_semantics(v)
     score = _score(obj)
     fp_threshold = 25 if pat_type in ("ast", "semantic") else 40
     fp_high = (82 if rule_id in _AST_TP_PROTECT else 80) if pat_type == "ast" else 70
@@ -333,7 +361,7 @@ def _apply_l3_decision(
         risk_tier = "B"
     elif rule_id in _AST_TP_PROTECT:
         risk_tier = "C"
-    elif pat_type == "missing":
+    elif semantics in {"required_absence", "unknown"}:
         risk_tier = "A"
     else:
         risk_tier = "B"
@@ -347,10 +375,13 @@ def _apply_l3_decision(
         print(f"[L3] 확정 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
         return
 
-    if pat_type == "missing" and not _missing_relax_allowed(v, obj, file_path):
+    if semantics == "unknown" or (
+        semantics == "required_absence" and not _missing_relax_allowed(v, obj, file_path)
+    ):
         _mark_l3_decision(
             obj, file_path=file_path, risk_tier=risk_tier,
-            removal_allowed=False, blocked_reason="missing_protect",
+            removal_allowed=False,
+            blocked_reason="unknown_semantics" if semantics == "unknown" else "missing_protect",
         )
         results.append(_make_l3_result(v, obj))
         print(f"[L3] missing타입→유지 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
@@ -367,7 +398,7 @@ def _apply_l3_decision(
 
     ast_relax = pat_type == "ast" and _ast_relax_allowed(v, obj)
     score_relax = score <= fp_threshold or score >= fp_high
-    if pat_type == "missing":
+    if semantics == "required_absence":
         score_relax = _missing_relax_allowed(v, obj, file_path)
 
     if ast_relax or score_relax:
@@ -378,7 +409,7 @@ def _apply_l3_decision(
             )
             print(f"[L3] 오탐 제거 (score={score}, tier={risk_tier}): {rule_id} @ {file_path}:{v.get('line')}")
             if rejected_tracker is not None:
-                rejected_tracker.add(_reject_key(v))
+                rejected_tracker.add(_reject_key(v, prefer_candidate_id=rejected_candidate_ids))
         else:
             _mark_l3_decision(
                 obj, file_path=file_path, risk_tier=risk_tier,
@@ -402,6 +433,8 @@ def run_l3_contextualizer(
     rules_meta: Optional[Dict[str, Any]] = None,
     _rejected_tracker: Optional[set] = None,
     symbol_graph: Optional[Dict[str, Any]] = None,
+    _preselected: bool = False,
+    _rejected_candidate_ids: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     L3: 의미적(맥락 기반) 위반 재판정.
@@ -411,8 +444,8 @@ def run_l3_contextualizer(
     preprocess_result  : 전처리 결과 (run_preprocess 출력)
     l1_violations      : L1 룰 엔진에서 생성된 위반 리스트
     rules_meta         : (선택) 룰 메타데이터
-    _rejected_tracker  : (선택) L3가 오탐으로 판정한 항목의 (file, rule_id, line) 튜플을
-                         채워 넣을 set. analyze.py에서 post_process_violations 연동용.
+    _rejected_tracker  : L3 오탐 집합. 기본은 legacy (file, rule_id, line),
+                         _rejected_candidate_ids=True이면 occurrence candidate_id를 저장.
     symbol_graph       : (선택) build_symbol_graph 출력 — array_inits/type_aliases 활용.
                          Structured Evidence Injection (Phase 1)에 사용.
 
@@ -444,7 +477,12 @@ def run_l3_contextualizer(
                 continue
             # 상대경로 직접 일치 또는 절대경로 suffix 매칭
             if item_path == path or item_path.endswith(path) or path.endswith(item_path):
-                # 방법 1: preprocess에서 파싱한 lines 사용 (경로 독립적)
+                # Explicit content preserves the frozen byte-equivalent text,
+                # including CRLF and a terminal newline. `lines` is legacy-only.
+                explicit_content = item.get("content")
+                if isinstance(explicit_content, str):
+                    file_content_cache[path] = explicit_content
+                    return explicit_content
                 lines = item.get("lines")
                 if lines is not None:
                     content = "\n".join(lines)
@@ -461,7 +499,7 @@ def run_l3_contextualizer(
         return None
 
     # L3 대상 선정
-    candidates = _select_l3_candidates(l1_violations)
+    candidates = list(l1_violations) if _preselected else _select_l3_candidates(l1_violations)
     if not candidates:
         print("[L3] L3 판정 대상 없음")
         return []
@@ -507,10 +545,8 @@ def run_l3_contextualizer(
             # Phase 0: 전제조건 검증 (방안 4) — 파일에 해당 기능 미구현 시 FP 확정
             if not _check_violation_precondition(v, content, file_path):
                 if _rejected_tracker is not None:
-                    _rejected_tracker.add((
-                        (v.get("file") or v.get("file_path") or "").strip(),
-                        (v.get("rule_id") or ""),
-                        v.get("line"),
+                    _rejected_tracker.add(_reject_key(
+                        v, prefer_candidate_id=_rejected_candidate_ids,
                     ))
                 continue
             # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
@@ -545,6 +581,10 @@ def run_l3_contextualizer(
                 code_block,
                 guideline_text=v.get("rag_guideline_text", ""),
                 violation_message=v.get("message", ""),
+                detection_semantics=v.get("detection_semantics", ""),
+                pattern_type=v.get("pattern_type", ""),
+                ast_evidence=v.get("ast_evidence", ""),
+                ai_context=v.get("ai_context", ""),
             )
 
             if cache_key in _l3_cache:
@@ -557,6 +597,7 @@ def run_l3_contextualizer(
                     file_path=file_path,
                     results=results,
                     rejected_tracker=_rejected_tracker,
+                    rejected_candidate_ids=_rejected_candidate_ids,
                 )
             else:
                 entry = {
@@ -606,7 +647,9 @@ def run_l3_contextualizer(
                         phase="l3_rejudge",
                     )
                     if rejudge_obj:
-                        obj = rejudge_obj
+                        # Preserve structured evidence when a provider omits
+                        # optional fields in the second response.
+                        obj = _merge_rejudge_result(obj, rejudge_obj)
                         _l3_cache[entry["cache_key"]] = obj
                         score = obj.get("confidence", score)
                         print(f"[L3] 재판정 완료 (score={score}): {rule_id}")
@@ -618,6 +661,7 @@ def run_l3_contextualizer(
                     file_path=file_path,
                     results=results,
                     rejected_tracker=_rejected_tracker,
+                    rejected_candidate_ids=_rejected_candidate_ids,
                 )
 
         if not batch_items:
@@ -659,6 +703,7 @@ def run_l3_contextualizer(
                             file_path=file_path,
                             results=results,
                             rejected_tracker=_rejected_tracker,
+                            rejected_candidate_ids=_rejected_candidate_ids,
                         )
                 continue
 
@@ -685,6 +730,7 @@ def run_l3_contextualizer(
                     file_path=file_path,
                     results=results,
                     rejected_tracker=_rejected_tracker,
+                    rejected_candidate_ids=_rejected_candidate_ids,
                 )
 
     rejected_count = len(_rejected_tracker) if _rejected_tracker is not None else 0

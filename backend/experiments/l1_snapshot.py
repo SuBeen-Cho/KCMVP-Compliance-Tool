@@ -35,6 +35,7 @@ CANDIDATE_FIELDS = (
     "rule_id", "file", "line", "scope", "message", "severity", "snippet",
     "needs_ai_review", "pattern_type", "ai_context", "confidence",
     "ast_evidence", "func_name", "artifact_rule", "project_artifact_evidence",
+    "detection_semantics",
 )
 
 
@@ -181,6 +182,11 @@ def freeze_candidates(
             isinstance(line, bool) or not isinstance(line, int) or line < 1
         ):
             raise SnapshotError("candidate line must be null or a positive integer")
+        semantics = payload.get("detection_semantics")
+        if semantics is not None and semantics not in {
+            "prohibited_presence", "required_absence", "structural_violation", "unknown",
+        }:
+            raise SnapshotError("candidate detection semantics is unsupported")
         _assert_label_free(payload)
         payload_hash = sha256_bytes(canonical_bytes(payload))
         pending.append((source_id, payload["rule_id"], line, payload_hash, payload))
@@ -324,6 +330,11 @@ def validate_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
             isinstance(line, bool) or not isinstance(line, int) or line < 1
         ):
             raise SnapshotError("candidate line must be null or a positive integer")
+        semantics = payload.get("detection_semantics")
+        if semantics is not None and semantics not in {
+            "prohibited_presence", "required_absence", "structural_violation", "unknown",
+        }:
+            raise SnapshotError("candidate detection semantics is unsupported")
         _assert_label_free(payload)
         if item.get("payload_sha256") != sha256_bytes(canonical_bytes(payload)):
             raise SnapshotError("candidate payload hash mismatch")

@@ -252,7 +252,35 @@ _WINDOW_BY_PATTERN_TYPE: Dict[str, int] = {
 _l3_cache: Dict[str, Dict[str, Any]] = {}
 
 
-_L3_PROMPT_CACHE_VERSION = "2026-08-11-p1"
+_L3_PROMPT_CACHE_VERSION = "2026-08-11-semantics-v1"
+
+_DETECTION_SEMANTICS = frozenset({
+    "prohibited_presence", "required_absence", "structural_violation", "unknown",
+})
+
+
+def _detection_semantics(v: Dict[str, Any]) -> str:
+    """Return a closed logical trigger, with legacy candidate compatibility."""
+    explicit = str(v.get("detection_semantics") or "").strip().lower()
+    if explicit in _DETECTION_SEMANTICS:
+        return explicit
+    pattern_type = str(v.get("pattern_type") or "").strip().lower()
+    if pattern_type == "regex":
+        return "prohibited_presence"
+    if pattern_type == "ast" or v.get("rule_id") == "COM-005":
+        return "structural_violation"
+    return "required_absence"
+
+
+def _semantics_note(v: Dict[str, Any]) -> str:
+    semantics = _detection_semantics(v)
+    if semantics == "required_absence":
+        return "패턴 부재 위반 — 필수 요건의 부재를 검증"
+    if semantics == "structural_violation":
+        return "구조 위반 — 정적 분석이 확인한 구조적 모순·순서 위반의 영향을 검증"
+    if semantics == "unknown":
+        return "탐지 의미 불명 — 명시적 근거 없이는 후보를 제거하지 않음"
+    return "금지 패턴 존재 위반 — 관찰된 패턴이 실제 금지 행위인지 검증"
 
 
 def _l3_cache_key(
@@ -261,6 +289,10 @@ def _l3_cache_key(
     *,
     guideline_text: str = "",
     violation_message: str = "",
+    detection_semantics: str = "",
+    pattern_type: str = "",
+    ast_evidence: str = "",
+    ai_context: str = "",
 ) -> str:
     """Return a cache key namespaced by every input that can alter the verdict."""
     provider = settings.L3_PROVIDER
@@ -277,6 +309,10 @@ def _l3_cache_key(
         model,
         rag_mode,
         rule_id,
+        detection_semantics,
+        pattern_type,
+        hashlib.sha256(ast_evidence.encode()).hexdigest(),
+        hashlib.sha256(ai_context.encode()).hexdigest(),
         hashlib.sha256(violation_message.encode()).hexdigest(),
         hashlib.sha256(guideline_text.encode()).hexdigest(),
         hashlib.sha256(code_block.encode()).hexdigest(),
@@ -335,7 +371,9 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
         reasoning_section = ""
 
     pattern_type = v.get("pattern_type", "")
-    is_absence = pattern_type in ("semantic", "ast", "missing")
+    detection_semantics = _detection_semantics(v)
+    is_absence = detection_semantics == "required_absence"
+    semantics_note = _semantics_note(v)
     missing_rule_guidance = (
         _missing_rule_review_guidance(rule_id)
         if pattern_type == "missing"
@@ -384,9 +422,8 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
     # "위반인가?" 대신 "이 AST 발견이 실제 보안 문제인가?"에 집중하도록 유도
     pattern_type_val = v.get("pattern_type", "")
     ast_evidence_val = v.get("ast_evidence", "")  # 체커가 직접 설정한 구조 증거 (선택)
-    if pattern_type_val == "ast":
-        # ast_evidence 필드 우선, 없으면 L1 message에서 추출
-        ast_fact = ast_evidence_val if ast_evidence_val else l1_msg
+    if pattern_type_val == "ast" and ast_evidence_val:
+        ast_fact = ast_evidence_val
         ast_evidence_section = (
             f"\n【C&A Phase 1: AST 구조 분석 결과 (검증된 사실)】\n"
             f"  정적 AST 분석이 다음 구조적 사실을 확인했습니다:\n"
@@ -407,6 +444,7 @@ STEP 3 [결론]: 위 분석을 토대로 아래 JSON 객체를 출력하라."""
 rule_id: {rule_id}
 판정 기준: {template}{ctx_line}{guideline_section}{few_shot_section}{file_mode_hint}
 L1 탐지 메시지: {l1_msg}{ast_evidence_section}
+탐지 의미: {semantics_note}
 
 코드:
 ```c
@@ -445,6 +483,7 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
         guide = entry.get("guideline_text", "")
         guide_part = f"\n  가이드라인: {guide[:800]}" if guide else ""
         ptype = v.get("pattern_type", "")
+        semantics = _detection_semantics(v)
         missing_guide = (
             _missing_rule_review_guidance(rule_id).replace("\n", "\n  ")
             if ptype == "missing"
@@ -452,14 +491,17 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
         )
         threshold_note = (
             "  [패턴 부재 위반 — confidence≥65 시 true, insufficient_context는 코드 자체가 너무 짧을 때만]\n"
-            if ptype in ("semantic", "ast", "missing") else
-            "  [패턴 존재 위반 — confidence≥75 시 true]\n"
+            if semantics == "required_absence" else (
+                "  [구조 위반 — 명시적 구조 모순이 확인되고 confidence≥75 시 true]\n"
+                if semantics == "structural_violation" else
+                "  [패턴 존재 위반 — confidence≥75 시 true]\n"
+            )
         )
         # C&A: AST 위반에 구조 증거 섹션 추가
         ast_ev = v.get("ast_evidence", "")
         l1_msg_batch = v.get("message") or ""
-        if ptype == "ast":
-            ast_fact = ast_ev if ast_ev else l1_msg_batch
+        if ptype == "ast" and ast_ev:
+            ast_fact = ast_ev
             ast_section = f"  【C&A AST 분석 결과】 {ast_fact}\n  ※ 위 구조적 사실 기반으로 보안 영향도를 판단하라.\n"
         else:
             ast_section = ""
@@ -471,6 +513,7 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
             f"  rule_id: {rule_id}\n"
             f"  line: {v.get('line') or 'N/A'}\n"
             f"  판정 기준: {template}{ctx_part}{guide_part}{batch_few_shot_part}"
+            f"\n  탐지 의미: {_semantics_note(v)}"
             f"\n{threshold_note}"
             f"{missing_guide}"
             f"{ast_section}"
@@ -479,6 +522,20 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
         )
     items_text = "\n\n".join(items_text_parts)
     n = len(batch)
+    has_absence = any(
+        _detection_semantics(entry["violation"]) == "required_absence"
+        for entry in batch
+    )
+    absence_context_note = (
+        ', 단 "패턴 부재 위반"은 함수 전체가 보이면 판단 가능'
+        if has_absence else ""
+    )
+    absence_policy = """
+  - 패턴 부재 위반 ([패턴 부재 위반] 표시된 항목): 필수 패턴이 없음이 확인되고 confidence≥65일 때
+【패턴 부재 위반 confidence 3단계 기준】
+  - 90~100: 확실한 위반 — 필수 패턴이 없고 동등 구현·위임 증거도 없음
+  - 65~84 : 검토 권고 — 패턴이 없지만 래퍼/시험 파일 가능성·다른 파일 위임 가능성 존재
+  - false  : 동등 구현이 코드에서 직접 확인됨 (변수명만 다른 경우 포함)""" if has_absence else ""
 
     # 방안 2: 파일명 기반 모드/역할 힌트
     file_mode_hint = _detect_file_mode(file_path)
@@ -494,17 +551,14 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
 
 【오탐(is_real_issue=false) 기준 — 아래 중 하나라도 해당하면 반드시 false】
   ① S-box·delta·lookup_table·test_vector·KAT 등 공개 상수임이 변수명·주석으로 드러날 때
-  ② 코드 컨텍스트 불충분으로 확신 불가 시 (→ insufficient_context=true, 단 "패턴 부재 위반"은 함수 전체가 보이면 판단 가능)
+  ② 코드 컨텍스트 불충분으로 확신 불가 시 (→ insufficient_context=true{absence_context_note})
   ③ 판정 기준의 허용 예외(테스트 목적, KAT, 단일 블록)에 해당할 때
   ④ 위반 증거가 약하거나 다른 해석이 가능할 때
   ⑤ LEA 알고리즘 규칙인데 파일이 LEA와 무관한 기능(ARIA, SHA, DRBG 등)만 구현할 때
 【위반(is_real_issue=true) 기준】
   - 패턴 존재 위반: 코드에서 명확히 확인되고 confidence≥75일 때만
-  - 패턴 부재 위반 ([패턴 부재 위반] 표시된 항목): 필수 패턴이 없음이 확인되고 confidence≥65일 때
-【패턴 부재 위반 confidence 3단계 기준】
-  - 90~100: 확실한 위반 — 필수 패턴이 없고 동등 구현·위임 증거도 없음
-  - 65~84 : 검토 권고 — 패턴이 없지만 래퍼/시험 파일 가능성·다른 파일 위임 가능성 존재
-  - false  : 동등 구현이 코드에서 직접 확인됨 (변수명만 다른 경우 포함)
+  - 구조 위반: 정적 분석의 명시적 구조 모순·순서 위반이 실제 보안 문제이고 confidence≥75일 때
+{absence_policy}
 
 {items_text}
 
@@ -536,6 +590,13 @@ def _build_rejudge_prompt(
     guideline_section = (
         f"\n📖 KCMVP 가이드라인:\n{guideline_text}\n" if guideline_text else ""
     )
+    semantics = _detection_semantics(v)
+    absence_policy = (
+        "필수 요건 부재 후보이므로 불확실성만으로 false로 변경하지 말고, "
+        "동등 구현·다른 파일 위임의 구체적 증거가 있을 때만 false로 판정하라."
+        if semantics == "required_absence" else
+        "위반이 코드에서 명확히 확인되는 경우에만 true를 유지하라."
+    )
     return f"""당신은 KCMVP(KS X 19790) 암호모듈 보안 수석 심사관입니다.
 최우선 목표: False Positive(오탐) 최소화 — 위반이 명확히 확인되는 경우에만 true를 유지하십시오.
 아래 항목은 1차 AI 판정에서 신뢰도 {first_conf}점(경계값)으로 판정되었습니다.
@@ -543,6 +604,7 @@ def _build_rejudge_prompt(
 
 파일: {file_path}
 rule_id: {rule_id}
+탐지 의미: {_semantics_note(v)}
 판정 기준: {template}{guideline_section}
 1차 판정 설명: {first_desc}
 
@@ -552,12 +614,12 @@ rule_id: {rule_id}
 ```
 
 재판정 기준:
-- 위반이 코드에서 명확히 확인되는 경우에만 is_real_issue=true를 유지하라.
-- 코드 전체 컨텍스트가 불명확하거나 위반 여부가 애매하면 is_real_issue=false로 수정하라.
+- {absence_policy}
+- 코드 전체 컨텍스트가 불명확하면 insufficient_context=true로 표시하고 후보를 유지하라.
 - confidence를 0~100 범위에서 재산정하라 (1차와 다르게 평가해도 무방).
 
 반드시 아래 JSON 형식만 출력하라:
-{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "재판정 한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄"}}""".strip()
+{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "재판정 한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium"}}""".strip()
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -611,7 +673,12 @@ def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
         "l3_delegated_target": obj.get("delegated_target", ""),
         "l3_supporting_symbol": obj.get("supporting_symbol", ""),
         "l3_removal_risk": obj.get("removal_risk", ""),
+        "detection_semantics": _detection_semantics(v),
     }
+    # Frozen-snapshot experiments require an occurrence-level identity.  Keep it
+    # opaque to the model but propagate it through the structured result.
+    if v.get("candidate_id"):
+        result["candidate_id"] = str(v["candidate_id"])
     # insufficient_context: 코드 절삭 부족 피드백 전달
     if obj.get("insufficient_context"):
         result["insufficient_context"] = True

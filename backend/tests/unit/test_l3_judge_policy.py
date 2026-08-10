@@ -102,3 +102,99 @@ def test_grounded_missing_relax_removes_low_risk_auxiliary(monkeypatch):
 def test_experimental_grounded_relax_is_opt_in(monkeypatch):
     monkeypatch.delenv("L3_GROUNDED_ARTIFACT_RELAX", raising=False)
     assert l3_judge._grounded_artifact_relax() is False
+
+
+def test_preselected_path_preserves_exact_content_and_skips_second_selection(monkeypatch):
+    original = "int a;\r\nBAD();\r\n"
+    observed = {}
+    monkeypatch.setattr(l3_judge, "L3_PROVIDER", "local")
+    monkeypatch.setattr(
+        l3_judge, "_select_l3_candidates",
+        lambda _items: (_ for _ in ()).throw(AssertionError("second selection")),
+    )
+
+    def fake_context(content, *args, **kwargs):
+        observed["content"] = content
+        return "BAD();"
+
+    monkeypatch.setattr(l3_judge, "_get_code_context", fake_context)
+    monkeypatch.setattr(
+        l3_judge, "_call_gemini_batch_with_retry",
+        lambda *args, **kwargs: [{"idx": 1, "is_real_issue": True, "confidence": 90}],
+    )
+    candidate = {
+        "candidate_id": "set::a.c::X-1::2::1::hash",
+        "file": "a.c", "line": 2, "rule_id": "X-1",
+        "pattern_type": "regex", "detection_semantics": "prohibited_presence",
+    }
+    result = l3_judge.run_l3_contextualizer(
+        {"files": [{"path": "a.c", "content": original, "lines": original.splitlines()}]},
+        [candidate], _preselected=True, _rejected_candidate_ids=True,
+    )
+    assert observed["content"] == original
+    assert result[0]["candidate_id"] == candidate["candidate_id"]
+    assert result[0]["detection_semantics"] == "prohibited_presence"
+
+
+def test_occurrence_rejection_key_is_opt_in_and_legacy_default_remains(monkeypatch):
+    monkeypatch.setenv("ABLATION_NO_DUAL_VERIFY", "1")
+    violation = {
+        "candidate_id": "occurrence-2", "rule_id": "X-1", "file": "a.c",
+        "line": 4, "pattern_type": "regex",
+    }
+    judgment = {"is_real_issue": False, "confidence": 10}
+    occurrence_tracker = set()
+    l3_judge._apply_l3_decision(
+        v=violation, obj=judgment, code_block="code", file_path="a.c",
+        results=[], rejected_tracker=occurrence_tracker, rejected_candidate_ids=True,
+    )
+    assert occurrence_tracker == {"occurrence-2"}
+    assert l3_judge._reject_key(violation) == ("a.c", "X-1", 4)
+
+
+def test_required_absence_fp_verify_requires_grounded_evidence(monkeypatch):
+    responses = iter([
+        {"is_real_issue": False, "confidence": 90, "description": "근거 없음"},
+        {
+            "is_real_issue": False, "confidence": 90, "description": "위임 확인",
+            "evidence_type": "delegated_to_other_file", "delegated_target": "core.c",
+        },
+    ])
+    monkeypatch.setattr(l3_judge, "_call_gemini_with_retry", lambda *_a, **_k: next(responses))
+    candidate = {
+        "rule_id": "X-AST", "pattern_type": "ast",
+        "detection_semantics": "required_absence", "line": None,
+    }
+    assert l3_judge._verify_fp_removal(candidate, {}, "code", "wrapper.c") is False
+    assert l3_judge._verify_fp_removal(candidate, {}, "code", "wrapper.c") is True
+
+
+def test_rejudge_merge_preserves_omitted_structured_evidence():
+    first = {
+        "is_real_issue": True, "confidence": 70,
+        "evidence_type": "direct_violation", "supporting_symbol": "rounds",
+    }
+    merged = l3_judge._merge_rejudge_result(
+        first, {"is_real_issue": False, "confidence": 20, "description": "second"},
+    )
+    assert merged["is_real_issue"] is False
+    assert merged["evidence_type"] == "direct_violation"
+    assert merged["supporting_symbol"] == "rounds"
+
+
+def test_unknown_detection_semantics_is_never_removed(monkeypatch):
+    monkeypatch.setenv("ABLATION_NO_DUAL_VERIFY", "1")
+    results = []
+    rejected = set()
+    l3_judge._apply_l3_decision(
+        v={
+            "rule_id": "X-AST", "pattern_type": "ast",
+            "detection_semantics": "unknown", "file": "x.c", "line": None,
+        },
+        obj={"is_real_issue": False, "confidence": 0, "description": "unknown"},
+        code_block="code", file_path="x.c", results=results,
+        rejected_tracker=rejected,
+    )
+    assert len(results) == 1
+    assert results[0]["l3_removal_blocked_reason"] == "unknown_semantics"
+    assert rejected == set()

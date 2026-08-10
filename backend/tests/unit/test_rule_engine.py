@@ -32,6 +32,7 @@ class TestSEED001Pipeline:
         seed_findings = [item for item in findings if item["rule_id"] == "SEED-001"]
         assert len(seed_findings) == 1
         assert seed_findings[0]["file"] == "seed_core.c"
+        assert seed_findings[0]["detection_semantics"] == "structural_violation"
 
     def test_inventory_includes_seed_001(self):
         from experiments.inventory import build_rule_inventory
@@ -57,6 +58,83 @@ class TestNewCipherEvidenceTraceability:
             text = guideline.read_text(encoding="utf-8")
             assert "프로젝트 저자가 작성한 검사 해설" in text
             assert "대체하지 않는다" in text
+
+
+class TestDetectionSemantics:
+    def test_rule_engine_emits_closed_semantics_for_each_detector(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        rules_dir = tmp_path / "rules"
+        (rules_dir / "common").mkdir(parents=True)
+        (rules_dir / "common" / "security.yaml").write_text(
+            """rules:
+- id: T-REGEX
+  category: common
+  name: present
+  pattern_type: regex
+  pattern: BAD
+- id: T-MISSING
+  category: common
+  name: missing
+  pattern_type: missing
+  pattern: REQUIRED
+- id: T-SEMANTIC
+  category: common
+  name: semantic absence
+  pattern_type: semantic
+  pattern: REQUIRED_SEMANTIC
+- id: COM-005
+  category: common
+  name: ordering
+  pattern_type: semantic
+  pattern: lea_online_init|lea_online_update|lea_online_final
+""",
+            encoding="utf-8",
+        )
+        source = tmp_path / "online.c"
+        source.write_text(
+            "void f(void) { BAD; lea_online_update(); lea_online_init(); }\n",
+            encoding="utf-8",
+        )
+        findings = run_rule_engine(
+            {"files": [{"path": str(source)}]}, rules_dir, tmp_path,
+        )
+        semantics = {item["rule_id"]: item["detection_semantics"] for item in findings}
+        assert semantics == {
+            "T-REGEX": "prohibited_presence",
+            "T-MISSING": "required_absence",
+            "T-SEMANTIC": "required_absence",
+            "COM-005": "structural_violation",
+        }
+        assert set(semantics.values()) <= {
+            "prohibited_presence", "required_absence", "structural_violation",
+        }
+
+    def test_ast_fallback_origin_distinguishes_match_and_absence(self, tmp_path: Path):
+        from app.services.rule_engine_service import _apply_ast_rule
+
+        present = tmp_path / "present.c"
+        absent = tmp_path / "absent.c"
+        present.write_text("int OBSERVED_BAD;\n", encoding="utf-8")
+        absent.write_text("int safe;\n", encoding="utf-8")
+        rule = {
+            "id": "UNIMPLEMENTED-AST", "name": "fallback", "pattern_type": "ast",
+            "fallback_pattern": r"OBSERVED_BAD", "severity": "high",
+        }
+
+        def cache(path):
+            content = path.read_text(encoding="utf-8")
+            return [{
+                "path": path, "display": path.name, "content": content,
+                "stripped_content": content, "file_type": "impl",
+            }]
+
+        matched = _apply_ast_rule(rule, cache(present), tmp_path)
+        missing = _apply_ast_rule(rule, cache(absent), tmp_path)
+        assert matched[0]["detection_semantics"] == "prohibited_presence"
+        assert "ast_evidence" not in matched[0]
+        assert missing[0]["detection_semantics"] == "required_absence"
+        assert "ast_evidence" not in missing[0]
 
     def test_informational_rfc_role_is_explicit(self):
         backend = Path(__file__).resolve().parents[2]
