@@ -1,0 +1,54 @@
+rules:
+  - id: AES-001
+    category: algorithm
+    algorithm: AES
+    name: AES 블록 크기 명시값 검증
+    pattern_type: ast
+    severity: high
+    description: 단위가 명시된 AES 블록 크기 상수는 128비트 또는 16바이트여야 한다. 모호하거나 최적화된 구현은 판정하지 않는다.
+    source_authority: NIST
+    source_document: FIPS PUB 197-upd1
+    source_section: Section 2.1 (Block); Section 5, Table 3
+    source_url: https://doi.org/10.6028/NIST.FIPS.197-upd1
+    kcmvp_context:
+      listing_url: https://seed.kisa.or.kr/kisa/kcmvp/EgovVerification.do
+      target_status: listed
+      validation_system: TBD
+      test_vectors: TBD
+      checked_on: '2026-08-11'
+
+  - id: AES-002
+    category: algorithm
+    algorithm: AES
+    name: AES 허용 키 길이 명시 검증
+    pattern_type: ast
+    severity: high
+    description: AES 구현이 명시적으로 성공 처리하는 키 길이는 128, 192 또는 256비트여야 한다. 위임·최적화·간접 검증 경로는 판정하지 않는다.
+    source_authority: NIST
+    source_document: FIPS PUB 197-upd1
+    source_section: Section 5, Table 3
+    source_url: https://doi.org/10.6028/NIST.FIPS.197-upd1
+    kcmvp_context:
+      listing_url: https://seed.kisa.or.kr/kisa/kcmvp/EgovVerification.do
+      target_status: listed
+      validation_system: TBD
+      test_vectors: TBD
+      checked_on: '2026-08-11'
+
+  - id: AES-003
+    category: algorithm
+    algorithm: AES
+    name: AES 키 길이별 라운드 수 명시값 검증
+    pattern_type: ast
+    severity: high
+    description: 명시적인 AES 키 설정 분기에서 AES-128, AES-192, AES-256은 각각 10, 12, 14라운드로 설정되어야 한다. 간접 계산 경로는 판정하지 않는다.
+    source_authority: NIST
+    source_document: FIPS PUB 197-upd1
+    source_section: Section 5, Table 3
+    source_url: https://doi.org/10.6028/NIST.FIPS.197-upd1
+    kcmvp_context:
+      listing_url: https://seed.kisa.or.kr/kisa/kcmvp/EgovVerification.do
+      target_status: listed
+      validation_system: TBD
+      test_vectors: TBD
+      checked_on: '2026-08-11'

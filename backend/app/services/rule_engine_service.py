@@ -1387,7 +1387,11 @@ def _apply_ast_rule(
                 item for item in file_cache
                 if (item.get("display") or "").lower().endswith(".c")
                 and item.get("file_type", "impl") not in _SKIP_FILE_TYPES
-            ] or list(file_cache)
+            ]
+            # High-confidence AES rules do not re-introduce a wrapper/test-only
+            # cache after the implementation filter has intentionally emptied it.
+            if not relevant_for_checker and rule_id not in {"AES-001", "AES-002", "AES-003"}:
+                relevant_for_checker = list(file_cache)
 
         # 참고: 알고리즘별 per-file 필터는 프로젝트 레벨에서만 적용.
         # per-file 필터를 여기에 적용하면 lea_cbc.c/lea_ctr.c 같은 모드 파일의

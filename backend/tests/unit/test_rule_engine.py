@@ -9,9 +9,64 @@
 """
 
 import re
+import json
 from pathlib import Path
 
 import pytest
+
+
+class TestSEED001Pipeline:
+    @pytest.mark.rule_engine
+    def test_pipeline_reports_only_explicit_wrong_key(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        rules_dir = Path(__file__).resolve().parents[2] / "rules"
+        wrong = tmp_path / "seed_core.c"
+        wrapper = tmp_path / "seed_wrapper.c"
+        wrong.write_text("typedef unsigned char uint8_t; void seed_init(void) { uint8_t seed_key[24]; seed_key[0] = 0; }", encoding="utf-8")
+        wrapper.write_text("typedef unsigned char uint8_t; void seed_forward(const uint8_t *seed_key) { (void)seed_key; }", encoding="utf-8")
+        findings = run_rule_engine(
+            {"files": [{"path": str(wrong)}, {"path": str(wrapper)}]},
+            rules_dir, tmp_path, algorithms=["SEED"],
+        )
+        seed_findings = [item for item in findings if item["rule_id"] == "SEED-001"]
+        assert len(seed_findings) == 1
+        assert seed_findings[0]["file"] == "seed_core.c"
+
+    def test_inventory_includes_seed_001(self):
+        from experiments.inventory import build_rule_inventory
+
+        inventory = build_rule_inventory(Path(__file__).resolve().parents[2] / "rules")
+        assert inventory["total_rules"] == 166
+        assert inventory["unique_rule_ids"] == 166
+        assert inventory["by_domain"]["algorithm"] == 59
+
+
+class TestNewCipherEvidenceTraceability:
+    def test_new_cipher_rules_have_author_prepared_guidelines(self):
+        backend = Path(__file__).resolve().parents[2]
+        mapping = json.loads(
+            (backend / "mapping/rule_to_guideline.json").read_text(encoding="utf-8")
+        )
+        for rule_id in ("AES-001", "AES-002", "AES-003", "ARIA-001", "SEED-001"):
+            entry = mapping[rule_id]
+            assert entry["item_ids"] == []
+            assert entry["standard_ids"]
+            guideline = backend / entry["guideline_file"]
+            assert guideline.is_file()
+            text = guideline.read_text(encoding="utf-8")
+            assert "프로젝트 저자가 작성한 검사 해설" in text
+            assert "대체하지 않는다" in text
+
+    def test_informational_rfc_role_is_explicit(self):
+        backend = Path(__file__).resolve().parents[2]
+        for relative in (
+            "rules/algorithm/aria.yaml",
+            "rules/algorithm/seed.yaml",
+            "guidelines/ARIA-001_key_rounds.md",
+            "guidelines/SEED-001_key_size.md",
+        ):
+            assert "Informational RFC" in (backend / relative).read_text(encoding="utf-8")
 
 
 class TestAlgorithmDomainAnchor:
@@ -108,6 +163,75 @@ class TestAlgorithmDomainAnchor:
         assert [finding["file"] for finding in findings] == ["aes_core.c"]
 
     @pytest.mark.rule_engine
+    def test_aes_high_confidence_rules_pipeline_boundaries(
+        self, tmp_path: Path, load_fixture
+    ):
+        from app.services.rule_engine_service import run_rule_engine
+
+        backend = Path(__file__).resolve().parents[2]
+        cases = {
+            "aes_violation.c": "aes_high_confidence_violation.c",
+            "aes_compliant.c": "aes_high_confidence_compliant.c",
+            "aes_wrapper.c": "aes_high_confidence_wrapper.c",
+        }
+        paths = []
+        for name, fixture in cases.items():
+            path = tmp_path / name
+            path.write_text(load_fixture(fixture), encoding="utf-8")
+            paths.append(path)
+
+        findings = run_rule_engine(
+            {"files": [{"path": str(path)} for path in paths]},
+            backend / "rules",
+            tmp_path,
+            algorithms=["AES"],
+        )
+
+        aes_findings = [finding for finding in findings if finding["rule_id"].startswith("AES-")]
+        assert {finding["rule_id"] for finding in aes_findings} == {
+            "AES-001", "AES-002", "AES-003"
+        }
+        assert {finding["file"] for finding in aes_findings} == {"aes_violation.c"}
+
+    @pytest.mark.rule_engine
+    def test_aes_wrapper_only_cache_does_not_reenter_ast_checker(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        backend = Path(__file__).resolve().parents[2]
+        wrapper = tmp_path / "aes_wrapper.c"
+        wrapper.write_text(
+            """typedef struct { int opaque; } aes_context;
+const int aes_block_bytes = 8;
+int vendor_set_key(aes_context *, const unsigned char *, int);
+int aes_set_key(aes_context *ctx, const unsigned char *key, int key_bits) {
+    return vendor_set_key(ctx, key, key_bits);
+}
+""",
+            encoding="utf-8",
+        )
+        findings = run_rule_engine(
+            {"files": [{"path": str(wrapper)}]},
+            backend / "rules",
+            tmp_path,
+            algorithms=["AES"],
+        )
+        assert not [item for item in findings if item["rule_id"].startswith("AES-")]
+
+    @pytest.mark.rule_engine
+    @pytest.mark.parametrize("rule_id", ["AES-001", "AES-002", "AES-003"])
+    def test_aes_rules_carry_official_fips_197_metadata(self, load_rule, rule_id):
+        rule = load_rule(rule_id)
+        assert rule["source_authority"] == "NIST"
+        assert rule["source_document"] == "FIPS PUB 197-upd1"
+        assert rule["source_url"] == "https://doi.org/10.6028/NIST.FIPS.197-upd1"
+        expected_sections = {
+            "AES-001": "Section 2.1 (Block); Section 5, Table 3",
+            "AES-002": "Section 5, Table 3",
+            "AES-003": "Section 5, Table 3",
+        }
+        assert rule["source_section"] == expected_sections[rule_id]
+
+    @pytest.mark.rule_engine
     def test_project_missing_rule_search_is_algorithm_scoped(self, tmp_path: Path):
         from app.services.rule_engine_service import run_rule_engine
 
@@ -142,6 +266,41 @@ class TestAlgorithmDomainAnchor:
         assert len(findings) == 1
         assert findings[0]["rule_id"] == "AES-TEST-002"
         assert findings[0]["file"] == "aes_core.c"
+
+    @pytest.mark.rule_engine
+    def test_aria_001_yaml_integration_reports_only_explicit_conflict(self, tmp_path: Path):
+        from app.services.rule_engine_service import run_rule_engine
+
+        rules_dir = Path(__file__).resolve().parents[2] / "rules"
+        wrong = tmp_path / "aria_wrong.c"
+        wrapper = tmp_path / "aria_wrapper.c"
+        wrong.write_text(
+            """void aria_set_key(const unsigned char *key, int keylen) {
+    int rounds = 0;
+    if (keylen == 32) { rounds = 12; }
+}
+""",
+            encoding="utf-8",
+        )
+        wrapper.write_text(
+            """int vendor_set_key(void *, const unsigned char *, int);
+int aria_set_key(void *ctx, const unsigned char *key, int keylen) {
+    return vendor_set_key(ctx, key, keylen);
+}
+""",
+            encoding="utf-8",
+        )
+
+        findings = run_rule_engine(
+            {"files": [{"path": str(wrong)}, {"path": str(wrapper)}]},
+            rules_dir,
+            tmp_path,
+            algorithms=["ARIA"],
+        )
+
+        aria_findings = [item for item in findings if item["rule_id"] == "ARIA-001"]
+        assert len(aria_findings) == 1
+        assert aria_findings[0]["file"] == "aria_wrong.c"
 
 
 # ======================================================================

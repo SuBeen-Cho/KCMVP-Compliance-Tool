@@ -16,6 +16,185 @@ AST 체커 단위 테스트 — Tier 1 (FP/FN 실제 발생 규칙 10개).
 import pytest
 
 
+class TestSEED001:
+    """명시적으로 확정 가능한 SEED 바이트 배열만 판정한다."""
+
+    def test_explicit_wrong_key_is_violation(self, check_rule):
+        code = "typedef unsigned char uint8_t; void seed_init(void) { uint8_t seed_key[15]; seed_key[0] = 0; }"
+        result = check_rule("SEED-001", code)
+        assert result is not None and len(result) == 1
+        assert "15바이트" in result[0]["message"]
+
+    def test_explicit_16_byte_key_is_compliant(self, check_rule):
+        code = "typedef unsigned char uint8_t; void seed_init(void) { uint8_t seed_key[16]; seed_key[0] = 0; }"
+        assert check_rule("SEED-001", code) == []
+
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "const uint8_t *seed_key",
+            "uint8_t seed_key[KEY_BYTES]",
+            "uint8_t round_key[32]",
+            "uint8_t key[32]",
+            "void *context",
+        ],
+    )
+    def test_unknown_or_non_master_key_has_no_finding(self, check_rule, declaration):
+        code = f"typedef unsigned char uint8_t; void seed_wrapper({declaration}) {{ (void)0; }}"
+        assert check_rule("SEED-001", code) is None
+
+    def test_parameter_array_and_unrelated_function_are_unknown(self, check_rule):
+        parameter = (
+            "typedef unsigned char uint8_t; "
+            "void seed_set_key(uint8_t seed_key[24]) { (void)seed_key; }"
+        )
+        unrelated = (
+            "typedef unsigned char uint8_t; "
+            "void seed_encrypt(void) { uint8_t master_key[24]; master_key[0]=0; }"
+        )
+        assert check_rule("SEED-001", parameter) is None
+        assert check_rule("SEED-001", unrelated) is None
+
+    def test_resolved_macro_dimension_is_evaluated(self, check_rule):
+        code = (
+            "#define KEY_BYTES 24\n"
+            "typedef unsigned char uint8_t; "
+            "void seed_init(void) { uint8_t seed_key[KEY_BYTES]; seed_key[0]=0; }"
+        )
+        result = check_rule("SEED-001", code)
+        assert result is not None and len(result) == 1
+
+
+class TestAESHighConfidenceRules:
+    """FIPS 197 명시적 모순 규칙의 violation/compliant/unknown 경계."""
+
+    @pytest.mark.parametrize("rule_id", ["AES-001", "AES-002", "AES-003"])
+    def test_explicit_violation_is_detected(self, load_fixture, rule_id):
+        from app.services.ast_checker_service import check_rule
+
+        code = load_fixture("aes_high_confidence_violation.c")
+        result = check_rule(rule_id, code, "aes_core.c")
+        assert result is not None
+        assert len(result) == 1
+
+    @pytest.mark.parametrize("rule_id", ["AES-001", "AES-002", "AES-003"])
+    def test_explicit_compliant_mapping_has_no_finding(self, load_fixture, rule_id):
+        from app.services.ast_checker_service import check_rule
+
+        code = load_fixture("aes_high_confidence_compliant.c")
+        assert check_rule(rule_id, code, "aes_core.c") == []
+
+    @pytest.mark.parametrize("rule_id", ["AES-001", "AES-002", "AES-003"])
+    def test_optimized_wrapper_is_unknown(self, load_fixture, rule_id):
+        from app.services.ast_checker_service import check_rule
+
+        code = load_fixture("aes_high_confidence_wrapper.c")
+        assert check_rule(rule_id, code, "aes_core.c") is None
+
+    def test_byte_switch_is_normalized_and_unitless_keylen_is_unknown(self):
+        from app.services.ast_checker_service import check_rule
+
+        byte_code = """
+typedef struct { int nr; } aes_context;
+int aes_set_key(aes_context *ctx, int key_bytes) {
+    switch (key_bytes) {
+    case 16: ctx->nr = 10; break;
+    case 24: ctx->nr = 12; break;
+    case 32: ctx->nr = 14; break;
+    default: return -1;
+    }
+    return 0;
+}
+"""
+        assert check_rule("AES-002", byte_code, "aes.c") == []
+        assert check_rule("AES-003", byte_code, "aes.c") == []
+        unitless = byte_code.replace("key_bytes", "keylen")
+        assert check_rule("AES-002", unitless, "aes.c") is None
+        assert check_rule("AES-003", unitless, "aes.c") is None
+
+    def test_rejected_invalid_case_is_not_success(self):
+        from app.services.ast_checker_service import check_rule
+
+        code = """
+typedef struct { int nr; } aes_context;
+int aes_set_key(aes_context *ctx, int key_bits) {
+    switch (key_bits) {
+    case 128: ctx->nr = 10; break;
+    case 160: ctx->nr = 0; return -1;
+    default: return -1;
+    }
+    return 0;
+}
+"""
+        assert check_rule("AES-002", code, "aes.c") == []
+
+    def test_invalid_if_branch_falling_through_to_success_is_detected(self):
+        from app.services.ast_checker_service import check_rule
+
+        code = """
+typedef struct { int nr; } aes_context;
+int aes_set_key(aes_context *ctx, int key_bits) {
+    if (key_bits == 160) { ctx->nr = 11; }
+    return 0;
+}
+"""
+        result = check_rule("AES-002", code, "aes.c")
+        assert result is not None and len(result) == 1
+
+    def test_only_final_direct_round_assignment_is_compared(self):
+        from app.services.ast_checker_service import check_rule
+
+        code = """
+typedef struct { int nr; } aes_context;
+int aes_set_key(aes_context *ctx, int key_bits) {
+    switch (key_bits) {
+    case 128: ctx->nr = 0; ctx->nr = 10; break;
+    default: return -1;
+    }
+    return 0;
+}
+"""
+        assert check_rule("AES-003", code, "aes.c") == []
+
+    def test_openssl_style_if_mapping_detects_only_explicit_conflict(self):
+        from app.services.ast_checker_service import check_rule
+
+        code = """
+typedef struct { int rounds; } AES_KEY;
+int AES_set_encrypt_key(AES_KEY *key, int bits) {
+    if (bits == 128) { key->rounds = 10; }
+    else if (bits == 192) { key->rounds = 12; }
+    else if (bits == 256) { key->rounds = 12; }
+    return 0;
+}
+"""
+        result = check_rule("AES-003", code, "aes_core.c")
+        assert result is not None and len(result) == 1
+        assert "AES-256" in result[0]["message"]
+
+    def test_role_qualified_block_constants_are_unknown(self):
+        from app.services.ast_checker_service import check_rule
+
+        code = """
+const int non_aes_block_bytes = 8;
+const int expected_aes_block_bits = 64;
+void aes_encrypt(void) {}
+"""
+        assert check_rule("AES-001", code, "aes.c") is None
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "void aes_key_schedule(int length) { int rounds = length / 4 + 6; }",
+            "void Rijndael_UncheckedSetKey(int keyLen) { int m_rounds = keyLen / 4 + 6; }",
+        ],
+    )
+    def test_pinned_implementation_arithmetic_shapes_are_unknown(self, code):
+        from app.services.ast_checker_service import check_rule
+
+        assert check_rule("AES-003", code, "aes.c") is None
+
+
 # ======================================================================
 # LEA-003: 라운드 수 검증
 # ======================================================================
@@ -1341,25 +1520,20 @@ void ccm_encrypt(uint8_t *ct, const uint8_t *pt,
 
 
 # ======================================================================
-# ARIA-001: ARIA 키 스케줄 구조 (XOR + ROL + CK)
+# ARIA-001: 명시적 키 길이→라운드 수 모순 탐지
 # ======================================================================
 
 class TestARIA001:
-    """ARIA-001: ARIA 키 스케줄에 XOR, 비트회전, CK 상수 3요소 필수."""
+    """ARIA-001: RFC 5794의 16/24/32 byte → 12/14/16 round 대응."""
 
     @pytest.mark.tier3
-    def test_compliant_all_elements(self, check_rule):
-        """XOR + ROL + CK[] 모두 존재 → 정상"""
+    def test_compliant_explicit_mapping(self, check_rule):
         code = """
-typedef unsigned int uint32_t;
-uint32_t ROL32(uint32_t x, int r);
-void aria_key_schedule(const unsigned char *mk, uint32_t *rk) {
-    uint32_t W[4], CK[4];
-    int i;
-    for (i = 0; i < 16; i++) {
-        W[0] = W[0] ^ CK[i % 4];
-        W[1] = ROL32(W[1], 8);
-    }
+void aria_set_key(const unsigned char *key, int keylen) {
+    int rounds = 0;
+    if (keylen == 16) { rounds = 12; }
+    else if (keylen == 24) { rounds = 14; }
+    else if (keylen == 32) { rounds = 16; }
 }
 """
         result = check_rule("ARIA-001", code)
@@ -1367,29 +1541,77 @@ void aria_key_schedule(const unsigned char *mk, uint32_t *rk) {
         assert len(result) == 0
 
     @pytest.mark.tier3
-    def test_violation_missing_two_elements(self, check_rule):
-        """XOR만 있고 ROL, CK 없음 → 2개 누락 → 위반"""
+    def test_violation_explicit_wrong_round_count(self, check_rule):
         code = """
-typedef unsigned int uint32_t;
-void aria_key_schedule(const unsigned char *mk, uint32_t *rk) {
-    uint32_t W[4];
-    int i;
-    for (i = 0; i < 16; i++) {
-        W[0] = W[0] ^ W[1];
+void aria_set_key(const unsigned char *key, int key_len) {
+    int rounds = 0;
+    if (key_len == 16) { rounds = 14; }
+}
+"""
+        result = check_rule("ARIA-001", code)
+        assert result is not None
+        assert len(result) == 1
+        assert "16바이트" in result[0]["message"]
+        assert "12라운드" in result[0]["message"]
+
+    @pytest.mark.tier3
+    def test_switch_mapping_detects_only_wrong_case(self, check_rule):
+        code = """
+void aria_key_schedule(const unsigned char *key, int keylen) {
+    int m_rounds = 0;
+    switch (keylen) {
+    case 16: m_rounds = 12; break;
+    case 24: m_rounds = 12; break;
+    case 32: m_rounds = 16; break;
     }
 }
 """
         result = check_rule("ARIA-001", code)
         assert result is not None
-        assert len(result) >= 1
+        assert len(result) == 1
+        assert "24바이트" in result[0]["message"]
 
     @pytest.mark.tier3
-    def test_no_aria_func_returns_empty(self, check_rule):
-        """ARIA 키 스케줄 함수 없음 → 빈 리스트"""
+    def test_wrapper_without_explicit_mapping_is_not_a_violation(self, check_rule):
         code = """
-typedef unsigned int uint32_t;
-void helper(uint32_t *buf) { buf[0] = 0; }
+int vendor_aria_set_key(void *ctx, const unsigned char *key, int keylen);
+int aria_set_key(void *ctx, const unsigned char *key, int keylen) {
+    return vendor_aria_set_key(ctx, key, keylen);
+}
 """
         result = check_rule("ARIA-001", code)
-        assert result is not None
-        assert len(result) == 0
+        assert result is None
+
+    @pytest.mark.tier3
+    def test_branch_initializer_is_not_treated_as_final_round_count(self, check_rule):
+        code = """
+void aria_set_key(const unsigned char *key, int keylen) {
+    if (keylen == 16) { int rounds = 0; rounds = 12; }
+}
+"""
+        assert check_rule("ARIA-001", code) == []
+
+    @pytest.mark.tier3
+    def test_keybits_mapping_detects_explicit_mismatch(self, check_rule):
+        code = """
+void aria_set_key(const unsigned char *key, int key_bits) {
+    if (key_bits == 128) { int rounds = 14; }
+}
+"""
+        result = check_rule("ARIA-001", code)
+        assert result is not None and len(result) == 1
+
+    @pytest.mark.tier3
+    def test_indirect_round_value_is_unknown(self, check_rule):
+        code = """
+void aria_set_key(const unsigned char *key, int key_bits) {
+    if (key_bits == 128) { int rounds = configured_rounds(); }
+}
+"""
+        assert check_rule("ARIA-001", code) is None
+
+    @pytest.mark.tier3
+    def test_aria_002_is_not_registered_as_static_checker(self):
+        from app.services.ast_checker_service import _CHECKERS
+
+        assert "ARIA-002" not in _CHECKERS

@@ -469,6 +469,226 @@ _ROL_NAMES = {"ROL32", "ROL", "ROTL32", "ROTL", "ROR32", "ROR", "ROTR32", "ROTR"
               "rol32", "ror32", "rotl32", "rotr32"}
 
 
+_AES_KEY_ROUNDS = {128: 10, 192: 12, 256: 14}
+_AES_KEY_FUNC_RE = _re.compile(
+    r"aes.*(?:setkey|set_key|set_(?:encrypt|decrypt)_key|key_schedule|key_exp|expand_key)|"
+    r"(?:setkey|set_key|set_(?:encrypt|decrypt)_key|key_schedule|key_exp|expand_key).*aes",
+    _re.IGNORECASE,
+)
+_AES_ROUND_FIELD_RE = _re.compile(r"^(?:nr|rounds?|n_rounds?)$", _re.IGNORECASE)
+
+
+def _aes_key_functions(root) -> List[Any]:
+    """Return explicit, non-wrapper AES key setup implementations."""
+    return [
+        fd for fd in _get_func_defs(root)
+        if _AES_KEY_FUNC_RE.search(_func_name(fd))
+        and not _is_thin_wrapper(fd)
+        and not _is_benchmark_func(fd)
+    ]
+
+
+def _aes_assignment_field(assign) -> str:
+    lhs = getattr(assign, "lvalue", None)
+    if isinstance(lhs, c_ast.StructRef):
+        return getattr(getattr(lhs, "field", None), "name", "") or ""
+    if isinstance(lhs, c_ast.ID):
+        return lhs.name or ""
+    return ""
+
+
+def _check_aes_001(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """AES-001: detect only unit-explicit block-width contradictions.
+
+    ``aes_block_bytes`` must be 16 and ``aes_block_bits`` must be 128.
+    Role-qualified names (for example ``non_aes_*`` or ``expected_aes_*``),
+    array extents, optimized implementations and wrappers are unknown.
+    """
+    aes_functions = [
+        fd for fd in _get_func_defs(root)
+        if "aes" in _func_name(fd).lower()
+    ]
+    if aes_functions and all(_is_thin_wrapper(fd) for fd in aes_functions):
+        return None
+
+    inspected = False
+    violations: List[Dict[str, Any]] = []
+    for decl in _collect(root, c_ast.Decl):
+        name = (getattr(decl, "name", "") or "").lower()
+        value = _const_value(getattr(decl, "init", None))
+        if value is None:
+            continue
+        expected = None
+        if name == "aes_block_bytes":
+            expected = 16
+        elif name == "aes_block_bits":
+            expected = 128
+        if expected is None:
+            continue
+        inspected = True
+        if value != expected:
+            violations.append({
+                "line": _coord_line(decl, offset),
+                "message": (
+                    f"AES 블록 크기 명시값 오류: '{name} = {value}', "
+                    f"단위에 따른 FIPS 197 요구값은 {expected}"
+                ),
+                "ast_evidence": f"explicit declaration {name}={value}; expected {expected}",
+            })
+    return violations if inspected else None
+
+
+def _aes_length_unit(node: Any) -> Optional[str]:
+    """Return an explicit key-length unit; unitless keylen/key_size is unknown."""
+    if not isinstance(node, c_ast.ID):
+        return None
+    name = (node.name or "").lower()
+    if name == "bits" or name.endswith("_bits"):
+        return "bits"
+    if name == "bytes" or name.endswith("_bytes"):
+        return "bytes"
+    return None
+
+
+def _aes_normalize_key_bits(value: Optional[int], unit: Optional[str]) -> Optional[int]:
+    if value is None or unit not in {"bits", "bytes"}:
+        return None
+    return value if unit == "bits" else value * 8
+
+
+def _aes_switch_cases(fd) -> List[Tuple[int, Any]]:
+    result: List[Tuple[int, Any]] = []
+    for switch in _collect(fd, c_ast.Switch):
+        unit = _aes_length_unit(switch.cond)
+        if unit is None:
+            continue
+        for case in _collect(switch.stmt, c_ast.Case):
+            key_bits = _aes_normalize_key_bits(_const_value(case.expr), unit)
+            if key_bits is not None:
+                result.append((key_bits, case))
+    return result
+
+
+def _aes_if_branches(fd) -> List[Tuple[int, Any]]:
+    """Collect equality branches whose key-length unit is explicit."""
+    result: List[Tuple[int, Any]] = []
+    for branch in _collect(fd, c_ast.If):
+        cond = branch.cond
+        if not isinstance(cond, c_ast.BinaryOp) or cond.op != "==":
+            continue
+        left_value, right_value = _const_value(cond.left), _const_value(cond.right)
+        if left_value is not None:
+            key_bits = _aes_normalize_key_bits(left_value, _aes_length_unit(cond.right))
+        else:
+            key_bits = _aes_normalize_key_bits(right_value, _aes_length_unit(cond.left))
+        if key_bits is not None and branch.iftrue is not None:
+            result.append((key_bits, branch.iftrue))
+    return result
+
+
+def _aes_explicit_branches(fd) -> List[Tuple[int, Any]]:
+    return _aes_switch_cases(fd) + _aes_if_branches(fd)
+
+
+def _aes_final_success_return(fd) -> bool:
+    statements = getattr(getattr(fd, "body", None), "block_items", None) or []
+    return bool(
+        statements
+        and isinstance(statements[-1], c_ast.Return)
+        and _const_value(statements[-1].expr) == 0
+    )
+
+
+def _aes_branch_explicitly_succeeds(fd, branch: Any) -> bool:
+    returns = _collect(branch, c_ast.Return)
+    if any(_const_value(ret.expr) == 0 for ret in returns):
+        return True
+    if isinstance(branch, c_ast.Compound) and not returns:
+        return _aes_final_success_return(fd)
+    # A switch case that explicitly breaks reaches a final `return 0`.
+    return (
+        isinstance(branch, c_ast.Case)
+        and bool(_collect(branch, c_ast.Break))
+        and _aes_final_success_return(fd)
+    )
+
+
+def _aes_direct_round_assignments(branch: Any) -> List[Any]:
+    """Return linear, top-level round assignments in source order."""
+    if isinstance(branch, c_ast.Case):
+        statements = branch.stmts or []
+    elif isinstance(branch, c_ast.Compound):
+        statements = branch.block_items or []
+    else:
+        statements = [branch]
+    return [
+        statement for statement in statements
+        if isinstance(statement, c_ast.Assignment)
+        and _AES_ROUND_FIELD_RE.match(_aes_assignment_field(statement))
+        and _const_value(statement.rvalue) is not None
+    ]
+
+
+def _check_aes_002(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """AES-002: detect an invalid key-size case that explicitly succeeds."""
+    funcs = _aes_key_functions(root)
+    if not funcs:
+        return None
+    inspected = False
+    violations: List[Dict[str, Any]] = []
+    for fd in funcs:
+        for key_bits, branch in _aes_explicit_branches(fd):
+            inspected = True
+            if key_bits in _AES_KEY_ROUNDS:
+                continue
+            if _aes_branch_explicitly_succeeds(fd, branch):
+                violations.append({
+                    "line": _coord_line(branch, offset),
+                    "message": (
+                        f"함수 '{_func_name(fd)}': AES 비표준 키 길이 {key_bits}비트를 "
+                        "명시적으로 성공 경로에서 허용"
+                    ),
+                    "ast_evidence": (
+                        f"explicit {key_bits}-bit branch reaches a success return; "
+                        "FIPS 197 permits 128, 192, and 256 bits"
+                    ),
+                })
+    return violations if inspected else None
+
+
+def _check_aes_003(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """AES-003: detect explicit key-size/round-count contradictions."""
+    funcs = _aes_key_functions(root)
+    if not funcs:
+        return None
+    inspected = False
+    violations: List[Dict[str, Any]] = []
+    for fd in funcs:
+        for key_bits, branch in _aes_explicit_branches(fd):
+            expected = _AES_KEY_ROUNDS.get(key_bits)
+            if expected is None:
+                continue
+            assignments = _aes_direct_round_assignments(branch)
+            if not assignments:
+                continue
+            assign = assignments[-1]
+            rounds = _const_value(assign.rvalue)
+            inspected = True
+            if rounds != expected:
+                violations.append({
+                    "line": _coord_line(assign, offset),
+                    "message": (
+                        f"함수 '{_func_name(fd)}': AES-{key_bits} 라운드 수 {rounds} — "
+                        f"FIPS 197 요구값은 {expected}"
+                    ),
+                    "ast_evidence": (
+                        f"explicit {key_bits}-bit branch final "
+                        f"{_aes_assignment_field(assign)}={rounds}; expected {expected}"
+                    ),
+                })
+    return violations if inspected else None
+
+
 def _check_lea_003(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """LEA-003: 키 스케줄 함수 내 라운드 수가 24/28/32 중 하나인지 검사.
 
@@ -1507,46 +1727,239 @@ def _check_ctr_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     return violations
 
 
-def _check_aria_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
-    """ARIA-001: ARIA key-schedule structural cues (XOR, rotation, CK)."""
+def _check_aria_001(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """ARIA-001: report only explicit key-byte/round-count contradictions.
+
+    RFC 5794 specifies 12/14/16 rounds for 16/24/32-byte keys. Optimized and
+    delegated implementations need not expose S-box, rotation, or constant
+    names, so absence of those structural cues is deliberately not a finding.
+    """
     if not _HAS_PYCPARSER:
-        return []
+        return None
+
     aria_funcs = [
         fd for fd in _collect(root, c_ast.FuncDef)
         if "aria" in _func_name(fd).lower() and "key" in _func_name(fd).lower()
+        and not _is_benchmark_func(fd)
     ]
     if not aria_funcs:
-        return []
-    violations: List[Dict[str, Any]] = []
-    for fd in aria_funcs:
-        calls = {name.lower() for name in _call_names_in(fd)}
-        ids = {name.lower() for name in _id_names_in(fd)}
-        has_xor = _has_op(fd, "^")
-        has_rotation = (
-            any("rol" in name or "ror" in name or "rot" in name for name in calls)
-            or (_has_op(fd, "<<") and _has_op(fd, ">>"))
+        return None
+
+    expected_rounds = {16: 12, 24: 14, 32: 16}
+
+    def _int_constant(node: Any) -> Optional[int]:
+        if isinstance(node, c_ast.Constant) and node.type in {
+            "int", "unsigned int", "long", "unsigned long"
+        }:
+            try:
+                return int(node.value.rstrip("uUlL"), 0)
+            except ValueError:
+                return None
+        if isinstance(node, c_ast.UnaryOp) and node.op == "+":
+            return _int_constant(node.expr)
+        if isinstance(node, c_ast.Assignment):
+            return _int_constant(node.rvalue)
+        return None
+
+    def _key_length_unit(node: Any) -> Optional[str]:
+        names = {name.lower() for name in _id_names_in(node)}
+        if any("key" in name and "bit" in name for name in names):
+            return "bits"
+        if any(name in {
+            "keylen", "key_len", "keylength", "key_length", "mk_len",
+            "keybytes", "key_bytes",
+        } for name in names):
+            return "bytes"
+        return None
+
+    def _condition_key_bytes(node: Any) -> Optional[int]:
+        if not isinstance(node, c_ast.BinaryOp) or node.op != "==":
+            return None
+        left, right = _int_constant(node.left), _int_constant(node.right)
+        for value, expression in ((left, node.right), (right, node.left)):
+            unit = _key_length_unit(expression)
+            if unit == "bytes" and value in expected_rounds:
+                return value
+            if unit == "bits" and value in {128, 192, 256}:
+                return value // 8
+        return None
+
+    round_names = {"round", "rounds", "nr", "n_rounds", "m_rounds"}
+
+    def _round_values(node: Any) -> Optional[List[tuple[int, Any]]]:
+        """Return final straight-line assignments, or None for branched flow."""
+        statements = list(
+            getattr(node, "block_items", None)
+            or getattr(node, "stmts", None)
+            or [node]
         )
-        has_ck = "ck" in ids
-        missing = []
-        if not has_xor:
-            missing.append("XOR")
-        if not has_rotation:
-            missing.append("rotation")
-        if not has_ck:
-            missing.append("CK constant reference")
-        if missing:
+        final_by_target: Dict[str, tuple[int, Any]] = {}
+        for statement in statements:
+            # A nested control-flow update has path-dependent final state.
+            if isinstance(statement, (c_ast.If, c_ast.Switch, c_ast.For,
+                                      c_ast.While, c_ast.DoWhile)):
+                if any(
+                    {name.lower() for name in _id_names_in(assign.lvalue)} & round_names
+                    for assign in _collect(statement, c_ast.Assignment)
+                ):
+                    return None
+                continue
+            if isinstance(statement, c_ast.Decl):
+                target = (statement.name or "").lower()
+                value = _int_constant(statement.init)
+                if target in round_names and value is not None:
+                    final_by_target[target] = (value, statement)
+            elif isinstance(statement, c_ast.Assignment):
+                targets = {
+                    name.lower() for name in _id_names_in(statement.lvalue)
+                } & round_names
+                value = _int_constant(statement.rvalue)
+                if len(targets) == 1 and value is not None:
+                    final_by_target[next(iter(targets))] = (value, statement)
+        return list(final_by_target.values())
+
+    violations: List[Dict[str, Any]] = []
+    inspected = False
+    for fd in aria_funcs:
+        pairs: List[tuple[int, int, Any]] = []
+        for if_node in _collect(fd, c_ast.If):
+            key_bytes = _condition_key_bytes(if_node.cond)
+            if key_bytes is None or if_node.iftrue is None:
+                continue
+            values = _round_values(if_node.iftrue)
+            if values is None:
+                continue
+            inspected = inspected or bool(values)
+            pairs.extend(
+                (key_bytes, rounds, coord)
+                for rounds, coord in values
+            )
+
+        for switch in _collect(fd, c_ast.Switch):
+            unit = _key_length_unit(switch.cond)
+            if unit is None:
+                continue
+            for case in _collect(switch.stmt, c_ast.Case):
+                case_value = _int_constant(case.expr)
+                key_bytes = (
+                    case_value // 8
+                    if unit == "bits" and case_value in {128, 192, 256}
+                    else case_value
+                )
+                if key_bytes not in expected_rounds:
+                    continue
+                values = _round_values(case)
+                if values is None:
+                    continue
+                inspected = inspected or bool(values)
+                pairs.extend(
+                    (key_bytes, rounds, coord)
+                    for rounds, coord in values
+                )
+
+        seen = set()
+        for key_bytes, rounds, coord in pairs:
+            pair = (key_bytes, rounds)
+            if pair in seen or rounds == expected_rounds[key_bytes]:
+                continue
+            seen.add(pair)
             violations.append({
-                "line": _coord_line(fd, offset),
+                "line": _coord_line(coord, offset),
                 "message": (
-                    f"ARIA key-schedule function '{_func_name(fd)}': "
-                    f"missing structural element(s): {', '.join(missing)}"
+                    f"ARIA 키 길이 {key_bytes}바이트에 라운드 수 {rounds}가 명시됨 — "
+                    f"RFC 5794의 {expected_rounds[key_bytes]}라운드와 불일치"
                 ),
                 "ast_evidence": (
-                    "ARIA key-schedule AST check requires XOR, rotation, and CK references; "
-                    f"missing: {', '.join(missing)}"
+                    f"ARIA key-length/round contradiction: {key_bytes} bytes -> "
+                    f"{rounds} rounds; expected {expected_rounds[key_bytes]} "
+                    "(RFC 5794 Sections 1.1 and 2.3.1)"
                 ),
             })
-    return violations
+    return violations if inspected else None
+
+
+_SEED_MASTER_KEY_NAME_RE = _re.compile(
+    r"^(?:seed_key|master_key|user_key|seed_(?:master|user)_key)$",
+    _re.IGNORECASE,
+)
+
+
+def _check_seed_001(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
+    """Reject only explicit non-16-byte SEED master-key byte arrays.
+
+    Pointers, macro dimensions unresolved after preprocessing, runtime lengths,
+    wrappers, and round/subkey arrays remain unknown and produce no finding.
+    """
+    if not _HAS_PYCPARSER:
+        return None
+    violations: List[Dict[str, Any]] = []
+    inspected = False
+
+    def _inspect_decl(decl, *, allow_generic_names: bool) -> None:
+        nonlocal inspected
+        name = decl.name or ""
+        if not _SEED_MASTER_KEY_NAME_RE.fullmatch(name):
+            return
+        if not allow_generic_names and name.lower() not in {
+            "seed_key", "seed_master_key", "seed_user_key"
+        }:
+            return
+        array = getattr(decl, "type", None)
+        if not isinstance(array, c_ast.ArrayDecl):
+            return
+        size = _const_value(array.dim)
+        if size is None:
+            return
+        element = getattr(array, "type", None)
+        while element is not None and not isinstance(element, c_ast.IdentifierType):
+            element = getattr(element, "type", None)
+        type_names = {part.lower() for part in getattr(element, "names", [])}
+        is_byte_type = "uint8_t" in type_names or type_names in (
+            {"char"}, {"unsigned", "char"}, {"signed", "char"}
+        )
+        if not is_byte_type:
+            return
+        inspected = True
+        if size == 16:
+            return
+        line = _coord_line(decl, offset)
+        violations.append({
+            "line": line,
+            "message": (
+                f"SEED 비밀키 배열 '{name}'의 명시적 크기가 {size}바이트이다. "
+                "RFC 4269 및 KCMVP 대상 SEED의 키 길이는 16바이트이다."
+            ),
+            "ast_evidence": (
+                f"AST: byte array Decl(name='{name}', dimension={size}); "
+                "expected explicit dimension 16"
+            ),
+        })
+
+    # Only exact SEED-named global arrays are sufficiently specific.
+    for decl in getattr(root, "ext", []):
+        if isinstance(decl, c_ast.Decl):
+            _inspect_decl(decl, allow_generic_names=False)
+
+    # Local storage must occur in a non-wrapper SEED key-setup/init function.
+    for fd in _get_func_defs(root):
+        fname = _func_name(fd).lower()
+        if (
+            "seed" not in fname
+            or not any(token in fname for token in ("key", "init", "setup"))
+            or _is_thin_wrapper(fd)
+            or _is_benchmark_func(fd)
+        ):
+            continue
+        parameter_names = {
+            getattr(param, "name", "")
+            for param in _collect(getattr(fd.decl.type, "args", None), c_ast.Decl)
+        } if getattr(fd.decl.type, "args", None) is not None else set()
+        for decl in _collect(fd.body, c_ast.Decl):
+            if (decl.name or "") in parameter_names:
+                continue
+            _inspect_decl(decl, allow_generic_names=True)
+
+    return violations if inspected else None
 
 
 def _mode_structure_regex_scan(content: str, rule_id: str) -> Optional[List[Dict[str, Any]]]:
@@ -3137,96 +3550,6 @@ def _check_lea_025(root, offset: int, filename: str) -> Optional[List[Dict[str, 
                     "delta[]/DELTA[] 배열 참조 0건. "
                     "표준 키 스케줄 함수 호출 0건 — "
                     "복호화 키 생성에 동일 δ 상수 미사용 의심"
-                ),
-            })
-
-    return violations
-
-
-# ──────────────────────────────────────────────────────────────────
-# ARIA-002: ARIA S-box 구조 확인
-# ──────────────────────────────────────────────────────────────────
-
-_ARIA_FUNC_KW = ["aria", "sbox", "s_box"]
-_ARIA_KEY_KW = ["aria_key", "aria_set", "aria_schedule", "key_expansion",
-                "aria_enc_key", "aria_dec_key"]
-
-
-def _check_aria_002(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
-    """ARIA-002: ARIA 키 스케줄 구조(CK 생성 + FO/FE 라운드) 확인.
-
-    탐지 전략:
-    1. ARIA 키 스케줄 함수 식별 (aria_key*, key_expansion 등)
-    2. 함수 내 XOR(^) 연산 및 S-box 배열 참조 확인
-    3. CK 생성에 필요한 XOR+회전 구조 존재 여부 확인
-    4. ARIA 함수 없으면 [] 반환 (해당 없음)
-    """
-    if not _HAS_PYCPARSER:
-        return None
-
-    aria_key_funcs = _funcs_matching(root, _ARIA_KEY_KW)
-    if not aria_key_funcs:
-        # ARIA 관련 함수가 전혀 없으면 해당 없음
-        all_funcs = _get_func_defs(root)
-        has_aria = any("aria" in _func_name(fd).lower() for fd in all_funcs)
-        if not has_aria:
-            return []
-        return None  # ARIA 함수는 있지만 키 스케줄 함수 매칭 실패 → fallback
-
-    violations = []
-    for fd in aria_key_funcs:
-        if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
-            continue
-        fname = _func_name(fd)
-
-        # XOR 연산 확인 (키 스케줄 필수)
-        has_xor = _has_op(fd, "^")
-        # S-box 배열 참조 확인
-        has_sbox = False
-        for ref in _collect(fd, c_ast.ArrayRef):
-            base = (_array_base(ref) or "").lower()
-            if any(sb in base for sb in ("sb", "sbox", "s1", "s2", "s_box")):
-                has_sbox = True
-                break
-        # 함수 호출로 S-box 적용 (SubstLayer, FO, FE 등)
-        if not has_sbox:
-            calls = _call_names_in(fd)
-            sbox_calls = {c for c in calls if any(
-                kw in c.lower() for kw in ("subst", "sbox", "fo", "fe", "sl1", "sl2")
-            )}
-            if sbox_calls:
-                has_sbox = True
-
-        # 회전 연산 확인
-        has_rotation = bool(_call_names_in(fd) & _ROL_NAMES)
-        if not has_rotation:
-            has_rotation = _has_op(fd, "<<") and _has_op(fd, ">>")
-
-        if not has_xor:
-            line = _coord_line(fd, offset)
-            violations.append({
-                "line": line,
-                "message": (
-                    f"함수 '{fname}': ARIA 키 스케줄에 XOR(^) 연산 없음 — "
-                    "CK 생성 및 라운드키 XOR 구조 필수"
-                ),
-                "ast_evidence": (
-                    f"함수 '{fname}' AST 분석: BinaryOp('^') 0건. "
-                    "ARIA 키 스케줄 표준: CK1=W0⊕W2, CK2=W1⊕W3 등 XOR 구조 필수"
-                ),
-            })
-
-        if not has_sbox and not has_rotation:
-            line = _coord_line(fd, offset)
-            violations.append({
-                "line": line,
-                "message": (
-                    f"함수 '{fname}': ARIA 키 스케줄에 S-box 참조 및 회전 연산 없음 — "
-                    "FO/FE 라운드 함수 구조 필수"
-                ),
-                "ast_evidence": (
-                    f"함수 '{fname}' AST 분석: S-box 배열 참조 0건, ROL/ROR 호출 0건. "
-                    "ARIA 표준: 키 스케줄에 FO(SubstLayer+확산)/FE 라운드 적용 필수"
                 ),
             })
 
@@ -5405,6 +5728,9 @@ _LC_CHECKERS = {
 # ══════════════════════════════════════════════════════════════════
 
 _CHECKERS = {
+    "AES-001": _check_aes_001,
+    "AES-002": _check_aes_002,
+    "AES-003": _check_aes_003,
     "LEA-003": _check_lea_003,
     "LEA-014": _check_lea_014,
     "LEA-015": _check_lea_015,
@@ -5440,7 +5766,9 @@ _CHECKERS = {
     "LEA-024": _check_lea_024,
     "LEA-025": _check_lea_025,
     "ARIA-001": _check_aria_001,
-    "ARIA-002": _check_aria_002,
+    "SEED-001": _check_seed_001,
+    # ARIA-002 is reserved for RFC 5794 known-answer evaluation. It is
+    # intentionally not a static checker; see evaluation/candidates/README.md.
     "CBC-LEA-005": _check_cbc_lea_005,
     "CTR-LEA-006": _check_ctr_lea_006,
     "LEA-039": _check_lea_039,

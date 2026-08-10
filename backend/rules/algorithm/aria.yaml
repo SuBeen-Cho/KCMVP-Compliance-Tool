@@ -1,0 +1,18 @@
+rules:
+  - id: ARIA-001
+    category: algorithm
+    algorithm: ARIA
+    name: ARIA 키 길이별 라운드 수 모순 검증
+    pattern_type: ast
+    severity: high
+    description: >-
+      구현에 키 길이와 라운드 수의 대응이 명시된 경우 16, 24, 32바이트 키가
+      각각 12, 14, 16라운드로 설정되는지 검증한다. 대응이 코드에 드러나지 않는
+      래퍼 또는 최적화 구현에는 위반을 생성하지 않는다.
+    kcmvp_ref: KISA 검증대상 ARIA 목록; IETF RFC 5794 Sections 1.1 and 2.3.1
+    source_metadata:
+      kisa_url: https://seed.kisa.or.kr/kisa/kcmvp/EgovVerification.do
+      kisa_role: KCMVP 검증대상 및 참조표준 목록
+      specification_url: https://www.rfc-editor.org/rfc/rfc5794.html
+      specification_status: Informational RFC 교차검증 사양
+      source_checked_on: '2026-08-11'
