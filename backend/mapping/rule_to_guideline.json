@@ -1,5 +1,29 @@
 {
-  "_comment": "rule_id → KCMVP 가이드라인 매핑. item_id는 2025 제출물 작성 안내서 AS 번호 기준.",
+  "_comment": "rule_id → evidence mapping. item_ids는 2025 제출물 작성 안내서 AS 번호에만 사용하고, 외부 표준 식별자는 standard_ids에 기록한다. guidelines/*는 저자 작성 해설일 수 있으며 원문 표준을 대체하지 않는다.",
+  "AES-001": {
+    "item_ids": [],
+    "standard_ids": ["NIST.FIPS.197-upd1:2.1", "NIST.FIPS.197-upd1:Table3"],
+    "kcmvp_ref": "NIST FIPS PUB 197-upd1 §2.1 및 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
+    "l3_search_query": "AES 블록 크기 128비트 16바이트 명시값",
+    "l3_required": false,
+    "guideline_file": "guidelines/AES-001_block_size.md"
+  },
+  "AES-002": {
+    "item_ids": [],
+    "standard_ids": ["NIST.FIPS.197-upd1:Table3"],
+    "kcmvp_ref": "NIST FIPS PUB 197-upd1 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
+    "l3_search_query": "AES 키 길이 128 192 256비트 명시값",
+    "l3_required": false,
+    "guideline_file": "guidelines/AES-002_key_lengths.md"
+  },
+  "AES-003": {
+    "item_ids": [],
+    "standard_ids": ["NIST.FIPS.197-upd1:Table3"],
+    "kcmvp_ref": "NIST FIPS PUB 197-upd1 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
+    "l3_search_query": "AES 키 길이별 라운드 10 12 14 명시 대응",
+    "l3_required": false,
+    "guideline_file": "guidelines/AES-003_key_rounds.md"
+  },
   "COM-001": {
     "item_ids": [
       "AS09.29"
@@ -55,6 +79,22 @@
     "l3_search_query": "온라인 API 표준 명칭 lea_online 함수명",
     "l3_required": false,
     "guideline_file": "guidelines/COM-006_api_naming.md"
+  },
+  "ARIA-001": {
+    "item_ids": [],
+    "standard_ids": ["IETF.RFC5794:1.1", "IETF.RFC5794:2.3.1"],
+    "kcmvp_ref": "KISA 검증대상 ARIA 목록; Informational RFC 5794 §§1.1, 2.3.1 교차사양",
+    "l3_search_query": "ARIA 키 길이 16 24 32바이트 라운드 수 12 14 16",
+    "l3_required": false,
+    "guideline_file": "guidelines/ARIA-001_key_rounds.md"
+  },
+  "SEED-001": {
+    "item_ids": [],
+    "standard_ids": ["IETF.RFC4269:1.2"],
+    "kcmvp_ref": "KISA 검증대상 SEED 목록; Informational RFC 4269 §1.2 교차사양",
+    "l3_search_query": "SEED 비밀키 128비트 16바이트 명시 배열",
+    "l3_required": false,
+    "guideline_file": "guidelines/SEED-001_key_size.md"
   },
   "LEA-001": {
     "item_ids": [

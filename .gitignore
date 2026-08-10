@@ -41,6 +41,7 @@ backend/evaluation/*
 backend/evaluation/candidates/*
 !backend/evaluation/candidates/sources.lock.json
 !backend/evaluation/candidates/authoritative_vectors.json
+!backend/evaluation/candidates/README.md
 backend/testdata/*
 !backend/testdata/lea_cbc_only.zip
 !backend/testdata/fake_design_doc.pdf

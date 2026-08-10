@@ -20,7 +20,7 @@
 
 ## 2026-08-11 현재 완료 상태
 
-- 구현 및 정적 검증: 규칙 inventory(161개), 산술 감사, GT 주석 제거, no-RAG 경로, 실행 manifest, 토큰 카운터, confidence 입력 검증, L3 fail-fast를 반영했다.
+- 구현 및 정적 검증: 현재 스냅샷의 규칙 inventory는 166개(코드 지향 97개, 문서 65개, 추적성 4개)이며, 산술 감사, GT 주석 제거, no-RAG 경로, 실행 manifest, 토큰 카운터, confidence 입력 검증, L3 fail-fast를 반영했다. AES 3개, ARIA 1개, SEED 1개의 보수적 명시 모순 규칙이 포함되지만 알고리즘별 일반화 성능은 아직 입증되지 않았다.
 - 테스트: backend `118 passed, 1 skipped`; manifest 직접 CLI 통과; MDPI PDF 24쪽 재컴파일 성공.
 - 과거 결과: 코드·입력·프롬프트를 묶는 manifest가 없어 `legacy_unverified`로만 유지한다.
 - 실제 재실행: 제공된 Gemini 키가 `API_KEY_INVALID`를 반환하여 canonical L2 paired 결과와 비용 결과를 만들지 못했다.
