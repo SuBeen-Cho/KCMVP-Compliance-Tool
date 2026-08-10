@@ -6,7 +6,7 @@
     "require_exact_commit": true,
     "require_license_copy": true,
     "system_reference_vector_validation": true,
-    "upstream_checkout_vector_validation": false
+    "upstream_checkout_vector_validation": true
   },
   "sources": [
     {

@@ -56,10 +56,10 @@ def test_source_lock_records_aria_capable_implementations():
         assert "ARIA" in sources[source_id]["algorithms"]
 
 
-def test_source_lock_does_not_claim_each_checkout_was_vector_tested():
+def test_source_lock_records_completed_checkout_vector_validation():
     policy = MODULE.load_lock()["policy"]
     assert policy["system_reference_vector_validation"] is True
-    assert policy["upstream_checkout_vector_validation"] is False
+    assert policy["upstream_checkout_vector_validation"] is True
 
 
 @pytest.mark.parametrize(
