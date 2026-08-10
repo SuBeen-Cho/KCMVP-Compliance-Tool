@@ -304,6 +304,18 @@ def _call_names_in(node) -> Set[str]:
     return names
 
 
+def _id_names_in(node) -> Set[str]:
+    """서브트리의 모든 ID 이름 집합."""
+    names: Set[str] = set()
+    if not _HAS_PYCPARSER or node is None:
+        return names
+    for ident in _collect(node, c_ast.ID):
+        name = getattr(ident, "name", None)
+        if name:
+            names.add(name)
+    return names
+
+
 def _is_macro_based_round_func(func_def) -> bool:
     """encrypt/decrypt 함수 본문이 LEA_ENC_ROUND, LEA_DEC_ROUND 등
     round 매크로 호출로만 이뤄진 경우 True — 내부 로직 분석 불가."""
@@ -635,6 +647,16 @@ _LEA_DELTA_STANDARD: List[str] = [
 ]
 # delta 배열 이름 패턴 — 'delta_128', 'delta128', 'DELTA' 등 모두 포함
 _DELTA_VAR_RE = _re.compile(r'(?i)delta')
+
+
+def _normalize_c_integer(value: Any) -> Optional[int]:
+    """Normalize C integer literals, including common unsigned/long suffixes."""
+    text = str(value).strip()
+    text = _re.sub(r"(?i)(?:u|l)+$", "", text)
+    try:
+        return int(text, 0)
+    except (TypeError, ValueError):
+        return None
 
 
 def _check_lea_010(root, offset: int, filename: str,
@@ -1196,6 +1218,63 @@ def _has_xor(node) -> bool:
     return any(kw in c.lower() for kw in _XOR_CALL_KW for c in calls)
 
 
+def _is_i_not_zero_condition(node) -> bool:
+    if not (_HAS_PYCPARSER and isinstance(node, c_ast.BinaryOp)):
+        return False
+    if node.op not in ("!=", ">"):
+        return False
+    left = getattr(node, "left", None)
+    right = getattr(node, "right", None)
+    return (
+        isinstance(left, c_ast.ID)
+        and left.name in {"i", "block", "idx"}
+        and _const_value(right) == 0
+    )
+
+
+def _cbc_first_block_missing_xor(fd, *, decrypt: bool, offset: int) -> Optional[Dict[str, Any]]:
+    """CBC 첫 블록 분기에서 IV XOR 누락을 보수적으로 탐지."""
+    fname = _func_name(fd)
+    for if_node in _collect(fd, c_ast.If):
+        if not _is_i_not_zero_condition(getattr(if_node, "cond", None)):
+            continue
+        first_block = getattr(if_node, "iffalse", None)
+        if first_block is None or _has_xor(first_block):
+            continue
+        calls = {name.lower() for name in _call_names_in(first_block)}
+        line = _coord_line(first_block, offset) or _coord_line(fd, offset)
+        if decrypt:
+            if not any("crypt" in name or "decrypt" in name or "dec" in name for name in calls):
+                continue
+            return {
+                "line": line,
+                "message": (
+                    f"함수 '{fname}': CBC 복호화 첫 블록에서 IV XOR 미발견 — "
+                    "PT[0]=DEC(CT[0])⊕IV 수식 누락"
+                ),
+                "ast_evidence": (
+                    f"함수 '{fname}' i!=0 분기의 첫 블록 else 분석: "
+                    "복호화/crypt 호출은 있으나 XOR 연쇄 호출이 없음. "
+                    "CBC 복호화 첫 블록은 DEC(CT[0]) 결과를 IV와 XOR해야 함"
+                ),
+            }
+        if "memcpy" not in calls:
+            continue
+        return {
+            "line": line,
+            "message": (
+                f"함수 '{fname}': CBC 암호화 첫 블록에서 IV XOR 미발견 — "
+                "CT[0]=ENC(PT[0]⊕IV) 수식 누락"
+            ),
+            "ast_evidence": (
+                f"함수 '{fname}' i!=0 분기의 첫 블록 else 분석: "
+                "memcpy로 평문을 복사하지만 XOR 연쇄 호출이 없음. "
+                "CBC 암호화 첫 블록은 PT[0]을 IV와 XOR해야 함"
+            ),
+        }
+    return None
+
+
 def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """CBC-001: CBC 암호화 연쇄 수식 — XOR(^) 연산 존재 확인.
 
@@ -1222,6 +1301,10 @@ def _check_cbc_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
             continue
         real_funcs_checked += 1
         fname = _func_name(fd)
+        first_block_violation = _cbc_first_block_missing_xor(fd, decrypt=False, offset=offset)
+        if first_block_violation:
+            violations.append(first_block_violation)
+            continue
         if not _has_xor(fd):
             line = _coord_line(fd, offset)
             violations.append({
@@ -1266,6 +1349,10 @@ def _check_cbc_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
             continue
         real_funcs_checked += 1
         fname = _func_name(fd)
+        first_block_violation = _cbc_first_block_missing_xor(fd, decrypt=True, offset=offset)
+        if first_block_violation:
+            violations.append(first_block_violation)
+            continue
         if not _has_xor(fd):
             line = _coord_line(fd, offset)
             violations.append({
@@ -1418,6 +1505,118 @@ def _check_ctr_002(root, offset: int, filename: str) -> List[Dict[str, Any]]:
                 _add_violation(name, f"함수 '{fname}'", getattr(decl, "coord", None))
 
     return violations
+
+
+def _check_aria_001(root, offset: int, filename: str) -> List[Dict[str, Any]]:
+    """ARIA-001: ARIA key-schedule structural cues (XOR, rotation, CK)."""
+    if not _HAS_PYCPARSER:
+        return []
+    aria_funcs = [
+        fd for fd in _collect(root, c_ast.FuncDef)
+        if "aria" in _func_name(fd).lower() and "key" in _func_name(fd).lower()
+    ]
+    if not aria_funcs:
+        return []
+    violations: List[Dict[str, Any]] = []
+    for fd in aria_funcs:
+        calls = {name.lower() for name in _call_names_in(fd)}
+        ids = {name.lower() for name in _id_names_in(fd)}
+        has_xor = _has_op(fd, "^")
+        has_rotation = (
+            any("rol" in name or "ror" in name or "rot" in name for name in calls)
+            or (_has_op(fd, "<<") and _has_op(fd, ">>"))
+        )
+        has_ck = "ck" in ids
+        missing = []
+        if not has_xor:
+            missing.append("XOR")
+        if not has_rotation:
+            missing.append("rotation")
+        if not has_ck:
+            missing.append("CK constant reference")
+        if missing:
+            violations.append({
+                "line": _coord_line(fd, offset),
+                "message": (
+                    f"ARIA key-schedule function '{_func_name(fd)}': "
+                    f"missing structural element(s): {', '.join(missing)}"
+                ),
+                "ast_evidence": (
+                    "ARIA key-schedule AST check requires XOR, rotation, and CK references; "
+                    f"missing: {', '.join(missing)}"
+                ),
+            })
+    return violations
+
+
+def _mode_structure_regex_scan(content: str, rule_id: str) -> Optional[List[Dict[str, Any]]]:
+    """공통 cipher.c wrapper 구조에서 명확한 CBC/CTR 위반을 선탐지."""
+    clean = _re.sub(r"/\*.*?\*/", " ", content, flags=_re.DOTALL)
+    clean = _re.sub(r"//.*", " ", clean)
+
+    if rule_id == "CTR-001":
+        m = _re.search(r"\bcipher_ctr\s*\([^;{}]*\blea_decrypt\b", clean, _re.DOTALL)
+        if not m:
+            return []
+        return [{
+            "line": content[:m.start()].count("\n") + 1,
+            "message": (
+                "cipher_ctr 호출에 lea_decrypt 전달 — CTR 키스트림 생성은 항상 encrypt 함수여야 함"
+            ),
+            "ast_evidence": (
+                "정규 구조 pre-scan: cipher_ctr(..., lea_decrypt) 호출 발견. "
+                "함수 포인터 wrapper에서도 CTR 키스트림은 ENC 방향만 허용"
+            ),
+        }]
+
+    if rule_id == "CBC-001":
+        m = _re.search(
+            r"\bif\s*\(\s*i\s*!=\s*0\s*\).*?\belse\s*\{(?P<else_body>[^{}]*\bmemcpy\s*\([^{}]*)\}",
+            clean,
+            _re.DOTALL,
+        )
+        if m and not _re.search(r"\bxor\w*\s*\(", m.group("else_body"), _re.IGNORECASE):
+            return [{
+                "line": content[:m.start()].count("\n") + 1,
+                "message": (
+                    "CBC 암호화 첫 블록에서 IV XOR 없이 memcpy로 평문 직접 암호화"
+                ),
+                "ast_evidence": (
+                    "정규 구조 pre-scan: i!=0 이후 첫 블록 else에서 memcpy는 있으나 "
+                    "xor_array/xor helper 호출이 없음"
+                ),
+            }]
+        return []
+
+    if rule_id == "CBC-002":
+        m_dec = _re.search(
+            r"\belse\s*//[^\n]*CIPHER_DECRYPT[^\n]*\n\s*\{(?P<body>.*?)(?:return(?:\s+SMC_OK)?\s*;)",
+            content,
+            _re.DOTALL,
+        )
+        if not m_dec:
+            m_dec = _re.search(r"\belse\s*(?:/\*[^*]*\*/)?\s*\{(?P<body>.*?)(?:return\s+SMC_OK\s*;)", clean, _re.DOTALL)
+        if not m_dec:
+            return None
+        m_first = _re.search(
+            r"\belse\s*\{(?P<else_body>[^{}]*\bcrypt\s*\([^{}]*)\}",
+            m_dec.group("body"),
+            _re.DOTALL,
+        )
+        if m_first and not _re.search(r"\bxor\w*\s*\(", m_first.group("else_body"), _re.IGNORECASE):
+            return [{
+                "line": content[:m_dec.start()].count("\n") + 1,
+                "message": (
+                    "CBC 복호화 첫 블록에서 IV XOR 없이 복호화 결과를 그대로 사용"
+                ),
+                "ast_evidence": (
+                    "정규 구조 pre-scan: 복호화 첫 블록 else에서 crypt 호출은 있으나 "
+                    "xor_array/xor helper 호출이 없음"
+                ),
+            }]
+        return []
+
+    return None
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -1917,8 +2116,6 @@ _LEA_DEC_NAMES = frozenset({
     "lea_dec", "lea_decrypt", "lea_block_dec", "block_dec",
     "lea_dec_block", "decrypt_block", "leadec", "lea_decryption",
 })
-
-
 def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, Any]]]:
     """CTR-001: CTR 함수 내에서 LEA 복호화 함수 직접 호출 시 위반.
 
@@ -1938,7 +2135,41 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
         return []
 
     violations = []
+    seen_lines: Set[Optional[int]] = set()
+
+    def _add_violation(line: Optional[int], message: str, evidence: str) -> None:
+        if line in seen_lines:
+            return
+        seen_lines.add(line)
+        violations.append({
+            "line": line,
+            "message": message,
+            "ast_evidence": evidence,
+        })
+
     real_funcs_checked = 0
+    for fd in all_funcs:
+        for call in _collect(fd, c_ast.FuncCall):
+            called = getattr(getattr(call, "name", None), "name", "") or ""
+            if "ctr" not in called.lower():
+                continue
+            arg_ids = {name.lower() for name in _id_names_in(getattr(call, "args", None))}
+            dec_args = sorted(arg for arg in arg_ids if any(dec in arg for dec in _LEA_DEC_NAMES))
+            if not dec_args:
+                continue
+            line = _coord_line(call, offset)
+            _add_violation(
+                line,
+                (
+                    f"CTR 호출 '{called}'에 복호화 함수 인자 '{dec_args[0]}' 전달 — "
+                    "CTR 모드는 암·복호화 모두 ENC 방향만 사용해야 함"
+                ),
+                (
+                    f"CALL '{called}' 인자 분석: DEC 함수 식별자 {dec_args}. "
+                    "함수 포인터 기반 CTR 구현에서도 키스트림 생성 함수는 ENC여야 함"
+                ),
+            )
+
     for fd in ctr_funcs:
         if _is_thin_wrapper(fd) or _is_benchmark_func(fd):
             continue
@@ -1951,20 +2182,20 @@ def _check_ctr_001(root, offset: int, filename: str) -> Optional[List[Dict[str, 
                 coord = getattr(call, "coord", None)
                 raw_line = getattr(coord, "line", None) if coord else None
                 line = (raw_line - offset) if raw_line and (raw_line - offset) > 0 else None
-                violations.append({
-                    "line": line,
-                    "message": (
+                _add_violation(
+                    line,
+                    (
                         f"함수 '{fname}': CTR 키스트림 생성에 복호화 함수 '{called}' 호출 — "
                         "CTR 모드는 암·복호화 모두 ENC 방향만 사용해야 함"
                     ),
-                    "ast_evidence": (
+                    (
                         f"함수 '{fname}' 호출 그래프 분석: "
                         f"FuncCall(name='{called}') 탐지 (줄 {line}). "
                         f"'{called}'은 DEC 함수 집합에 해당. "
                         "CTR 표준: 키스트림 = ENC(Key, Counter) — "
                         "복호화도 ENC 방향 사용, DEC 직접 호출 불가"
                     ),
-                })
+                )
 
     if not violations and real_funcs_checked == 0:
         if _has_unchecked_real_mode_funcs(all_funcs, ctr_funcs, "ctr", filename):
@@ -4526,6 +4757,27 @@ def _lc_check_lea_010(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
                 "message": (f"키 스케줄 함수 '{fname}': ARX 구조 불완전 — {', '.join(missing)} 없음"),
                 "ast_evidence": f"함수 '{fname}' ARX 분석(libclang): {', '.join(missing)} 0건.",
             })
+    for varname, info in (sg.get("array_inits") or {}).items():
+        if not _DELTA_VAR_RE.search(varname):
+            continue
+        arr_file = info.get("file", "")
+        if arr_file and filename not in arr_file and not arr_file.endswith(filename):
+            continue
+        values = [str(v) for v in (info.get("values") or [])]
+        standard = {_normalize_c_integer(v) for v in _LEA_DELTA_STANDARD}
+        wrong = [
+            f"[{idx}]={value}" for idx, value in enumerate(values)
+            if _normalize_c_integer(value) not in standard
+        ]
+        if wrong:
+            violations.append({
+                "line": None,
+                "message": (
+                    f"delta constant array '{varname}' contains non-standard value(s): "
+                    f"{', '.join(wrong[:4])}"
+                ),
+                "ast_evidence": "libclang symbol-graph array initializer validation",
+            })
     return violations
 
 
@@ -5002,7 +5254,8 @@ def _lc_check_cmac_001(tu, filename: str, sg: dict) -> List[Dict[str, Any]]:
         # 서브키 배열 확인
         has_subkey = any(
             (decl.spelling or "").lower() in _SUBKEY_NAMES
-            for decl in _lc_collect(fd, _ci.CursorKind.VAR_DECL)
+            for kind in (_ci.CursorKind.VAR_DECL, _ci.CursorKind.PARM_DECL)
+            for decl in _lc_collect(fd, kind)
         )
         if not has_subkey:
             continue
@@ -5186,6 +5439,7 @@ _CHECKERS = {
     "LEA-032": _check_lea_032,
     "LEA-024": _check_lea_024,
     "LEA-025": _check_lea_025,
+    "ARIA-001": _check_aria_001,
     "ARIA-002": _check_aria_002,
     "CBC-LEA-005": _check_cbc_lea_005,
     "CTR-LEA-006": _check_ctr_lea_006,
@@ -5420,12 +5674,20 @@ def check_rule(
         _regex_pre = _lea_rotation_regex_scan(content, rule_id)
     elif rule_id == "GCM-001":
         _regex_pre = _gcm001_regex_scan(content)
+    elif rule_id in ("CBC-001", "CBC-002", "CTR-001", "CTR-002"):
+        _regex_pre = _mode_structure_regex_scan(content, rule_id)
     elif rule_id == "ECB-002":
         # Short-circuit: if source has "& 0xf" / "& 0x0F" / "& 15" block-align check,
         # the ECB implementation does validate length — treat as compliant (return [])
         import re as _re_ecb
         if _re_ecb.search(r'&\s*0x0?[Ff]\b', content):
             return []
+    if (
+        rule_id in ("CBC-001", "CBC-002", "CTR-001", "CTR-002")
+        and (filename or "").lower().endswith("cipher.c")
+        and _regex_pre is not None
+    ):
+        return _regex_pre
     # libclang 백엔드 우선 시도 (KISA MAKE_FUNC 매크로 파싱 지원)
     # libclang 체커가 None 반환 시 → rule_engine 경로로 fallback (pycparser/fallback_pattern)
     lc_checker = _LC_CHECKERS.get(rule_id)

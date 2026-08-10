@@ -1777,6 +1777,8 @@ def _apply_project_missing_rule(
                         elif "violations_" not in _fname_lower:
                             content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
                     search_targets = [content]
+                    if rule_id == "LEA-060":
+                        search_targets.append(item.get("display") or "")
                     if rule_id in _RAW_FALLBACK_MISSING_RULES and _used_preprocessed:
                         raw_content = item.get("stripped_content") or item.get("content") or ""
                         search_targets.append(raw_content)
@@ -1942,9 +1944,15 @@ def run_rule_engine(
             ]
         elif _rc == "mode":
             # mode 카테고리: LEA 관련 파일 모두 포함 (cipher.c, violations_cbc.c 등)
+            _cipher_mode_rules = {"CBC-001", "CBC-002", "CTR-001", "CTR-002"}
             _active_cache = [
                 item for item in file_cache
                 if _is_lea_related_file((item.get("display") or "").lower())
+                or (
+                    _ri in _cipher_mode_rules
+                    and (item.get("display") or "").lower().endswith("cipher.c")
+                    and re.search(r"SMC_BC_MODE_LEA_(?:CBC|CTR)|\blea_(?:encrypt|decrypt)\b", item.get("content") or "")
+                )
             ]
         else:
             _active_cache = file_cache

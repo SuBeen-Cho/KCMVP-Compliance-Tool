@@ -158,6 +158,21 @@ void lea_set_key(const unsigned char *mk, uint32_t *rk) {
         # 비표준 delta → 위반
         assert len(result) >= 1
 
+    @pytest.mark.tier1
+    def test_delta_constant_suffixes_are_normalized(self, check_rule):
+        code = """
+typedef unsigned int uint32_t;
+uint32_t ROL32(uint32_t x, int r);
+void lea_set_key(const unsigned char *mk, uint32_t *rk) {
+    uint32_t T[4]; T[0] = ROL32(T[0] + 0xc3efe9dbU, 1); rk[0] = T[0] + T[1];
+}
+"""
+        sg = {"array_inits": {"delta": {"file": "test.c", "values": [
+            "0xc3efe9dbU", "0X44626B02UL", "0x79e27c8a", "0x78df30ec",
+            "0x715ea49e", "0xc785da0a", "0xe04ef22a", "0xe5c40957L",
+        ]}}}
+        assert check_rule("LEA-010", code, symbol_graph=sg) == []
+
 
 # ======================================================================
 # LEA-040: 라운드 루프 경계 조건
