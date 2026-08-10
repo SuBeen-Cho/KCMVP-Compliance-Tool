@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional, Union
 
 try:
@@ -171,6 +172,10 @@ class _Gemini503Error(Exception):
     """Gemini 503 UNAVAILABLE — 프롬프트 과부하 또는 일시적 오류."""
 
 
+class GeminiTransientError(RuntimeError):
+    """Retryable rate-limit, timeout, or server failure."""
+
+
 class GeminiConfigurationError(RuntimeError):
     """Non-retryable authentication or model-configuration failure."""
 
@@ -250,8 +255,13 @@ def _call_gemini(
         if "503" in err_str or "UNAVAILABLE" in err_str:
             print(f"[L3][Gemini] 503 오류 (프롬프트 과부하): {err_str[:120]}")
             raise _Gemini503Error(err_str)
-        print(f"[L3][Gemini] 호출 실패: {e}")
-        return None
+        transient_markers = (
+            "408", "429", "500", "502", "504", "RESOURCE_EXHAUSTED",
+            "DEADLINE_EXCEEDED", "timeout", "timed out", "connection reset",
+        )
+        if any(marker.lower() in err_str.lower() for marker in transient_markers):
+            raise GeminiTransientError(err_str) from e
+        raise LLMProviderError("Gemini request failed without a usable response") from e
 
 
 _RETRY_SUFFIX_OBJ = "\n\n위 JSON 객체 형식만 출력하라. 다른 텍스트는 일절 포함하지 말 것."
@@ -267,16 +277,27 @@ def _call_gemini_with_retry(prompt: str, max_retries: int = 2) -> Optional[Dict[
                 prompt if attempt == 0 else prompt + _RETRY_SUFFIX_OBJ,
                 response_mime_type=_mime,
             )
+        except GeminiTransientError:
+            if attempt >= max_retries:
+                raise
+            time.sleep(min(2 ** attempt, 2))
+            continue
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
                 print("[L3] 503 → GCFS 제거 후 재시도")
                 try:
                     raw = _call_llm(stripped, response_mime_type=_mime)
-                except _Gemini503Error:
-                    return None
+                except (_Gemini503Error, GeminiTransientError) as exc:
+                    if attempt >= max_retries:
+                        raise GeminiTransientError("Gemini retry exhausted after GCFS removal") from exc
+                    time.sleep(min(2 ** attempt, 2))
+                    continue
             else:
-                return None
+                if attempt >= max_retries:
+                    raise GeminiTransientError("Gemini retry exhausted")
+                time.sleep(min(2 ** attempt, 2))
+                continue
             if not raw:
                 return None
             obj = _extract_json_from_text(raw)
@@ -298,16 +319,27 @@ def _call_gemini_batch_with_retry(prompt: str, max_retries: int = 2) -> Optional
                 prompt if attempt == 0 else prompt + _RETRY_SUFFIX_ARR,
                 response_mime_type=_mime,
             )
+        except GeminiTransientError:
+            if attempt >= max_retries:
+                raise
+            time.sleep(min(2 ** attempt, 2))
+            continue
         except _Gemini503Error:
             stripped = _strip_gcfs_from_prompt(prompt)
             if stripped != prompt:
                 print("[L3] 503 → GCFS 제거 후 배치 재시도")
                 try:
                     raw = _call_llm(stripped, response_mime_type=_mime)
-                except _Gemini503Error:
-                    return None
+                except (_Gemini503Error, GeminiTransientError) as exc:
+                    if attempt >= max_retries:
+                        raise GeminiTransientError("Gemini batch retry exhausted after GCFS removal") from exc
+                    time.sleep(min(2 ** attempt, 2))
+                    continue
             else:
-                return None
+                if attempt >= max_retries:
+                    raise GeminiTransientError("Gemini batch retry exhausted")
+                time.sleep(min(2 ** attempt, 2))
+                continue
             if not raw:
                 return None
             arr = _extract_json_array_from_text(raw)
