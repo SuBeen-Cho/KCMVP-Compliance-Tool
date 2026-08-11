@@ -9,7 +9,24 @@ import re
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+PACKET_VIEWS = {
+    "analysis_artifact_aware": {
+        "purpose": "Primary analysis-artifact review with ordinary names and non-outcome comments preserved",
+        "claim_limit": "Uses the sanitized analysis artifact, not an untouched original; does not establish independent ground truth",
+        "identifiers_neutralized": False,
+    },
+    "minimal_cue_controlled": {
+        "purpose": "Primary cue-controlled review removing only provenance-confirmed synthetic answer markers",
+        "claim_limit": "Supports a primary robustness comparison; ordinary names remain admissible evidence",
+        "identifiers_neutralized": False,
+    },
+    "fully_opaque": {
+        "purpose": "Secondary selected-cue stress test of dependence on paths, comments and cue-bearing identifiers",
+        "claim_limit": "Selected-cue ablation only, not complete lexical opacity or representative product accuracy",
+        "identifiers_neutralized": True,
+    },
+}
 LABELS = ("violation", "non_violation", "insufficient_context", "not_applicable")
 APPLICABILITY = ("applicable", "not_applicable", "uncertain")
 FORBIDDEN_PACKET_KEYS = {
@@ -65,11 +82,29 @@ def _walk_packet(value: Any) -> None:
 
 def validate_packet(packet: dict[str, Any]) -> dict[str, Any]:
     """Validate a label-free packet and return its stable identity summary."""
-    _exact(packet, {"schema_version", "packet_id", "snapshot_id", "blinding",
+    if packet.get("schema_version") == "1.0" and "view" not in packet:
+        _exact(packet, {"schema_version", "packet_id", "snapshot_id", "blinding",
+                        "randomization_sha256", "items"}, "legacy packet")
+        expected = _hash({key: value for key, value in packet.items() if key != "packet_id"})
+        if packet["packet_id"] != expected:
+            raise LabelingError("legacy packet_id does not match packet contents")
+        _walk_packet(packet)
+        migrated = migrate_packet(packet)
+        summary = validate_packet(migrated)
+        return {"packet_id": packet["packet_id"], "candidate_count": summary["candidate_count"],
+                "legacy_schema": True, "migrated_packet_id": migrated["packet_id"]}
+    _exact(packet, {"schema_version", "packet_id", "snapshot_id", "view", "purpose",
+                    "claim_limit", "blinding",
                     "randomization_sha256", "items"}, "packet")
     if packet["schema_version"] != SCHEMA_VERSION:
         raise LabelingError("unsupported packet schema")
     _text(packet["snapshot_id"], "snapshot_id")
+    view = packet["view"]
+    if view not in PACKET_VIEWS:
+        raise LabelingError("unsupported packet view")
+    specification = PACKET_VIEWS[view]
+    if packet["purpose"] != specification["purpose"] or packet["claim_limit"] != specification["claim_limit"]:
+        raise LabelingError("packet purpose or claim limit does not match its registered view")
     _exact(packet["blinding"], {"outcome_fields_removed", "identifiers_neutralized",
                                 "order_randomized", "duplicate_families_grouped",
                                 "blind_audit_passed", "blind_audit_sha256",
@@ -77,8 +112,8 @@ def validate_packet(packet: dict[str, Any]) -> dict[str, Any]:
            "blinding")
     if packet["blinding"]["outcome_fields_removed"] is not True:
         raise LabelingError("packet must attest that outcome fields were removed")
-    if packet["blinding"]["identifiers_neutralized"] is not True:
-        raise LabelingError("packet must attest that identifiers were neutralized")
+    if packet["blinding"]["identifiers_neutralized"] is not specification["identifiers_neutralized"]:
+        raise LabelingError("identifier-neutralization attestation does not match packet view")
     if packet["blinding"]["display_alias_compile_equivalence_claimed"] is not False:
         raise LabelingError("display aliases must not claim compile equivalence")
     if any(packet["blinding"][key] is not True for key in (
@@ -150,8 +185,27 @@ def validate_packet(packet: dict[str, Any]) -> dict[str, Any]:
     return {"packet_id": expected, "candidate_count": len(seen)}
 
 
+def migrate_packet(packet: dict[str, Any]) -> dict[str, Any]:
+    """Migrate a validated legacy 1.0 packet to the explicit selected-cue view."""
+    if packet.get("schema_version") != "1.0" or "view" in packet:
+        raise LabelingError("only legacy 1.0 packets can be migrated")
+    expected = _hash({key: value for key, value in packet.items() if key != "packet_id"})
+    if packet.get("packet_id") != expected:
+        raise LabelingError("legacy packet_id does not match packet contents")
+    core = {key: value for key, value in packet.items() if key != "packet_id"}
+    core["schema_version"] = SCHEMA_VERSION
+    core["view"] = "fully_opaque"
+    core["purpose"] = PACKET_VIEWS["fully_opaque"]["purpose"]
+    core["claim_limit"] = PACKET_VIEWS["fully_opaque"]["claim_limit"]
+    migrated = {"packet_id": _hash(core), **core}
+    return migrated
+
+
 def build_packet(*, snapshot_id: str, prepared_by: str, randomization_id: str,
-                 items: list[dict[str, Any]], blind_audit_report: dict[str, Any]) -> dict[str, Any]:
+                 items: list[dict[str, Any]], blind_audit_report: dict[str, Any],
+                 view: str = "fully_opaque") -> dict[str, Any]:
+    if view not in PACKET_VIEWS:
+        raise LabelingError("unsupported packet view")
     _exact(blind_audit_report, {"passed", "checks", "audited_items_sha256"}, "blind audit report")
     checks = blind_audit_report["checks"]
     if (blind_audit_report["passed"] is not True or not isinstance(checks, dict)
@@ -171,7 +225,10 @@ def build_packet(*, snapshot_id: str, prepared_by: str, randomization_id: str,
     randomized_items = [item for group in group_order for item in grouped[group]]
     core = {
         "schema_version": SCHEMA_VERSION, "snapshot_id": snapshot_id,
-        "blinding": {"outcome_fields_removed": True, "identifiers_neutralized": True,
+        "view": view, "purpose": PACKET_VIEWS[view]["purpose"],
+        "claim_limit": PACKET_VIEWS[view]["claim_limit"],
+        "blinding": {"outcome_fields_removed": True,
+                     "identifiers_neutralized": PACKET_VIEWS[view]["identifiers_neutralized"],
                      "order_randomized": True, "duplicate_families_grouped": True,
                      "blind_audit_passed": True, "blind_audit_sha256": audit_sha256,
                      "display_alias_compile_equivalence_claimed": False,
@@ -194,6 +251,23 @@ def _validate_timestamp(value: Any) -> None:
 
 
 def validate_label_document(packet: dict[str, Any], document: dict[str, Any]) -> dict[str, Any]:
+    if (packet.get("schema_version") == "1.0" and "view" not in packet
+            and document.get("schema_version") == "1.0"):
+        validate_packet(packet)
+        _exact(document, {"schema_version", "label_batch_id", "packet_id", "annotator",
+                          "created_at", "annotations"}, "legacy label document")
+        if document["packet_id"] != packet["packet_id"]:
+            raise LabelingError("legacy label document packet identity mismatch")
+        core = {key: value for key, value in document.items() if key != "label_batch_id"}
+        if document["label_batch_id"] != _hash(core):
+            raise LabelingError("legacy label_batch_id does not match immutable label contents")
+        migrated_packet = migrate_packet(packet)
+        migrated_document = migrate_label_document(packet, document)
+        summary = validate_label_document(migrated_packet, migrated_document)
+        return {"label_batch_id": document["label_batch_id"],
+                "annotation_count": summary["annotation_count"], "legacy_schema": True,
+                "migrated_label_batch_id": migrated_document["label_batch_id"],
+                "migrated_packet_id": migrated_packet["packet_id"]}
     validate_packet(packet)
     _exact(document, {"schema_version", "label_batch_id", "packet_id", "annotator", "created_at",
                       "annotations"}, "label document")
@@ -246,6 +320,24 @@ def validate_label_document(packet: dict[str, Any], document: dict[str, Any]) ->
     return {"label_batch_id": document["label_batch_id"], "annotation_count": len(annotations)}
 
 
+def migrate_label_document(packet: dict[str, Any], document: dict[str, Any]) -> dict[str, Any]:
+    """Bind an immutable legacy 1.0 annotation batch to the migrated packet."""
+    if (packet.get("schema_version") != "1.0" or "view" in packet
+            or document.get("schema_version") != "1.0"):
+        raise LabelingError("label migration requires a legacy 1.0 packet and document")
+    packet_core = {key: value for key, value in packet.items() if key != "packet_id"}
+    document_core = {key: value for key, value in document.items() if key != "label_batch_id"}
+    if packet.get("packet_id") != _hash(packet_core):
+        raise LabelingError("legacy packet_id does not match packet contents")
+    if (document.get("packet_id") != packet["packet_id"]
+            or document.get("label_batch_id") != _hash(document_core)):
+        raise LabelingError("legacy label document identity does not match its contents")
+    migrated_packet = migrate_packet(packet)
+    document_core["schema_version"] = SCHEMA_VERSION
+    document_core["packet_id"] = migrated_packet["packet_id"]
+    return {"label_batch_id": _hash(document_core), **document_core}
+
+
 def cohens_kappa(labels_a: Iterable[str], labels_b: Iterable[str]) -> float:
     a, b = list(labels_a), list(labels_b)
     if not a or len(a) != len(b):
@@ -260,6 +352,71 @@ def cohens_kappa(labels_a: Iterable[str], labels_b: Iterable[str]) -> float:
 def disagreements(rows: Iterable[dict]) -> list[dict]:
     """Backward-compatible helper for legacy two-column rows."""
     return [row for row in rows if row.get("annotator_a") != row.get("annotator_b")]
+
+
+def cross_view_report(
+    packets: dict[str, dict[str, Any]], documents: dict[str, dict[str, Any]],
+    sidecar: dict[str, Any],
+) -> dict[str, Any]:
+    """Compare paired occurrence labels across different packet identities."""
+    if set(packets) != set(documents) or len(packets) < 2:
+        raise LabelingError("cross-view comparison requires matching packet and label views")
+    if set(packets) - set(PACKET_VIEWS):
+        raise LabelingError("cross-view comparison contains an unsupported view")
+    packet_ids = sidecar.get("packet_ids") if isinstance(sidecar, dict) else None
+    occurrences = sidecar.get("occurrences") if isinstance(sidecar, dict) else None
+    if not isinstance(packet_ids, dict) or not isinstance(occurrences, list):
+        raise LabelingError("sealed sidecar occurrence join is required")
+    sidecar_id = sidecar.get("sidecar_id")
+    sidecar_core = {key: value for key, value in sidecar.items() if key != "sidecar_id"}
+    if not isinstance(sidecar_id, str) or sidecar_id != _hash(sidecar_core):
+        raise LabelingError("sealed sidecar identity does not match its contents")
+    ordered_views = [view for view in PACKET_VIEWS if view in packets]
+    labels_by_view: dict[str, dict[str, dict[str, Any]]] = {}
+    expected_ids: set[str] | None = None
+    for view in ordered_views:
+        packet = packets[view]
+        if packet.get("view") != view or packet_ids.get(view) != packet.get("packet_id"):
+            raise LabelingError("sidecar packet identity does not match cross-view input")
+        validate_label_document(packet, documents[view])
+        rows = {row["candidate_id"]: row for row in documents[view]["annotations"]}
+        expected_ids = set(rows) if expected_ids is None else expected_ids
+        if set(rows) != expected_ids:
+            raise LabelingError("cross-view occurrence sets differ")
+        labels_by_view[view] = rows
+    joined_ids = [str(row.get("occurrence_id", "")) for row in occurrences]
+    if not joined_ids or len(joined_ids) != len(set(joined_ids)) or set(joined_ids) != expected_ids:
+        raise LabelingError("sidecar occurrence join does not match label documents")
+    paired_table = [{
+        "occurrence_id": occurrence_id,
+        "labels": {view: labels_by_view[view][occurrence_id]["label"] for view in ordered_views},
+        "confidence": {view: labels_by_view[view][occurrence_id]["confidence"] for view in ordered_views},
+    } for occurrence_id in joined_ids]
+    counts = {view: dict(sorted(Counter(row["label"] for row in labels_by_view[view].values()).items()))
+              for view in ordered_views}
+    baseline = ordered_views[0]
+    deltas = {view: {label: counts[view].get(label, 0) - counts[baseline].get(label, 0)
+                     for label in LABELS} for view in ordered_views[1:]}
+    pairs = {}
+    for left_index, left in enumerate(ordered_views):
+        for right in ordered_views[left_index + 1:]:
+            transitions = Counter(
+                f"{labels_by_view[left][oid]['label']}->{labels_by_view[right][oid]['label']}"
+                for oid in joined_ids
+            )
+            exact = sum(labels_by_view[left][oid]["label"] == labels_by_view[right][oid]["label"]
+                        for oid in joined_ids)
+            pairs[f"{left}::{right}"] = {
+                "exact_count": exact, "exact_rate": exact / len(joined_ids),
+                "transitions": dict(sorted(transitions.items())),
+            }
+    all_exact = sum(len({labels_by_view[view][oid]["label"] for view in ordered_views}) == 1
+                    for oid in joined_ids)
+    core = {"schema_version": SCHEMA_VERSION, "views": ordered_views,
+            "occurrence_count": len(joined_ids), "counts": counts, "deltas_from_first_view": deltas,
+            "pairwise": pairs, "all_view_exact_count": all_exact,
+            "all_view_exact_rate": all_exact / len(joined_ids), "paired_table": paired_table}
+    return {"report_id": _hash(core), **core}
 
 
 def agreement_report(packet: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> tuple[dict, dict]:

@@ -71,7 +71,8 @@ def test_packet_neutralizes_path_and_identifier_and_separates_identity(tmp_path)
     assert "violations" not in encoded and "wrong_key_size" not in encoded
     assert "frozen_candidate_id" not in encoded
     assert validate_packet(public)["candidate_count"] == 1
-    assert set(public) == {"schema_version", "packet_id", "snapshot_id", "blinding", "randomization_sha256", "items"}
+    assert set(public) == {"schema_version", "packet_id", "snapshot_id", "view", "purpose",
+                           "claim_limit", "blinding", "randomization_sha256", "items"}
     assert private["legacy_file_rule_labels"] == [{
         "original_source_id": "set-1/violations_lea.c", "rule_id": "AES-001",
         "label_precision": "file_rule_only; independent occurrence review required",

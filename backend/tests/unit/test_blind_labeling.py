@@ -7,7 +7,8 @@ import sys
 import pytest
 
 from experiments.labeling import (
-    LabelingError, agreement_report, build_packet, validate_label_document, validate_packet,
+    LabelingError, agreement_report, build_packet, migrate_label_document, migrate_packet,
+    validate_label_document, validate_packet,
 )
 
 
@@ -52,7 +53,7 @@ def labels(identity="reviewer-a", label="violation"):
         "source_citations": [{"source_id": "module_001.c", "line_start": 10, "line_end": 10}],
     }
     core = {
-        "schema_version": "1.0", "packet_id": packet()["packet_id"],
+        "schema_version": "1.1", "packet_id": packet()["packet_id"],
         "annotator": {"annotator_id": identity, "annotator_type": "ai",
                       "model": {"provider": "test", "name": "fixed", "version": "1"}},
         "created_at": "2026-08-11T12:00:00+09:00", "annotations": [annotation],
@@ -66,11 +67,38 @@ def test_packet_rejects_outcome_leakage_and_tampering():
     value["items"][0]["source"]["confidence"] = 99
     with pytest.raises(LabelingError, match="closed schema|outcome-bearing"):
         validate_packet(value)
-
     value = packet(); value["items"][0]["source"]["code"] += " "
     with pytest.raises(LabelingError, match="packet_id"):
         validate_packet(value)
 
+
+def test_legacy_1_0_packet_validates_and_migrates_explicitly():
+    import hashlib
+    value = packet()
+    legacy_core = {key: item for key, item in value.items()
+                   if key not in {"packet_id", "view", "purpose", "claim_limit"}}
+    legacy_core["schema_version"] = "1.0"
+    encoded = json.dumps(legacy_core, ensure_ascii=False, sort_keys=True,
+                         separators=(",", ":")).encode()
+    legacy = {"packet_id": hashlib.sha256(encoded).hexdigest(), **legacy_core}
+    summary = validate_packet(legacy)
+    assert summary["legacy_schema"] is True
+    migrated = migrate_packet(legacy)
+    assert migrated["schema_version"] == "1.1"
+    assert migrated["view"] == "fully_opaque"
+    assert validate_packet(migrated)["candidate_count"] == 1
+
+    current_labels = labels()
+    legacy_label_core = {key: item for key, item in current_labels.items()
+                         if key != "label_batch_id"}
+    legacy_label_core["schema_version"] = "1.0"
+    legacy_label_core["packet_id"] = legacy["packet_id"]
+    legacy_labels = {"label_batch_id": digest(legacy_label_core), **legacy_label_core}
+    label_summary = validate_label_document(legacy, legacy_labels)
+    assert label_summary["legacy_schema"] is True
+    migrated_labels = migrate_label_document(legacy, legacy_labels)
+    assert migrated_labels["packet_id"] == migrated["packet_id"]
+    assert validate_label_document(migrated, migrated_labels)["annotation_count"] == 1
 
 def test_label_document_is_complete_closed_and_immutable():
     assert validate_label_document(packet(), labels())["annotation_count"] == 1

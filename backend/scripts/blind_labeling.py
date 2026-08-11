@@ -11,8 +11,8 @@ import tempfile
 
 BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND))
-from experiments.labeling import (LabelingError, agreement_report, validate_label_document,
-                                  validate_packet)  # noqa: E402
+from experiments.labeling import (LabelingError, agreement_report, cross_view_report,
+                                  validate_label_document, validate_packet)  # noqa: E402
 
 
 def load(path: Path) -> dict:
@@ -44,19 +44,43 @@ def main(argv: list[str] | None = None) -> int:
     agree.add_argument("packet", type=Path); agree.add_argument("labels_a", type=Path)
     agree.add_argument("labels_b", type=Path); agree.add_argument("--report", required=True, type=Path)
     agree.add_argument("--disagreements", required=True, type=Path)
+    cross = commands.add_parser("cross-view")
+    cross.add_argument("--packet", action="append", required=True, metavar="VIEW=PATH")
+    cross.add_argument("--labels", action="append", required=True, metavar="VIEW=PATH")
+    cross.add_argument("--sidecar", required=True, type=Path)
+    cross.add_argument("--report", required=True, type=Path)
     args = parser.parse_args(argv)
-    packet = load(args.packet)
-    if args.command == "validate-packet": result = validate_packet(packet)
-    elif args.command == "validate-label": result = validate_label_document(packet, load(args.labels))
+    if args.command == "cross-view":
+        def keyed(values: list[str]) -> tuple[dict[str, dict], set[Path]]:
+            result, paths = {}, set()
+            for value in values:
+                if "=" not in value:
+                    raise LabelingError("cross-view inputs must use VIEW=PATH")
+                view, raw_path = value.split("=", 1); path = Path(raw_path)
+                if not view or view in result:
+                    raise LabelingError("cross-view input views must be unique")
+                result[view] = load(path); paths.add(path.resolve())
+            return result, paths
+        packets, packet_paths = keyed(args.packet)
+        documents, label_paths = keyed(args.labels)
+        protected = packet_paths | label_paths | {args.sidecar.resolve()}
+        if args.report.resolve() in protected:
+            raise LabelingError("cross-view output must not overwrite immutable inputs")
+        result = cross_view_report(packets, documents, load(args.sidecar))
+        write(args.report, result)
     else:
-        if args.report.resolve() in {args.packet.resolve(), args.labels_a.resolve(), args.labels_b.resolve()}:
-            raise LabelingError("outputs must not overwrite immutable inputs")
-        if args.disagreements.resolve() in {args.packet.resolve(), args.labels_a.resolve(), args.labels_b.resolve()}:
-            raise LabelingError("outputs must not overwrite immutable inputs")
-        if args.report.resolve() == args.disagreements.resolve():
-            raise LabelingError("report and disagreement outputs must differ")
-        result, queue = agreement_report(packet, load(args.labels_a), load(args.labels_b))
-        write(args.report, result); write(args.disagreements, queue)
+        packet = load(args.packet)
+        if args.command == "validate-packet": result = validate_packet(packet)
+        elif args.command == "validate-label": result = validate_label_document(packet, load(args.labels))
+        else:
+            if args.report.resolve() in {args.packet.resolve(), args.labels_a.resolve(), args.labels_b.resolve()}:
+                raise LabelingError("outputs must not overwrite immutable inputs")
+            if args.disagreements.resolve() in {args.packet.resolve(), args.labels_a.resolve(), args.labels_b.resolve()}:
+                raise LabelingError("outputs must not overwrite immutable inputs")
+            if args.report.resolve() == args.disagreements.resolve():
+                raise LabelingError("report and disagreement outputs must differ")
+            result, queue = agreement_report(packet, load(args.labels_a), load(args.labels_b))
+            write(args.report, result); write(args.disagreements, queue)
     print(json.dumps({"status": "ok", **result}, ensure_ascii=False, sort_keys=True))
     return 0
 

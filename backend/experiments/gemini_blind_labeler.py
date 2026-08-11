@@ -9,7 +9,9 @@ import signal
 import time
 from typing import Any, Callable
 
-from experiments.labeling import LABELS, LabelingError, validate_label_document, validate_packet
+from experiments.labeling import (
+    LABELS, SCHEMA_VERSION, LabelingError, validate_label_document, validate_packet,
+)
 
 
 MODEL = "gemini-2.5-flash-lite"
@@ -81,7 +83,7 @@ def _annotation(item: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]:
 
 def _document(packet: dict[str, Any], annotations: list[dict[str, Any]], annotator_id: str) -> dict:
     core = {
-        "schema_version": "1.0", "packet_id": packet["packet_id"],
+        "schema_version": SCHEMA_VERSION, "packet_id": packet["packet_id"],
         "annotator": {"annotator_id": annotator_id, "annotator_type": "ai",
                       "model": {"provider": "Google", "name": MODEL,
                                 "version": PROMPT_VERSION}},
