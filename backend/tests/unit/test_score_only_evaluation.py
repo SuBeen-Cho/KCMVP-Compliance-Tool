@@ -8,6 +8,7 @@ from experiments.calibration import calibrate, grouped_dev_heldout_split, valida
 from experiments.score_only_evaluation import (
     EvaluationJoinError, build_calibration_proxy, build_test_retest_proxy_gt,
     migrate_v15_sidecar_group_ids, paired_binary_report, score_artifact_from_l3_result,
+    score_artifact_from_l3_results,
 )
 from experiments.labeling import build_packet
 
@@ -43,8 +44,9 @@ def _fixtures():
                 for i in range(8)]
         coverage = {"universe_ids": [f"f{i}" for i in range(8)],
                     "selected_ids": [f"f{i}" for i in range(8)],
-                    "scored_ids": [f"f{i}" for i in range(8)], "unresolved_ids": []}
-        core = {"schema_version": "1.1", "scope": "score_only_system_output",
+                    "repeat_dispositions": [{"repeat": 0,
+                        "scored_ids": [f"f{i}" for i in range(8)], "unresolved_ids": []}]}
+        core = {"schema_version": "1.2", "scope": "score_only_system_output",
                 "snapshot_id": "snap", "condition": condition,
                 "score_semantics": "violation_probability", "coverage": coverage, "rows": rows}
         scores.append({"artifact_id": _hash(core), **core})
@@ -154,10 +156,19 @@ def test_converter_seals_partial_score_dispositions_and_join_uses_common_subset(
     assert dataset["eligibility"]["common_scored_binary"]["count"] == 4
     assert dataset["eligibility"]["excluded_by_disposition"]["rag"] == {
         "unselected": _summary({"f6", "f7"}),
-        "score_unresolved": _summary({"f5"}),
-        "condition_only_scored": _summary({"f0"}),
+        "score_unresolved": _summary({"f5::0"}),
+        "condition_only_scored": _summary({"f0::0"}),
     }
     assert "not whole-L1 performance" in dataset["claim_limit"]
+
+    merged = score_artifact_from_l3_results(
+        [raw(False, ["f0", "f1"]), raw(False, ["f1", "f2"])], condition="rag")
+    assert [row["repeat"] for row in merged["coverage"]["repeat_dispositions"]] == [0, 1]
+    assert {row["repeat"] for row in merged["rows"]} == {0, 1}
+    changed = raw(False, ["f0"])
+    changed["selected_candidate_ids"] = changed["selected_candidate_ids"][:-1]
+    with pytest.raises(EvaluationJoinError, match="differ in snapshot"):
+        score_artifact_from_l3_results([raw(False, ["f0"]), changed], condition="rag")
 
 
 def _summary(values):

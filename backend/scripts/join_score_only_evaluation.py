@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -26,6 +27,7 @@ def _write(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
                     encoding="utf-8")
+    os.chmod(path, 0o600)
 
 
 def main(argv=None) -> int:

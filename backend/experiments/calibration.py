@@ -74,7 +74,8 @@ def validate_calibration_dataset(dataset: Any) -> list[dict[str, Any]]:
                     "insufficient_context", "not_applicable",
                 }
                 or eligibility.get("common_scored_binary", {}).get("count") != len({
-                    row.get("candidate_id") for row in dataset.get("rows", [])
+                    (row.get("candidate_id"), row.get("repeat"))
+                    for row in dataset.get("rows", [])
                 })
                 or eligibility["sealed_total"] != eligibility["binary_eligible"]
                 + sum(eligibility["excluded_by_label"].values())):

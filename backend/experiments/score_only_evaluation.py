@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import Counter
 import hashlib
 import json
+import math
 from typing import Any
 
 from experiments.calibration import SCORE_SEMANTICS
@@ -81,10 +82,47 @@ def migrate_v15_sidecar_group_ids(sidecar: Any, packets: dict[str, Any]) -> dict
 
 def score_artifact_from_l3_result(result: Any, *, condition: str, repeat: int) -> dict[str, Any]:
     """Convert one raw frozen-L1 L3 result without adding outcome labels."""
+    return score_artifact_from_l3_results([result], condition=condition, repeats=[repeat])
+
+
+def score_artifact_from_l3_results(
+    results: list[Any], *, condition: str, repeats: list[int] | None = None,
+) -> dict[str, Any]:
+    """Merge repeated raw L3 runs for one condition into one sealed artifact."""
+    if not isinstance(results, list) or not results:
+        raise EvaluationJoinError("at least one raw L3 result is required")
+    repeats = list(range(len(results))) if repeats is None else repeats
+    if (len(repeats) != len(results) or len(set(repeats)) != len(repeats)
+            or any(type(value) is not int or value < 0 for value in repeats)):
+        raise EvaluationJoinError("repeat identities must be unique non-negative integers")
+    if not isinstance(condition, str) or not condition:
+        raise EvaluationJoinError("condition is invalid")
+    all_rows, repeat_dispositions = [], []
+    reference_universe = reference_selected = reference_snapshot = None
+    for result, repeat in zip(results, repeats):
+        rows, universe, selected, snapshot = _rows_from_l3_result(result, repeat=repeat)
+        if reference_universe is None:
+            reference_universe, reference_selected, reference_snapshot = universe, selected, snapshot
+        elif (universe != reference_universe or selected != reference_selected
+              or snapshot != reference_snapshot):
+            raise EvaluationJoinError("repeated results differ in snapshot, universe, or selected partition")
+        scored = {row["frozen_candidate_id"] for row in rows}
+        repeat_dispositions.append({"repeat": repeat, "scored_ids": sorted(scored),
+                                    "unresolved_ids": sorted(set(selected) - scored)})
+        all_rows.extend(rows)
+    coverage = {"universe_ids": reference_universe, "selected_ids": reference_selected,
+                "repeat_dispositions": repeat_dispositions}
+    core = {"schema_version": "1.2", "scope": "score_only_system_output",
+            "snapshot_id": reference_snapshot, "condition": condition,
+            "score_semantics": SCORE_SEMANTICS, "coverage": coverage, "rows": all_rows}
+    document = {"artifact_id": _hash(core), **core}
+    validate_score_artifact(document, set(reference_universe))
+    return document
+
+
+def _rows_from_l3_result(result: Any, *, repeat: int) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
     if not isinstance(result, dict) or result.get("scope") != "single_l2_l3_condition_from_frozen_l1":
         raise EvaluationJoinError("unsupported raw L3 result")
-    if not isinstance(condition, str) or not condition or type(repeat) is not int or repeat < 0:
-        raise EvaluationJoinError("condition and repeat are invalid")
     universe = result.get("candidate_ids")
     selected = result.get("selected_candidate_ids")
     records = result.get("l3_decision_records")
@@ -107,15 +145,10 @@ def score_artifact_from_l3_result(result: Any, *, condition: str, repeat: int) -
                      "rejudge": record["rejudge_violation_probability"],
                      "score_provenance": record["score_provenance"]})
         scored.add(cid)
-    coverage = {"universe_ids": universe, "selected_ids": selected,
-                "scored_ids": sorted(scored),
-                "unresolved_ids": sorted(selected_set - scored)}
-    core = {"schema_version": "1.1", "scope": "score_only_system_output",
-            "snapshot_id": result.get("snapshot_id"), "condition": condition,
-            "score_semantics": SCORE_SEMANTICS, "coverage": coverage, "rows": rows}
-    document = {"artifact_id": _hash(core), **core}
-    validate_score_artifact(document, universe_set)
-    return document
+    snapshot = result.get("snapshot_id")
+    if not isinstance(snapshot, str) or not snapshot:
+        raise EvaluationJoinError("raw L3 result snapshot identity is invalid")
+    return rows, universe, selected, snapshot
 
 
 def build_test_retest_proxy_gt(packet: Any, first: Any, second: Any) -> dict[str, Any]:
@@ -222,7 +255,7 @@ def validate_adjudicated_gt(document: Any, occurrence_ids: set[str]) -> dict[str
 def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[str, Any]]:
     _exact(document, {"schema_version", "scope", "snapshot_id", "condition",
                       "score_semantics", "coverage", "rows", "artifact_id"}, "score artifact")
-    if document["schema_version"] != "1.1" or document["scope"] != "score_only_system_output":
+    if document["schema_version"] != "1.2" or document["scope"] != "score_only_system_output":
         raise EvaluationJoinError("unsupported score-only artifact")
     if document["score_semantics"] != SCORE_SEMANTICS:
         raise EvaluationJoinError("system score must use violation_probability semantics")
@@ -233,15 +266,28 @@ def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[st
     if any(token in encoded.lower() for token in forbidden):
         raise EvaluationJoinError("ground-truth-bearing content is forbidden in system scores")
     coverage = document["coverage"]
-    _exact(coverage, {"universe_ids", "selected_ids", "scored_ids", "unresolved_ids"},
+    _exact(coverage, {"universe_ids", "selected_ids", "repeat_dispositions"},
            "score coverage")
     if not all(isinstance(coverage[key], list) for key in coverage):
         raise EvaluationJoinError("score coverage dispositions must be lists")
-    universe, selected, scored, unresolved = (set(coverage[key]) for key in (
-        "universe_ids", "selected_ids", "scored_ids", "unresolved_ids"))
-    if (universe != frozen_ids or any(len(set(coverage[key])) != len(coverage[key]) for key in coverage)
-            or not selected <= universe or not scored <= selected or unresolved != selected - scored):
+    universe, selected = set(coverage["universe_ids"]), set(coverage["selected_ids"])
+    if (universe != frozen_ids
+            or len(universe) != len(coverage["universe_ids"])
+            or len(selected) != len(coverage["selected_ids"]) or not selected <= universe):
         raise EvaluationJoinError("score coverage dispositions do not form the required subsets")
+    disposition_scored: set[tuple[str, int]] = set()
+    seen_repeats = set()
+    for disposition in coverage["repeat_dispositions"]:
+        _exact(disposition, {"repeat", "scored_ids", "unresolved_ids"}, "repeat disposition")
+        repeat = disposition["repeat"]
+        scored, unresolved = set(disposition["scored_ids"]), set(disposition["unresolved_ids"])
+        if (type(repeat) is not int or repeat < 0 or repeat in seen_repeats
+                or len(scored) != len(disposition["scored_ids"])
+                or len(unresolved) != len(disposition["unresolved_ids"])
+                or not scored <= selected or unresolved != selected - scored):
+            raise EvaluationJoinError("repeat score dispositions do not partition selected candidates")
+        seen_repeats.add(repeat)
+        disposition_scored |= {(cid, repeat) for cid in scored}
     rows, seen = [], set()
     for row in document["rows"]:
         _exact(row, {"frozen_candidate_id", "repeat", "initial", "rejudge",
@@ -261,7 +307,7 @@ def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[st
                 raise EvaluationJoinError("scores must be integer probabilities from 0 to 100")
         seen.add((cid, row["repeat"]))
         rows.append(row)
-    if {row["frozen_candidate_id"] for row in rows} != scored:
+    if {(row["frozen_candidate_id"], row["repeat"]) for row in rows} != disposition_scored:
         raise EvaluationJoinError("score rows do not match the sealed scored disposition")
     return rows
 
@@ -284,12 +330,12 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
         score_rows = validate_score_artifact(document, set(reverse))
         validated[condition] = (document, score_rows)
     common_scored = set.intersection(*(
-        {row["frozen_candidate_id"] for row in score_rows}
+        {(row["frozen_candidate_id"], row["repeat"]) for row in score_rows}
         for _, score_rows in validated.values()
     ))
     for condition, (document, score_rows) in validated.items():
         for score in score_rows:
-            if score["frozen_candidate_id"] not in common_scored:
+            if (score["frozen_candidate_id"], score["repeat"]) not in common_scored:
                 continue
             oid, group_id = reverse[score["frozen_candidate_id"]]
             initial, rejudge = score["initial"], score["rejudge"]
@@ -315,14 +361,19 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
     for condition, (document, score_rows) in validated.items():
         coverage = document["coverage"]
         universe, selected = set(coverage["universe_ids"]), set(coverage["selected_ids"])
-        scored = {row["frozen_candidate_id"] for row in score_rows}
+        scored = {(row["frozen_candidate_id"], row["repeat"]) for row in score_rows}
+        unresolved = {(cid, disposition["repeat"])
+                      for disposition in coverage["repeat_dispositions"]
+                      for cid in disposition["unresolved_ids"]}
         disposition_exclusions[condition] = {
             "unselected": _id_summary(universe - selected),
-            "score_unresolved": _id_summary(set(coverage["unresolved_ids"])),
-            "condition_only_scored": _id_summary(scored - common_scored),
+            "score_unresolved": _id_summary({f"{cid}::{repeat}" for cid, repeat in unresolved}),
+            "condition_only_scored": _id_summary({f"{cid}::{repeat}"
+                                                    for cid, repeat in scored - common_scored}),
         }
-    common_oids = {reverse[cid][0] for cid in common_scored}
-    common_binary = {oid for oid in common_oids if labels[oid] in {"violation", "non_violation"}}
+    common_keys = {f"{cid}::{repeat}" for cid, repeat in common_scored}
+    common_binary = {f"{reverse[cid][0]}::{repeat}" for cid, repeat in common_scored
+                     if labels[reverse[cid][0]] in {"violation", "non_violation"}}
     return {
         "schema_version": "1.1", "score_semantics": SCORE_SEMANTICS,
         "ground_truth_basis": "same_model_temperature0_test_retest_proxy_not_external_expert_gt",
@@ -331,7 +382,7 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
                         "annotators and not an external-expert performance estimate"),
         "eligibility": {"sealed_total": len(labels),
                         "binary_eligible": label_counts["violation"] + label_counts["non_violation"],
-                        "common_scored": _id_summary(common_scored),
+                        "common_scored": _id_summary(common_keys),
                         "common_scored_binary": _id_summary(common_binary),
                         "excluded_by_label": {
                             "insufficient_context": label_counts["insufficient_context"],
@@ -363,6 +414,14 @@ def paired_binary_report(dataset: dict[str, Any], *, threshold: int = 50) -> dic
             discordant["left_only_correct"] += 1
         elif rc and not lc:
             discordant["right_only_correct"] += 1
+    discordant_n = sum(discordant.values())
+    smaller = min(discordant.values())
+    exact_p = (min(1.0, 2 * sum(math.comb(discordant_n, index)
+                                for index in range(smaller + 1)) / (2 ** discordant_n))
+               if discordant_n else 1.0)
     return {"conditions": [left, right], "paired_n": len(by_condition[left]),
             "threshold": threshold, "mcnemar_discordance_counts": dict(discordant),
+            "mcnemar_exact_two_sided_p": exact_p,
+            "test_unit_limit": ("Descriptive occurrence-repeat McNemar value; repeats and clone groups "
+                                "are dependent, so it is not a standalone confirmatory p-value"),
             "claim_limit": dataset["claim_limit"]}

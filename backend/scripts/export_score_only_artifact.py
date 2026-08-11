@@ -13,23 +13,20 @@ BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND))
 
 from experiments.score_only_evaluation import (  # noqa: E402
-    EvaluationJoinError, score_artifact_from_l3_result,
+    EvaluationJoinError, score_artifact_from_l3_results,
 )
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("result", type=Path)
+    parser.add_argument("result", type=Path, nargs="+")
     parser.add_argument("--condition", required=True)
-    parser.add_argument("--repeat", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    if args.output.resolve() == args.result.resolve() or args.output.exists():
+    if args.output.resolve() in {path.resolve() for path in args.result} or args.output.exists():
         raise EvaluationJoinError("output must be a new path distinct from the raw result")
-    result = json.loads(args.result.read_text(encoding="utf-8"))
-    artifact = score_artifact_from_l3_result(
-        result, condition=args.condition, repeat=args.repeat,
-    )
+    results = [json.loads(path.read_text(encoding="utf-8")) for path in args.result]
+    artifact = score_artifact_from_l3_results(results, condition=args.condition)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=f".{args.output.name}.", dir=args.output.parent)
     try:
@@ -49,8 +46,9 @@ def main(argv=None) -> int:
     print(json.dumps({"status": "ok", "artifact_id": artifact["artifact_id"],
                       "universe": len(artifact["coverage"]["universe_ids"]),
                       "selected": len(artifact["coverage"]["selected_ids"]),
-                      "scored": len(artifact["coverage"]["scored_ids"]),
-                      "unresolved": len(artifact["coverage"]["unresolved_ids"])}, sort_keys=True))
+                      "repeats": len(artifact["coverage"]["repeat_dispositions"]),
+                      "scored": sum(len(row["scored_ids"]) for row in artifact["coverage"]["repeat_dispositions"]),
+                      "unresolved": sum(len(row["unresolved_ids"]) for row in artifact["coverage"]["repeat_dispositions"])}, sort_keys=True))
     return 0
 
 
