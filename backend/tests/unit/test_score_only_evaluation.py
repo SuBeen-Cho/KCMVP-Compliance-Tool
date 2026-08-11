@@ -7,7 +7,7 @@ import pytest
 from experiments.calibration import calibrate, grouped_dev_heldout_split, validate_calibration_dataset
 from experiments.score_only_evaluation import (
     EvaluationJoinError, build_calibration_proxy, build_test_retest_proxy_gt,
-    paired_binary_report,
+    paired_binary_report, score_artifact_from_l3_result,
 )
 from experiments.labeling import build_packet
 
@@ -41,9 +41,12 @@ def _fixtures():
                  "initial": (80 if i % 2 else 20) + delta, "rejudge": None,
                  "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability"}
                 for i in range(8)]
-        core = {"schema_version": "1.0", "scope": "score_only_system_output",
+        coverage = {"universe_ids": [f"f{i}" for i in range(8)],
+                    "selected_ids": [f"f{i}" for i in range(8)],
+                    "scored_ids": [f"f{i}" for i in range(8)], "unresolved_ids": []}
+        core = {"schema_version": "1.1", "scope": "score_only_system_output",
                 "snapshot_id": "snap", "condition": condition,
-                "score_semantics": "violation_probability", "rows": rows}
+                "score_semantics": "violation_probability", "coverage": coverage, "rows": rows}
         scores.append({"artifact_id": _hash(core), **core})
     return sidecar, gt, scores
 
@@ -54,10 +57,11 @@ def test_posthoc_join_builds_proxy_and_clone_groups_never_cross_split():
     dev, heldout = grouped_dev_heldout_split(rows, heldout_fraction=.5)
     assert {r["group_id"] for r in dev}.isdisjoint({r["group_id"] for r in heldout})
     assert dataset["ground_truth_basis"].startswith("same_model")
-    assert dataset["eligibility"] == {
-        "sealed_total": 8, "binary_eligible": 6,
-        "excluded_by_label": {"insufficient_context": 1, "not_applicable": 1},
-    }
+    assert dataset["eligibility"]["sealed_total"] == 8
+    assert dataset["eligibility"]["binary_eligible"] == 6
+    assert dataset["eligibility"]["common_scored_binary"]["count"] == 6
+    assert dataset["eligibility"]["excluded_by_label"] == {
+        "insufficient_context": 1, "not_applicable": 1}
     report = paired_binary_report(dataset)
     assert report["paired_n"] == 6
 
@@ -128,3 +132,33 @@ def test_test_retest_builder_emits_four_class_gt_and_fails_on_disagreement():
     b["label_batch_id"] = _hash(bcore)
     with pytest.raises(EvaluationJoinError, match="requires separate adjudication"):
         build_test_retest_proxy_gt(packet, a, b)
+
+
+def test_converter_seals_partial_score_dispositions_and_join_uses_common_subset():
+    sidecar, gt, _ = _fixtures()
+    def raw(no_rag, scored):
+        universe = [f"f{i}" for i in range(8)]
+        selected = universe[:6]
+        return {"scope": "single_l2_l3_condition_from_frozen_l1", "snapshot_id": "snap",
+                "candidate_ids": universe, "selected_candidate_ids": selected,
+                "l3_decision_records": [{"candidate_id": cid,
+                    "initial_violation_probability": 80, "rejudge_violation_probability": None,
+                    "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability",
+                    "rejudge_applied": False, "decision": "retained"} for cid in scored]}
+    rag = score_artifact_from_l3_result(raw(False, ["f0", "f1", "f2", "f3", "f4"]),
+                                        condition="rag", repeat=0)
+    no_rag = score_artifact_from_l3_result(raw(True, ["f1", "f2", "f3", "f4", "f5"]),
+                                           condition="no_rag", repeat=0)
+    dataset = build_calibration_proxy(sidecar, gt, [rag, no_rag])
+    assert dataset["eligibility"]["common_scored"]["count"] == 4
+    assert dataset["eligibility"]["common_scored_binary"]["count"] == 4
+    assert dataset["eligibility"]["excluded_by_disposition"]["rag"] == {
+        "unselected": _summary({"f6", "f7"}),
+        "score_unresolved": _summary({"f5"}),
+        "condition_only_scored": _summary({"f0"}),
+    }
+    assert "not whole-L1 performance" in dataset["claim_limit"]
+
+
+def _summary(values):
+    return {"count": len(values), "ids_sha256": _hash(sorted(values))}

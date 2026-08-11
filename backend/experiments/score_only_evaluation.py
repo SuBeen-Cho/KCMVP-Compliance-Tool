@@ -34,6 +34,50 @@ def _exact(value: Any, keys: set[str], name: str) -> None:
         raise EvaluationJoinError(f"{name} does not match the closed schema")
 
 
+def _id_summary(values: set[str]) -> dict[str, Any]:
+    ordered = sorted(values)
+    return {"count": len(ordered), "ids_sha256": _hash(ordered)}
+
+
+def score_artifact_from_l3_result(result: Any, *, condition: str, repeat: int) -> dict[str, Any]:
+    """Convert one raw frozen-L1 L3 result without adding outcome labels."""
+    if not isinstance(result, dict) or result.get("scope") != "single_l2_l3_condition_from_frozen_l1":
+        raise EvaluationJoinError("unsupported raw L3 result")
+    if not isinstance(condition, str) or not condition or type(repeat) is not int or repeat < 0:
+        raise EvaluationJoinError("condition and repeat are invalid")
+    universe = result.get("candidate_ids")
+    selected = result.get("selected_candidate_ids")
+    records = result.get("l3_decision_records")
+    if not all(isinstance(value, list) for value in (universe, selected, records)):
+        raise EvaluationJoinError("raw L3 result coverage fields are malformed")
+    universe_set, selected_set = set(universe), set(selected)
+    if len(universe_set) != len(universe) or len(selected_set) != len(selected) or not selected_set <= universe_set:
+        raise EvaluationJoinError("raw L3 universe/selection is not a unique subset")
+    rows, scored = [], set()
+    for record in records:
+        required = {"candidate_id", "initial_violation_probability",
+                    "rejudge_violation_probability", "score_provenance",
+                    "rejudge_applied", "decision"}
+        _exact(record, required, "L3 decision record")
+        cid = record["candidate_id"]
+        if cid not in selected_set or cid in scored:
+            raise EvaluationJoinError("L3 decision scores contain unknown or duplicate candidates")
+        rows.append({"frozen_candidate_id": cid, "repeat": repeat,
+                     "initial": record["initial_violation_probability"],
+                     "rejudge": record["rejudge_violation_probability"],
+                     "score_provenance": record["score_provenance"]})
+        scored.add(cid)
+    coverage = {"universe_ids": universe, "selected_ids": selected,
+                "scored_ids": sorted(scored),
+                "unresolved_ids": sorted(selected_set - scored)}
+    core = {"schema_version": "1.1", "scope": "score_only_system_output",
+            "snapshot_id": result.get("snapshot_id"), "condition": condition,
+            "score_semantics": SCORE_SEMANTICS, "coverage": coverage, "rows": rows}
+    document = {"artifact_id": _hash(core), **core}
+    validate_score_artifact(document, universe_set)
+    return document
+
+
 def build_test_retest_proxy_gt(packet: Any, first: Any, second: Any) -> dict[str, Any]:
     """Build four-class proxy GT from two same-model deterministic repeat runs.
 
@@ -137,8 +181,8 @@ def validate_adjudicated_gt(document: Any, occurrence_ids: set[str]) -> dict[str
 
 def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[str, Any]]:
     _exact(document, {"schema_version", "scope", "snapshot_id", "condition",
-                      "score_semantics", "rows", "artifact_id"}, "score artifact")
-    if document["schema_version"] != "1.0" or document["scope"] != "score_only_system_output":
+                      "score_semantics", "coverage", "rows", "artifact_id"}, "score artifact")
+    if document["schema_version"] != "1.1" or document["scope"] != "score_only_system_output":
         raise EvaluationJoinError("unsupported score-only artifact")
     if document["score_semantics"] != SCORE_SEMANTICS:
         raise EvaluationJoinError("system score must use violation_probability semantics")
@@ -148,6 +192,16 @@ def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[st
     forbidden = (b"ground_truth", b"expected", b"correct", b"expert", b"adjudicat")
     if any(token in encoded.lower() for token in forbidden):
         raise EvaluationJoinError("ground-truth-bearing content is forbidden in system scores")
+    coverage = document["coverage"]
+    _exact(coverage, {"universe_ids", "selected_ids", "scored_ids", "unresolved_ids"},
+           "score coverage")
+    if not all(isinstance(coverage[key], list) for key in coverage):
+        raise EvaluationJoinError("score coverage dispositions must be lists")
+    universe, selected, scored, unresolved = (set(coverage[key]) for key in (
+        "universe_ids", "selected_ids", "scored_ids", "unresolved_ids"))
+    if (universe != frozen_ids or any(len(set(coverage[key])) != len(coverage[key]) for key in coverage)
+            or not selected <= universe or not scored <= selected or unresolved != selected - scored):
+        raise EvaluationJoinError("score coverage dispositions do not form the required subsets")
     rows, seen = [], set()
     for row in document["rows"]:
         _exact(row, {"frozen_candidate_id", "repeat", "initial", "rejudge",
@@ -167,6 +221,8 @@ def validate_score_artifact(document: Any, frozen_ids: set[str]) -> list[dict[st
                 raise EvaluationJoinError("scores must be integer probabilities from 0 to 100")
         seen.add((cid, row["repeat"]))
         rows.append(row)
+    if {row["frozen_candidate_id"] for row in rows} != scored:
+        raise EvaluationJoinError("score rows do not match the sealed scored disposition")
     return rows
 
 
@@ -177,6 +233,7 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
     reverse = {row["frozen_candidate_id"]: (oid, row["group_id"]) for oid, row in join.items()}
     rows = []
     conditions: set[str] = set()
+    validated: dict[str, tuple[Any, list[dict[str, Any]]]] = {}
     for document in score_documents:
         if document.get("snapshot_id") != sidecar["snapshot_id"]:
             raise EvaluationJoinError("score artifact is bound to a different snapshot")
@@ -185,10 +242,15 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
             raise EvaluationJoinError("score conditions must be unique non-empty strings")
         conditions.add(condition)
         score_rows = validate_score_artifact(document, set(reverse))
-        covered = {row["frozen_candidate_id"] for row in score_rows}
-        if covered != set(reverse):
-            raise EvaluationJoinError("each score condition must cover every frozen occurrence")
+        validated[condition] = (document, score_rows)
+    common_scored = set.intersection(*(
+        {row["frozen_candidate_id"] for row in score_rows}
+        for _, score_rows in validated.values()
+    ))
+    for condition, (document, score_rows) in validated.items():
         for score in score_rows:
+            if score["frozen_candidate_id"] not in common_scored:
+                continue
             oid, group_id = reverse[score["frozen_candidate_id"]]
             initial, rejudge = score["initial"], score["rejudge"]
             if labels[oid] not in {"violation", "non_violation"}:
@@ -209,17 +271,32 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
     if not rows:
         raise EvaluationJoinError("at least one score row is required")
     label_counts = Counter(labels.values())
+    disposition_exclusions = {}
+    for condition, (document, score_rows) in validated.items():
+        coverage = document["coverage"]
+        universe, selected = set(coverage["universe_ids"]), set(coverage["selected_ids"])
+        scored = {row["frozen_candidate_id"] for row in score_rows}
+        disposition_exclusions[condition] = {
+            "unselected": _id_summary(universe - selected),
+            "score_unresolved": _id_summary(set(coverage["unresolved_ids"])),
+            "condition_only_scored": _id_summary(scored - common_scored),
+        }
+    common_oids = {reverse[cid][0] for cid in common_scored}
+    common_binary = {oid for oid in common_oids if labels[oid] in {"violation", "non_violation"}}
     return {
         "schema_version": "1.1", "score_semantics": SCORE_SEMANTICS,
         "ground_truth_basis": "same_model_temperature0_test_retest_proxy_not_external_expert_gt",
-        "claim_limit": ("Calibration proxy from same-model temperature-0 test-retest labels; "
-                        "not independent annotators and not an external-expert performance estimate"),
+        "claim_limit": ("Post-selector calibration proxy on the common-scored subset only; not whole-L1 "
+                        "performance. Same-model temperature-0 test-retest labels are not independent "
+                        "annotators and not an external-expert performance estimate"),
         "eligibility": {"sealed_total": len(labels),
                         "binary_eligible": label_counts["violation"] + label_counts["non_violation"],
+                        "common_scored": _id_summary(common_scored),
+                        "common_scored_binary": _id_summary(common_binary),
                         "excluded_by_label": {
                             "insufficient_context": label_counts["insufficient_context"],
                             "not_applicable": label_counts["not_applicable"],
-                        }},
+                        }, "excluded_by_disposition": disposition_exclusions},
         "rows": rows,
     }
 

@@ -67,16 +67,40 @@ def validate_calibration_dataset(dataset: Any) -> list[dict[str, Any]]:
             raise CalibrationDataError("proxy calibration must disclose same-model test-retest non-independence")
         eligibility = dataset["eligibility"]
         if (not isinstance(eligibility, dict)
-                or set(eligibility) != {"sealed_total", "binary_eligible", "excluded_by_label"}
+                or set(eligibility) != {"sealed_total", "binary_eligible", "common_scored",
+                                        "common_scored_binary", "excluded_by_label",
+                                        "excluded_by_disposition"}
                 or set(eligibility.get("excluded_by_label", {})) != {
                     "insufficient_context", "not_applicable",
                 }
-                or eligibility["binary_eligible"] != len({
+                or eligibility.get("common_scored_binary", {}).get("count") != len({
                     row.get("candidate_id") for row in dataset.get("rows", [])
                 })
                 or eligibility["sealed_total"] != eligibility["binary_eligible"]
                 + sum(eligibility["excluded_by_label"].values())):
             raise CalibrationDataError("proxy eligibility accounting is inconsistent")
+        for summary in (eligibility.get("common_scored"),
+                        eligibility.get("common_scored_binary")):
+            if (not isinstance(summary, dict) or set(summary) != {"count", "ids_sha256"}
+                    or type(summary["count"]) is not int
+                    or not isinstance(summary["ids_sha256"], str)
+                    or len(summary["ids_sha256"]) != 64):
+                raise CalibrationDataError("proxy eligibility ID summary is invalid")
+        dispositions = eligibility.get("excluded_by_disposition")
+        if not isinstance(dispositions, dict) or not dispositions:
+            raise CalibrationDataError("proxy disposition exclusions are required")
+        for condition, categories in dispositions.items():
+            if (not isinstance(condition, str) or not condition
+                    or not isinstance(categories, dict)
+                    or set(categories) != {"unselected", "score_unresolved",
+                                           "condition_only_scored"}):
+                raise CalibrationDataError("proxy disposition exclusion schema is invalid")
+            for summary in categories.values():
+                if (not isinstance(summary, dict) or set(summary) != {"count", "ids_sha256"}
+                        or type(summary["count"]) is not int
+                        or not isinstance(summary["ids_sha256"], str)
+                        or len(summary["ids_sha256"]) != 64):
+                    raise CalibrationDataError("proxy disposition ID summary is invalid")
     elif set(dataset) != _TOP_KEYS:
         raise CalibrationDataError("legacy calibration dataset cannot carry undeclared metadata")
     if dataset["score_semantics"] != SCORE_SEMANTICS:
