@@ -991,6 +991,13 @@
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_001_보조키_생성.md"
   },
+  "CMAC-004": {
+    "item_ids": [],
+    "kcmvp_ref": "암호모듈 구현안내서(GVI Part 2, 2024.03) p.49, p.51",
+    "l3_search_query": "KCMVP CMAC ARIA SEED LEA 112 128비트 HIGHT 64비트 MAC 길이",
+    "l3_required": true,
+    "guideline_file": "backend/guidelines/CMAC-004_kcmvp_tag_length.md"
+  },
   "CMAC-LEA-001": {
     "item_ids": [
       "CMAC.001"

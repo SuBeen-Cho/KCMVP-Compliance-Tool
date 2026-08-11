@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "collection": "evidence_query_ground_truth",
+  "scope": "human_reviewed_semantic_seed",
+  "queries": [
+    {
+      "query_id": "CCM-003:tag-length",
+      "rule_id": "CCM-003",
+      "query": "CCM 인증값 바이트 길이 14 16 요구사항",
+      "relevant_unit_ids": ["KCMVP_GVI_PART2_2024_03:p0038:b007"],
+      "allowed_source_ids": ["KCMVP_GVI_PART2_2024_03"]
+    },
+    {
+      "query_id": "GCM-002:tag-length",
+      "rule_id": "GCM-002",
+      "query": "GCM GMAC 인증값 길이 입력 조건",
+      "relevant_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0031:b039",
+        "KCMVP_GVI_PART2_2024_03:p0034:b023"
+      ],
+      "allowed_source_ids": ["KCMVP_GVI_PART2_2024_03"]
+    },
+    {
+      "query_id": "LEA-048:MOVS-filenames",
+      "rule_id": "LEA-048",
+      "query": "LEA MOVS KAT MMT MCT req fax 파일명 규칙",
+      "relevant_unit_ids": [
+        "LEA_VALIDATION_SYSTEM:p0013:b010",
+        "LEA_VALIDATION_SYSTEM:p0013:b016",
+        "LEA_VALIDATION_SYSTEM:p0013:b022",
+        "LEA_VALIDATION_SYSTEM:p0014:b011",
+        "LEA_VALIDATION_SYSTEM:p0014:b017",
+        "LEA_VALIDATION_SYSTEM:p0014:b023",
+        "LEA_VALIDATION_SYSTEM:p0015:b009",
+        "LEA_VALIDATION_SYSTEM:p0015:b015",
+        "LEA_VALIDATION_SYSTEM:p0015:b021"
+      ],
+      "allowed_source_ids": ["LEA_VALIDATION_SYSTEM"]
+    }
+  ]
+}

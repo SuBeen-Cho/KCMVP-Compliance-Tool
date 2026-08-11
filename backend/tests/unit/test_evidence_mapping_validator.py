@@ -8,9 +8,34 @@ from app.services import evidence_mapping_validator as validator
 def test_active_rules_have_explicit_fail_closed_audit_state():
     result = validator.validate_evidence_mapping_registry()
 
-    assert result["active_rule_count"] == 165
-    assert result["verified_count"] == 3
-    assert result["review_required_count"] == 162
+    assert result["active_rule_count"] == 166
+    assert result["verified_count"] == 50
+    assert result["review_required_count"] == 116
+
+
+def test_submission_guide_promotions_are_source_bound_and_fail_closed():
+    payload = json.loads(validator._AUDIT.read_text(encoding="utf-8"))
+    promoted = [
+        row for row in payload["rules"].values()
+        if row["status"] == "verified"
+        and row["source_locator"]["source_id"] == "KCMVP_SUBMISSION_GUIDE_2025_09"
+    ]
+    assert len(promoted) == 38
+    assert all(row["source_sha256"] == "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89" for row in promoted)
+    assert all(row["applicability"]["scope"] == ["submission_artifacts"] for row in promoted)
+
+    # The guide extraction does not contain an AS09.27 section and the
+    # AS02.22 text does not directly establish the rule's stronger claim.
+    for rule_id in (
+        "CM-003", "CM-004", "DOC-003", "DOC-009", "DOC-012",
+        "DOC-014", "DOC-015", "DOC-025", "DOC-027", "DOC-028",
+        "DOC-030", "DOC-031", "DOC-035", "DOC-036", "DOC-037",
+        "DOC-039", "DOC-040", "DOC-044", "DOC-045", "DOC-046",
+        "DOC-049", "DOC-051", "DOC-052", "DOC-053", "DOC-054",
+        "DOC-055",
+    ):
+        assert payload["rules"][rule_id]["status"] == "review_required"
+        assert payload["rules"][rule_id]["evidence_unit_ids"] == []
 
 
 def test_validator_rejects_unverified_exposed_evidence_unit(tmp_path, monkeypatch):
@@ -27,13 +52,23 @@ def test_validator_rejects_unverified_exposed_evidence_unit(tmp_path, monkeypatc
 def test_known_bad_legacy_mappings_are_not_presented_as_verified():
     payload = json.loads(validator._AUDIT.read_text(encoding="utf-8"))
     for rule_id in (
-        "CTR-001", "CBC-LEA-005", "LEA-001", "COM-002", "COM-003", "COM-005"
+        "CTR-001", "CBC-LEA-005", "COM-002", "COM-003", "COM-005"
     ):
         row = payload["rules"][rule_id]
         assert row["status"] == "review_required"
         assert row["authority_class"] == "unverified"
         assert row["evidence_unit_ids"] == []
         assert "incorrect or overgeneralized" in row["audit_note"]
+
+
+def test_lea001_is_bound_to_self_contained_normative_standard_units():
+    payload = json.loads(validator._AUDIT.read_text(encoding="utf-8"))
+    row = payload["rules"]["LEA-001"]
+    assert row["status"] == "verified"
+    assert row["source_locator"]["source_id"] == "LEA_DATASHEET_KO"
+    assert row["evidence_unit_ids"] == [
+        f"LEA_DATASHEET_KO:p0011:b{block:03d}" for block in range(3, 9)
+    ]
 
 
 @pytest.mark.parametrize(

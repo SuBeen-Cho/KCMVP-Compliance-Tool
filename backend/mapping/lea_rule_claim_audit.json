@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "collection": "lea_rule_claim_audit",
+  "audited_rule_count": 53,
+  "authority_policy": {
+    "LEA_DATASHEET_KO": "normative_standard",
+    "LEA_VALIDATION_SYSTEM": "normative_test_interface",
+    "LEA_SOURCE_MANUAL_V1": "reference_implementation_manual",
+    "LEA_DESIGN_PAPER": "research_reference"
+  },
+  "dispositions": [
+    {
+      "decision": "verified_exact_entailment",
+      "rule_ids": ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023", "LEA-048"],
+      "reason": "The normative standard or test interface directly states the complete numeric, mathematical, layout, or artifact claim; exact bindings are recorded in rule_evidence_audit.json."
+    },
+    {
+      "decision": "review_required_detector_scope",
+      "rule_ids": ["LEA-004", "LEA-006", "LEA-007", "LEA-008", "LEA-009", "LEA-010", "LEA-013", "LEA-014", "LEA-015", "LEA-016", "LEA-017", "LEA-018", "LEA-019", "LEA-020", "LEA-025", "LEA-026", "LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031", "LEA-033", "LEA-034", "LEA-035", "LEA-036", "LEA-037", "LEA-038", "LEA-039", "LEA-040"],
+      "reason": "The standard contains related algorithm text, but the active missing/regex/AST claim can overreach across equivalent representations, wrappers, compile-time constants, or project boundaries; detector narrowing is required before promotion."
+    },
+    {
+      "decision": "review_required_non_normative_or_security_inference",
+      "rule_ids": ["LEA-024", "LEA-032", "LEA-041", "LEA-042", "LEA-043", "LEA-044", "LEA-045"],
+      "reason": "The current claim depends on research optimization, generic module security requirements, or an inferred side-channel property rather than a direct LEA algorithm requirement."
+    },
+    {
+      "decision": "review_required_test_or_reference_scope",
+      "rule_ids": ["LEA-046", "LEA-047", "LEA-056", "LEA-057", "LEA-059", "LEA-060", "LEA-061", "LEA-062"],
+      "reason": "The claim concerns validation artifacts, reference values, or harness behavior and needs occurrence-level applicability and complete test-interface evidence before it can affect implementation findings."
+    }
+  ]
+}

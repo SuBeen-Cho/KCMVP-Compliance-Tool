@@ -30,6 +30,11 @@ ALLOWED_ROLES = {
 HEADING = re.compile(r"^(?:\d+(?:\.\d+){0,4}[.)]?|[IVX]+[.)]|[A-Z]\.)\s+\S|^\S.{0,60}(?:\uc7a5|\uc808)$")
 FOOTNOTE = re.compile(r"^(?:\*+|\u203b|\uc8fc\s*\d*|note\s*\d*)\s*[:.)]?", re.I)
 EXCEPTION = re.compile(r"(?:\uc608\uc678|\ub2e4\ub9cc|\uc81c\uc678|except|unless)", re.I)
+BOILERPLATE = re.compile(
+    r"^(?:무단\s*전재[,\s]*재배포[,\s]*복사\s*및\s*상업적\s*활용\s*금지|"
+    r"(?:\d+\s*)?copyright\s+\d{4}.*all\s+rights\s+reserved\.?|"
+    r"all\s+rights\s+reserved\.?)$", re.I,
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -43,6 +48,11 @@ def sha256_file(path: Path) -> str:
 def normalize_text(value: str) -> str:
     value = unicodedata.normalize("NFC", value).replace("\u00ad", "")
     return re.sub(r"\s+", " ", value).strip()
+
+
+def _is_boilerplate(text: str) -> bool:
+    """Return true for repeated copyright/footer text, not requirements."""
+    return bool(BOILERPLATE.fullmatch(re.sub(r"\s+", " ", text).strip()))
 
 
 def _resolve_unicode_path(root: Path, relative: str) -> Path:
@@ -116,7 +126,7 @@ def _iter_pdf_units(path: Path, source: dict[str, Any]) -> Iterable[dict[str, An
             blocks = page.get_text("blocks", sort=True)
             for block_number, block in enumerate(blocks, 1):
                 text = normalize_text(str(block[4]))
-                if not text:
+                if not text or _is_boilerplate(text):
                     continue
                 lines = [normalize_text(line) for line in str(block[4]).splitlines() if normalize_text(line)]
                 first = lines[0] if lines else text
@@ -263,9 +273,14 @@ def validate_verified_rule_mappings(index: dict[str, Any], audit: dict[str, Any]
             if not isinstance(pages, list) or not pages or any(unit["locator"]["page"] not in pages for unit in referenced_units):
                 raise ValueError(f"{rule_id}: verified pages disagree with evidence units")
             if blocks is not None:
-                if not isinstance(blocks, list) or len(blocks) != len(pages):
+                if not isinstance(blocks, list) or not blocks:
                     raise ValueError(f"{rule_id}: verified page/block coordinates are ambiguous")
-                allowed = set(zip(pages, blocks))
+                if len(pages) == 1:
+                    allowed = {(pages[0], block) for block in blocks}
+                elif len(blocks) == len(pages):
+                    allowed = set(zip(pages, blocks))
+                else:
+                    raise ValueError(f"{rule_id}: verified page/block coordinates are ambiguous")
                 if any((unit["locator"]["page"], unit["locator"]["block"]) not in allowed for unit in referenced_units):
                     raise ValueError(f"{rule_id}: verified coordinates disagree with evidence units")
 

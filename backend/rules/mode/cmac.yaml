@@ -38,4 +38,16 @@ rules:
     description: "보조키 K1, K2는 비밀키로부터 파생된 민감 정보이므로, CMAC 연산 완료 후 memset_s, smc_zeroize 등으로 메모리에서 즉시 0화(Zeroization)해야 함"
     kcmvp_ref: "KS X ISO/IEC 19790:2015 §7.9 [09.01]"
 
+  - id: CMAC-004
+    category: mode
+    mode: CMAC
+    name: "KCMVP CMAC 인증값 길이 제약"
+    pattern_type: regex
+    pattern: "(?i)\\b(?:(?:aria|seed|lea|hight)_)?cmac_(?:tag_(?:len_)?(?:bytes?|bits?)|mac_(?:len_)?(?:bytes?|bits?))\\s*(?:=|:)\\s*\\d+\\b"
+    severity: high
+    description: "KCMVP CMAC에서 ARIA·SEED·LEA의 MAC 길이는 112~128비트(14~16바이트)이며, 64비트 블록암호 HIGHT의 MAC 길이는 64비트(8바이트)이다. 명시적 bits/bytes 식별자만 판독하며, 알고리즘 prefix가 없는 설정은 파일에 단일 지원 알고리즘이 명시된 경우에만 판독한다."
+    kcmvp_ref: "암호모듈 구현안내서(GVI Part 2, 2024.03) p.49, p.51"
+    compliance_profile: "KCMVP-GVI-Part2-2024.03"
+    value_unit_policy: "ARIA/SEED/LEA bytes:14..16,bits:112..128; HIGHT bytes:8,bits:64"
+
   # CMAC-LEA-001 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행

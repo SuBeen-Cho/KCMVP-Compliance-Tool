@@ -15,7 +15,10 @@ from app.services.llm.gemini_client import (
     GeminiConfigurationError,
 )
 from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
-from app.services.rag_grounding import verify_citation_bound_decision
+from app.services.rag_grounding import (
+    is_deterministic_verified_bypass,
+    verify_citation_bound_decision,
+)
 
 # 테스트 세트에서 L3가 오탐 제거로 FN을 유발하는 것이 확인된 ast 규칙들.
 # KISA blind test에서 이 규칙들은 FP가 아니므로 FP 제거 임계값을 높여 Recall 보호.
@@ -507,12 +510,6 @@ def run_l3_contextualizer(
     -------
     list[dict] : L3가 실제 위반으로 확정한 항목 리스트
     """
-    # gemini 프로바이더는 API 키 필수; local은 키 불필요
-    if L3_PROVIDER == "gemini" and not GOOGLE_API_KEY:
-        raise GeminiConfigurationError(
-            "GOOGLE_API_KEY is required; L3 cannot silently return an empty result"
-        )
-
     results: List[Dict[str, Any]] = []
     files = preprocess_result.get("files", [])
     file_content_cache: Dict[str, str] = {}
@@ -554,9 +551,19 @@ def run_l3_contextualizer(
 
     # L3 대상 선정
     candidates = list(l1_violations) if _preselected else _select_l3_candidates(l1_violations)
+    candidates = [
+        candidate for candidate in candidates
+        if not is_deterministic_verified_bypass(candidate)
+    ]
     if not candidates:
         print("[L3] L3 판정 대상 없음")
         return []
+
+    # Deterministically grounded candidates never require a configured LLM.
+    if L3_PROVIDER == "gemini" and not GOOGLE_API_KEY:
+        raise GeminiConfigurationError(
+            "GOOGLE_API_KEY is required; L3 cannot silently return an empty result"
+        )
 
     print(f"[L3] 판정 대상 {len(candidates)}건 선정 (전체 L1 위반: {len(l1_violations)}건)")
 

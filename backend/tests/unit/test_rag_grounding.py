@@ -1,9 +1,20 @@
+import pytest
+
+from app.services import rag_grounding
 from app.services.rag_grounding import (
     normalize_evidence_bundle,
     render_evidence_bundle,
     route_rag,
     verify_citation_bound_decision,
 )
+
+
+@pytest.fixture(autouse=True)
+def _audited_binding(monkeypatch):
+    monkeypatch.setattr(rag_grounding, "_verified_rule_binding", lambda _rule_id: {
+        "source_id": "guide", "source_sha256": "a" * 64,
+        "unit_ids": frozenset({"guide:p10:s2:requirement:abc"}),
+    })
 
 
 def _official_unit(**overrides):
@@ -73,6 +84,35 @@ def test_verifier_blocks_missing_or_wrong_citation():
     assert result == {"verified": False, "reason": "citation_unknown", "cited_unit_ids": ["invented"]}
 
 
+def test_verifier_blocks_official_distractor_not_bound_to_rule(monkeypatch):
+    distractor = _official_unit(
+        unit_id="other:p1:b1", source_id="other",
+        applicability={},
+    )
+    monkeypatch.setattr(rag_grounding, "_verified_rule_binding", lambda _rule_id: {
+        "source_id": "guide", "source_sha256": "a" * 64,
+        "unit_ids": frozenset({"guide:p10:s2:requirement:abc"}),
+    })
+    candidate = {
+        "rule_id": "GCM-002", "rag_route": {"decision": "retrieve"},
+        "rag_evidence_bundle": [distractor],
+    }
+    decision = _decision(
+        evidence_unit_ids=["other:p1:b1"],
+        supporting_spans=["인증값의 길이는 112비트 이상이어야 한다."],
+    )
+    assert verify_citation_bound_decision(candidate, decision)["reason"] == "citation_not_bound_to_rule"
+
+
+def test_verifier_blocks_rule_without_verified_binding(monkeypatch):
+    monkeypatch.setattr(rag_grounding, "_verified_rule_binding", lambda _rule_id: None)
+    candidate = {
+        "rule_id": "UNMAPPED-001", "rag_route": {"decision": "retrieve"},
+        "rag_evidence_bundle": [_official_unit()],
+    }
+    assert verify_citation_bound_decision(candidate, _decision())["reason"] == "rule_evidence_binding_missing"
+
+
 def test_verifier_blocks_author_guidance_and_conflicting_evidence():
     author = _official_unit(authority="author", authority_tier=3, evidence_role="author_guidance")
     candidate = {"rag_route": {"decision": "retrieve"}, "rag_evidence_bundle": [author]}
@@ -139,6 +179,22 @@ def test_locator_hash_and_version_are_enforced():
     assert verify_citation_bound_decision(candidate, _decision())["reason"] == "evidence_hash_mismatch"
     candidate["rag_evidence_bundle"] = [_official_unit(version=None)]
     assert verify_citation_bound_decision(candidate, _decision())["reason"] == "version_metadata_missing"
+
+
+def test_undated_local_artifact_requires_content_addressed_binding(monkeypatch):
+    candidate = {
+        "rule_id": "LEA-048", "rag_route": {"decision": "retrieve"},
+        "rag_evidence_bundle": [_official_unit(
+            version="local-artifact", effective_date=None,
+            source_sha256="a" * 64,
+        )],
+    }
+    assert verify_citation_bound_decision(candidate, _decision())["verified"] is True
+    candidate["rag_evidence_bundle"] = [_official_unit(
+        version="local-artifact", effective_date=None,
+        source_sha256="b" * 64,
+    )]
+    assert verify_citation_bound_decision(candidate, _decision())["reason"] == "undated_artifact_provenance_unverified"
 
 
 def test_counterevidence_forces_abstention():

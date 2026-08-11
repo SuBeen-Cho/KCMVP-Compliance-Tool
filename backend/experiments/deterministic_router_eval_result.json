@@ -1,0 +1,32 @@
+{
+  "baseline_result_sha256_at_projection": "8b9f0c8c4fbfa35c3e1cf859d8fcb75bcd09576f422e454809eb4f12c3355f88",
+  "candidate_count": 3,
+  "claim_scope": "projection_from_v5_no_rag_observed_mean_not_new_api_calls",
+  "created_at": "2026-08-11T17:55:20.810061+00:00",
+  "current_baseline_result_sha256_at_audit": "27895d8ececd68741b0450a8eed628cbc55c2fe79bba238b013714e05d118a2e",
+  "decision_source": "deterministic_l1_official_evidence",
+  "llm_calls_avoided": 3,
+  "official_unit_counts": {
+    "CCM-003": 1,
+    "CMAC-004": 4,
+    "GCM-002": 2
+  },
+  "projected_no_llm_savings": {
+    "estimated_cost_usd": 0.0002199,
+    "input_tokens": 1015,
+    "output_tokens": 296,
+    "sequential_latency_ms": 3094.531
+  },
+  "router_and_provenance_latency_ms": 128.27,
+  "run_id": "da44049b17df9d7ee3b77c3ee340e5851e8670317935c6a8cf5ede13f030f6ef",
+  "run_provenance": {
+    "api_calls": 0,
+    "current_official_evidence_index_sha256_at_audit": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "current_rule_evidence_audit_sha256_at_audit": "13df34a779427723888917196321566bf74cc8e421d7558398658032114453ea",
+    "current_runner_source_sha256_at_audit": "a6fb16d386ef2f312b52da4fb717d731b008b2661b1ed32c319a9c1a37dbd25b",
+    "measurement_repetitions": 1,
+    "provenance_capture": "retroactive_partial",
+    "runner_source_sha256": null
+  },
+  "schema_version": "1.1"
+}

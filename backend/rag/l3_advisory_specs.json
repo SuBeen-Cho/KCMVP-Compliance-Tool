@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "collection": "l3_advisory",
+  "default_enforcement": "disabled",
+  "advisories": [
+    {
+      "advisory_id": "GCM-006",
+      "title": "GCM same-key encryption call limit and rekey",
+      "normative_level": "shall",
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART1_2024_11:p0085:b027",
+        "KCMVP_GVI_PART1_2024_11:p0085:b028",
+        "KCMVP_GVI_PART1_2024_11:p0085:b031",
+        "KCMVP_GVI_PART1_2024_11:p0085:b032",
+        "KCMVP_GVI_PART1_2024_11:p0085:b033"
+      ],
+      "required_features": ["key_identity", "persistent_call_counter", "iv_construction", "restart_recovery", "limit_guard", "stop_or_rekey_path"],
+      "allowed_outcomes": ["satisfied", "unsafe_observed", "unknown"],
+      "implementation_status": "design_only"
+    },
+    {
+      "advisory_id": "CTR-006",
+      "title": "CTR counter exhaustion handling",
+      "normative_level": "recommendation",
+      "evidence_unit_ids": ["KCMVP_GVI_PART2_2024_03:p0023:b006"],
+      "required_features": ["counter_width", "counter_increment", "maximum_guard", "stop_or_rekey_path", "same_key_uniqueness"],
+      "allowed_outcomes": ["satisfied", "unsafe_observed", "unknown"],
+      "implementation_status": "design_only"
+    },
+    {
+      "advisory_id": "PAD-002",
+      "title": "Validate padding before removal or plaintext release",
+      "normative_level": "shall",
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0014:b025",
+        "KCMVP_GVI_PART2_2024_03:p0014:b026",
+        "KCMVP_GVI_PART2_2024_03:p0016:b023",
+        "KCMVP_GVI_PART2_2024_03:p0016:b024"
+      ],
+      "required_features": ["decrypt_event", "padding_validation_event", "padding_removal_event", "plaintext_release_event", "intra_function_order"],
+      "allowed_outcomes": ["satisfied", "unsafe_observed", "unknown"],
+      "implementation_status": "experimental_opt_in"
+    }
+  ]
+}

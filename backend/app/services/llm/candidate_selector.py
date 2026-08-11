@@ -3,6 +3,8 @@
 import re
 from typing import Any, Dict, List, Optional
 
+from app.services.rag_grounding import is_deterministic_verified_bypass
+
 
 # ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,7 @@ def _select_l3_candidates(
             or v.get("needs_ai_review")
             or v.get("pattern_type") == "missing")
         and id(v) not in forced_out_ids
+        and not is_deterministic_verified_bypass(v)
     ]
     print(f"[L1.5] 강제포함={len(forced_in)}건, 강제제외={len(forced_out_ids)}건")
 

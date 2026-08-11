@@ -106,7 +106,10 @@ def _load_verified_official_units(rule_id: str) -> List[Dict[str, Any]]:
             return []
         # Trust status is attached only after registry/source/text verification;
         # the serialized index itself cannot self-assert this field.
-        return [dict(unit, status="verified") for unit in selected if unit is not None]
+        return [
+            dict(unit, status="verified", source_sha256=row["source_sha256"])
+            for unit in selected if unit is not None
+        ]
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return []
 
@@ -601,7 +604,14 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
 
     loaded = sum(1 for g in guideline_cache.values() if g)
     skipped = sum(1 for v in result if v["rag_route"]["decision"] == "skip")
-    print(f"[L2][RAG] evidence bundle 로드: {loaded}건 (/{len(guideline_cache)}), router skip={skipped}")
+    deterministic = sum(
+        1 for v in result
+        if v["rag_route"]["decision"] == "deterministic_verified_rule"
+    )
+    print(
+        f"[L2][RAG] evidence bundle 로드: {loaded}건 (/{len(guideline_cache)}), "
+        f"router skip={skipped}, deterministic={deterministic}"
+    )
 
     for v in result:
         rid = v.get("rule_id") or "UNKNOWN"
@@ -610,6 +620,27 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
             v["rag_evidence_bundle"] = [dict(u) for u in bundle_cache.get(rid, [])]
             if not v["rag_evidence_bundle"]:
                 v["rag_grounding_status"] = "evidence_absent"
+        elif v["rag_route"]["decision"] == "deterministic_verified_rule":
+            units = normalize_evidence_bundle(_load_verified_official_units(rid))
+            if not units:
+                # Registry/index drift revokes the optimization immediately.
+                v["rag_route"] = {"decision": "retrieve", "reason": "deterministic_provenance_unavailable"}
+                v["rag_guideline_text"] = ""
+                v["rag_evidence_bundle"] = []
+                v["rag_grounding_status"] = "evidence_absent"
+                continue
+            v["rag_guideline_text"] = ""
+            v["rag_evidence_bundle"] = [dict(unit) for unit in units]
+            v["rag_grounding_status"] = "deterministic_official_evidence"
+            v["decision_source"] = "deterministic_l1_official_evidence"
+            v["official_evidence_provenance"] = [{
+                "unit_id": unit["unit_id"],
+                "source_id": unit["source_id"],
+                "locator": dict(unit.get("locator") or {}),
+                "span_sha256": unit["span_sha256"],
+                "source_sha256": unit.get("source_sha256"),
+            } for unit in units]
+            v["llm_calls_avoided"] = 1
         else:
             v["rag_guideline_text"] = ""
             v["rag_evidence_bundle"] = []

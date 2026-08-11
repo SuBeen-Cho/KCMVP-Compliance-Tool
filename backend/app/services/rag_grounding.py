@@ -8,9 +8,11 @@ cannot by themselves authorize removal of an L1 candidate.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 from typing import Any, Dict, Iterable, List
 
 
@@ -24,10 +26,78 @@ _NORMATIVE_TIERS = frozenset({
 })
 _CONFLICT_STATUSES = frozenset({"conflict", "conflicting", "superseded", "withdrawn"})
 _TRUSTED_STATUSES = frozenset({"active", "current", "verified"})
+_DETERMINISTIC_LITERAL_RULES = frozenset({"GCM-002", "CCM-003", "CMAC-004"})
+_DETERMINISTIC_SEAL_KEY = secrets.token_bytes(32)
+
+
+def _literal_candidate_seal_payload(candidate: Dict[str, Any], span_hash: str) -> bytes | None:
+    """Return the closed, type-checked identity bound by the process seal."""
+    if (
+        not isinstance(candidate.get("rule_id"), str)
+        or not isinstance(candidate.get("file"), str)
+        or not isinstance(candidate.get("line"), int)
+        or isinstance(candidate.get("line"), bool)
+        or not isinstance(candidate.get("end_line"), int)
+        or isinstance(candidate.get("end_line"), bool)
+        or not isinstance(candidate.get("snippet"), str)
+        or candidate.get("scope") != "line-range"
+        or not re.fullmatch(r"[0-9a-f]{64}", span_hash)
+    ):
+        return None
+    return json.dumps({
+        "rule_id": candidate["rule_id"].upper(),
+        "file": candidate["file"],
+        "line": candidate["line"],
+        "end_line": candidate["end_line"],
+        "scope": candidate["scope"],
+        "snippet": candidate["snippet"],
+        "matched_span_sha256": span_hash,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+
+
+def seal_deterministic_literal_evidence(candidate: Dict[str, Any], span: str) -> Dict[str, str]:
+    """Seal scanner output to this exact in-process candidate occurrence."""
+    span_hash = hashlib.sha256(span.encode()).hexdigest()
+    payload = _literal_candidate_seal_payload(candidate, span_hash)
+    if payload is None:
+        return {}
+    return {
+        "scanner_id": "kcmvp_explicit_tag_literal_v1",
+        "matched_span": span,
+        "matched_span_sha256": span_hash,
+        "candidate_seal": hmac.new(_DETERMINISTIC_SEAL_KEY, payload, hashlib.sha256).hexdigest(),
+    }
 
 
 def grounding_enabled() -> bool:
     return os.environ.get("KCMVP_GROUNDED_RAG", "1") != "0"
+
+
+def _verified_rule_binding(rule_id: str) -> Dict[str, Any] | None:
+    """Load the audited rule-to-unit binding, never a caller-supplied claim."""
+    if not rule_id:
+        return None
+    from app.services.mapping_service import get_evidence_audit
+
+    row = get_evidence_audit(rule_id)
+    locator = row.get("source_locator") or {}
+    unit_ids = row.get("evidence_unit_ids") or []
+    if (
+        row.get("status") != "verified"
+        or row.get("review_required", False)
+        or row.get("evidence_role") != "normative_requirement"
+        or not isinstance(locator, dict)
+        or not isinstance(unit_ids, list)
+        or not unit_ids
+        or not locator.get("source_id")
+        or not re.fullmatch(r"[0-9a-f]{64}", str(row.get("source_sha256") or ""))
+    ):
+        return None
+    return {
+        "source_id": str(locator["source_id"]),
+        "source_sha256": str(row["source_sha256"]),
+        "unit_ids": frozenset(str(value) for value in unit_ids),
+    }
 
 
 def route_rag(candidate: Dict[str, Any]) -> Dict[str, str]:
@@ -43,6 +113,8 @@ def route_rag(candidate: Dict[str, Any]) -> Dict[str, str]:
             "required_absence"
         )
     ast_evidence = str(candidate.get("ast_evidence") or "").strip()
+    if _is_verified_literal_candidate(candidate):
+        return {"decision": "deterministic_verified_rule", "reason": "verified_mapping_and_explicit_literal_scanner"}
     # A parser-confirmed positive structural contradiction is code-grounded;
     # retrieval is not needed to establish the observed program fact.
     if pattern_type == "ast" and ast_evidence and semantics not in {
@@ -50,6 +122,96 @@ def route_rag(candidate: Dict[str, Any]) -> Dict[str, str]:
     }:
         return {"decision": "skip", "reason": "deterministic_structural_evidence"}
     return {"decision": "retrieve", "reason": "authority_or_applicability_required"}
+
+
+def _is_verified_literal_candidate(candidate: Dict[str, Any]) -> bool:
+    """Recognize only sealed scanner output for three audited numeric rules."""
+    rule_id = str(candidate.get("rule_id") or "").upper()
+    marker = candidate.get("deterministic_literal_evidence")
+    if (
+        rule_id not in _DETERMINISTIC_LITERAL_RULES
+        or _verified_rule_binding(rule_id) is None
+        or candidate.get("pattern_type") != "regex"
+        or candidate.get("confidence") != "확정"
+        or candidate.get("needs_ai_review") is not False
+        or not isinstance(marker, dict)
+        or marker.get("scanner_id") != "kcmvp_explicit_tag_literal_v1"
+    ):
+        return False
+    span = marker.get("matched_span")
+    if not isinstance(span, str) or not span or hashlib.sha256(span.encode()).hexdigest() != marker.get("matched_span_sha256"):
+        return False
+    payload = _literal_candidate_seal_payload(candidate, marker.get("matched_span_sha256"))
+    seal = marker.get("candidate_seal")
+    if (
+        payload is None
+        or not isinstance(seal, str)
+        or not hmac.compare_digest(
+            seal,
+            hmac.new(_DETERMINISTIC_SEAL_KEY, payload, hashlib.sha256).hexdigest(),
+        )
+    ):
+        return False
+    # Re-run the same narrow scanner. Caller-supplied metadata alone can never
+    # opt a general semantic/regex candidate out of LLM review.
+    from app.services.rule_engine_service import (
+        _iter_kcmvp_cmac_tag_length_matches,
+        _iter_kcmvp_tag_length_matches,
+    )
+    matches = list(
+        _iter_kcmvp_cmac_tag_length_matches(span)
+        if rule_id == "CMAC-004"
+        else _iter_kcmvp_tag_length_matches(span, rule_id)
+    )
+    return len(matches) == 1 and matches[0].group(0) == span
+
+
+def is_deterministic_verified_bypass(candidate: Dict[str, Any]) -> bool:
+    """Revalidate scanner seal and live official provenance before L3 bypass."""
+    if not _is_verified_literal_candidate(candidate):
+        return False
+    if (
+        (candidate.get("rag_route") or {}).get("decision") != "deterministic_verified_rule"
+        or candidate.get("decision_source") != "deterministic_l1_official_evidence"
+        or candidate.get("rag_grounding_status") != "deterministic_official_evidence"
+        or candidate.get("llm_calls_avoided") != 1
+    ):
+        return False
+    provenance = candidate.get("official_evidence_provenance")
+    bundle = candidate.get("rag_evidence_bundle")
+    if not isinstance(provenance, list) or not provenance or not isinstance(bundle, list):
+        return False
+    rule_id = candidate["rule_id"].upper()
+    binding = _verified_rule_binding(rule_id)
+    if binding is None:
+        return False
+    from app.services.rag_service import _load_verified_official_units
+    live = _load_verified_official_units(rule_id)
+    live_by_id = {str(unit.get("unit_id")): unit for unit in live if isinstance(unit, dict)}
+    if set(live_by_id) != set(binding["unit_ids"]):
+        return False
+    if {str(row.get("unit_id")) for row in provenance if isinstance(row, dict)} != set(binding["unit_ids"]):
+        return False
+    if {str(row.get("unit_id")) for row in bundle if isinstance(row, dict)} != set(binding["unit_ids"]):
+        return False
+    provenance_by_id = {str(row.get("unit_id")): row for row in provenance if isinstance(row, dict)}
+    bundle_by_id = {str(row.get("unit_id")): row for row in bundle if isinstance(row, dict)}
+    for unit_id, live_unit in live_by_id.items():
+        prov = provenance_by_id.get(unit_id)
+        normalized = bundle_by_id.get(unit_id)
+        if not isinstance(prov, dict) or not isinstance(normalized, dict):
+            return False
+        text_hash = str(live_unit.get("text_sha256") or "")
+        if (
+            prov.get("source_id") != binding["source_id"]
+            or prov.get("source_sha256") != binding["source_sha256"]
+            or prov.get("span_sha256") != text_hash
+            or prov.get("locator") != live_unit.get("locator")
+            or normalized.get("span_sha256") != text_hash
+            or normalized.get("source_sha256") != binding["source_sha256"]
+        ):
+            return False
+    return True
 
 
 def _unit_id(chunk: Dict[str, Any]) -> str:
@@ -92,6 +254,7 @@ def normalize_evidence_bundle(chunks: Iterable[Dict[str, Any]]) -> List[Dict[str
             "version": chunk.get("version"),
             "effective_date": chunk.get("effective_date"),
             "applicability": chunk.get("applicability"),
+            "source_sha256": chunk.get("source_sha256"),
         })
     return units
 
@@ -153,6 +316,14 @@ def verify_citation_bound_decision(
     if any(item not in by_id for item in cited_ids):
         return {"verified": False, "reason": "citation_unknown", "cited_unit_ids": cited_ids}
     cited = [by_id[item] for item in cited_ids]
+    rule_id = str(candidate.get("rule_id") or "").upper()
+    binding = _verified_rule_binding(rule_id)
+    if binding is None:
+        return {"verified": False, "reason": "rule_evidence_binding_missing", "cited_unit_ids": cited_ids}
+    if any(item not in binding["unit_ids"] for item in cited_ids):
+        return {"verified": False, "reason": "citation_not_bound_to_rule", "cited_unit_ids": cited_ids}
+    if any(str(unit.get("source_id")) != binding["source_id"] for unit in cited):
+        return {"verified": False, "reason": "citation_source_not_bound_to_rule", "cited_unit_ids": cited_ids}
     if any(str(u.get("status") or "").lower() in _CONFLICT_STATUSES for u in units):
         return {"verified": False, "reason": "evidence_conflict", "cited_unit_ids": cited_ids}
     if any(str(u.get("status") or "").lower() not in _TRUSTED_STATUSES for u in cited):
@@ -178,9 +349,17 @@ def verify_citation_bound_decision(
         expected_hash = hashlib.sha256(span.encode()).hexdigest()
         if not span or not unit.get("span_sha256") or unit.get("span_sha256") != expected_hash:
             return {"verified": False, "reason": "evidence_hash_mismatch", "cited_unit_ids": cited_ids}
-        if not unit.get("version") or not unit.get("effective_date"):
+        if not unit.get("version"):
             return {"verified": False, "reason": "version_metadata_missing", "cited_unit_ids": cited_ids}
-    rule_id = str(candidate.get("rule_id") or "").upper()
+        if not unit.get("effective_date"):
+            # Some approved local artifacts have no published effective date.
+            # They are usable only through an audited, content-addressed source
+            # binding; ``local-artifact`` alone is never trusted.
+            if (
+                unit.get("version") != "local-artifact"
+                or unit.get("source_sha256") != binding["source_sha256"]
+            ):
+                return {"verified": False, "reason": "undated_artifact_provenance_unverified", "cited_unit_ids": cited_ids}
     for unit in cited:
         applicability = unit.get("applicability") or {}
         if not isinstance(applicability, dict):

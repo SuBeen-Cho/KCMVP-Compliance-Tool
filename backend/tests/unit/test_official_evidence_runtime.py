@@ -41,6 +41,20 @@ def test_verified_rule_loads_only_mapped_official_units(tmp_path, monkeypatch):
     assert rag_service.search_evidence("CTR-001") == []
 
 
+def test_submission_rule_loads_its_exact_official_guide_units(tmp_path, monkeypatch):
+    audit = json.loads(rag_service._EVIDENCE_AUDIT.read_text(encoding="utf-8"))
+    row = audit["rules"]["DOC-001"]
+    index = tmp_path / "official.json"
+    _write_index(index, row["evidence_unit_ids"], row["source_locator"]["source_id"], row["source_sha256"])
+    monkeypatch.setenv("KCMVP_OFFICIAL_EVIDENCE_INDEX", str(index))
+    rag_service._official_index_cache.clear()
+
+    chunks = rag_service.search_evidence("DOC-001")
+
+    assert [chunk["unit_id"] for chunk in chunks] == row["evidence_unit_ids"]
+    assert all(chunk["status"] == "verified" for chunk in chunks)
+
+
 def test_official_runtime_fails_closed_on_text_hash_drift(tmp_path, monkeypatch):
     audit = json.loads(rag_service._EVIDENCE_AUDIT.read_text(encoding="utf-8"))
     row = audit["rules"]["GCM-002"]

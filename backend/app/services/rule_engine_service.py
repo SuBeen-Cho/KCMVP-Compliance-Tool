@@ -9,6 +9,7 @@ mode 필드가 있는 규칙은 해당 모드를 구현하는 파일에만 적�
 파일명이나 콘텐츠에 모드 고유 API 패턴이 없으면 해당 파일은 해당 모드를 구현하지 않는 것으로 간주,
 규칙 적용을 건너뛴다. (도메인 앵커 조건 적용)
 """
+import hashlib
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -1035,6 +1036,18 @@ _TAG_LENGTH_ASSIGNMENT_RE = re.compile(
     r"\s*(?:=|:)\s*(\d+)\b"
 )
 
+_CMAC_TAG_LENGTH_ASSIGNMENT_RE = re.compile(
+    r"(?i)\b(?:(aria|seed|lea|hight)_)?cmac_"
+    r"(?:tag_(?:len_)?(?:bytes?|bits?)|mac_(?:len_)?(?:bytes?|bits?))"
+    r"\s*(?:=|:)\s*(\d+)\b"
+)
+_CMAC_TAG_LENGTH_DEFINE_RE = re.compile(
+    r"(?im)^[ \t]*#[ \t]*define[ \t]+"
+    r"(?:(aria|seed|lea|hight)_)?cmac_"
+    r"(?:tag_(?:len_)?(?:bytes?|bits?)|mac_(?:len_)?(?:bytes?|bits?))"
+    r"[ \t]+(\d+)\b"
+)
+
 
 def _iter_kcmvp_tag_length_matches(content: str, rule_id: str):
     """Yield literal tag lengths that violate the selected KCMVP profile.
@@ -1058,6 +1071,33 @@ def _iter_kcmvp_tag_length_matches(content: str, rule_id: str):
             valid = value in {112, 128} if is_bits else value in {14, 16}
         else:
             valid = True
+        if not valid:
+            yield match
+
+
+def _iter_kcmvp_cmac_tag_length_matches(content: str):
+    """Yield only unambiguous literal CMAC lengths outside the KCMVP profile."""
+    masked = _mask_c_comments_and_literals(content)
+    algorithms = {
+        name for name in ("aria", "seed", "lea", "hight")
+        if re.search(rf"(?i)(?<![a-z0-9]){name}(?![a-z0-9])", masked)
+    }
+    matches = list(_CMAC_TAG_LENGTH_ASSIGNMENT_RE.finditer(masked))
+    matches.extend(_CMAC_TAG_LENGTH_DEFINE_RE.finditer(masked))
+    matches.sort(key=lambda item: item.start())
+    for match in matches:
+        algorithm = (match.group(1) or "").lower()
+        if not algorithm:
+            if len(algorithms) != 1:
+                continue  # mixed/unknown module: do not guess applicability
+            algorithm = next(iter(algorithms))
+        token = match.group(0).lower().split("=", 1)[0].split(":", 1)[0]
+        value = int(match.group(2))
+        is_bits = "bit" in token
+        if algorithm == "hight":
+            valid = value == 64 if is_bits else value == 8
+        else:
+            valid = 112 <= value <= 128 if is_bits else 14 <= value <= 16
         if not valid:
             yield match
 
@@ -1206,6 +1246,8 @@ def _apply_rule_to_file(
             matches = _iter_com003_initializer_matches(content)
         elif rule.get("id") in {"GCM-002", "CCM-003"}:
             matches = _iter_kcmvp_tag_length_matches(content, rule.get("id", ""))
+        elif rule.get("id") == "CMAC-004":
+            matches = _iter_kcmvp_cmac_tag_length_matches(content)
         else:
             matches = compiled.finditer(content)
         for match in matches:
@@ -1307,7 +1349,7 @@ def _apply_rule_to_file(
                         if _com004_safe.search(ctx_text):
                             continue
 
-            violations.append({
+            finding = {
                 "rule_id": rule.get("id", ""),
                 "file": file_display,
                 "line": start_line,
@@ -1319,7 +1361,13 @@ def _apply_rule_to_file(
                 "confidence": "확정",
                 "snippet": snippet,
                 "needs_ai_review": False,
-            })
+            }
+            if rule.get("id") in {"GCM-002", "CCM-003", "CMAC-004"}:
+                from app.services.rag_grounding import seal_deterministic_literal_evidence
+                finding["deterministic_literal_evidence"] = (
+                    seal_deterministic_literal_evidence(finding, match.group(0))
+                )
+            violations.append(finding)
 
     elif pattern_type == "semantic":
         # L1 키워드 트리거: 패턴(핵심 키워드/개념)이 파일에 존재하지 않으면

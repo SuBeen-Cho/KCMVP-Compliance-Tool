@@ -5,8 +5,8 @@
     "active_rule_count": 165,
     "mapped_legacy_count": 158,
     "unmapped_count": 7,
-    "verified_count": 3,
-    "review_required_count": 162
+    "verified_count": 65,
+    "review_required_count": 100
   },
   "rules": {
     "AES-001": {
@@ -198,10 +198,27 @@
       "legacy_mapping_trusted": false,
       "authority_class": "normative_guidance",
       "evidence_role": "normative_requirement",
-      "applicability": {"profile": "KCMVP-GVI-Part2-2024.03", "mode": "CCM", "parameter": "authentication_tag_length"},
-      "source_locator": {"source_id": "KCMVP_GVI_PART2_2024_03", "page": 38, "section": "CCM input length checks", "block": 7},
+      "applicability": {
+        "profile": "KCMVP-GVI-Part2-2024.03",
+        "mode": "CCM",
+        "parameter": "authentication_tag_length"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_GVI_PART2_2024_03",
+        "page": 38,
+        "section": "CCM input length checks",
+        "block": 7,
+        "pages": [
+          38
+        ],
+        "blocks": [
+          7
+        ]
+      },
       "source_sha256": "c2487f8fd3fb22048f4676e79a352286adc85d278acbda93ba1958e30599d2d1",
-      "evidence_unit_ids": ["KCMVP_GVI_PART2_2024_03:p0038:b007"],
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0038:b007"
+      ],
       "rule_file": "rules/mode/ccm.yaml",
       "audit_note": "verified against the KCMVP CCM profile requiring a 14- or 16-byte authentication tag"
     },
@@ -262,32 +279,81 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "CM-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "CM-001"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          92,
+          92,
+          92
+        ],
+        "section": "official requirement for CM-001",
+        "blocks": [
+          20,
+          21,
+          22
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0092:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0092:b021",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0092:b022"
+      ],
       "rule_file": "rules/docs/config_mgmt.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "CM-002": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "CM-002"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          93,
+          93,
+          93,
+          93
+        ],
+        "section": "official requirement for CM-002",
+        "blocks": [
+          2,
+          4,
+          5,
+          6
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0093:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0093:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0093:b005",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0093:b006"
+      ],
       "rule_file": "rules/docs/config_mgmt.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "CM-003": {
       "status": "review_required",
@@ -301,7 +367,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/config_mgmt.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "CM-004": {
       "status": "review_required",
@@ -315,7 +381,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/config_mgmt.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "CMAC-001": {
       "status": "review_required",
@@ -358,6 +424,44 @@
       "evidence_unit_ids": [],
       "rule_file": "rules/mode/cmac.yaml",
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+    },
+    "CMAC-004": {
+      "status": "verified",
+      "review_required": false,
+      "legacy_mapping_present": true,
+      "legacy_mapping_trusted": false,
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-GVI-Part2-2024.03",
+        "mode": "CMAC",
+        "parameter": "authentication_tag_length"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_GVI_PART2_2024_03",
+        "pages": [
+          49,
+          49,
+          51,
+          51
+        ],
+        "blocks": [
+          25,
+          26,
+          24,
+          25
+        ],
+        "section": "CMAC generation and verification MAC length checks"
+      },
+      "source_sha256": "c2487f8fd3fb22048f4676e79a352286adc85d278acbda93ba1958e30599d2d1",
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0049:b025",
+        "KCMVP_GVI_PART2_2024_03:p0049:b026",
+        "KCMVP_GVI_PART2_2024_03:p0051:b024",
+        "KCMVP_GVI_PART2_2024_03:p0051:b025"
+      ],
+      "rule_file": "rules/mode/cmac.yaml",
+      "audit_note": "verified against CMAC generation and verification length requirements; HIGHT is the explicit 64-bit exception"
     },
     "COM-001": {
       "status": "review_required",
@@ -528,32 +632,81 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "DOC-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-001"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          8,
+          8,
+          8,
+          8
+        ],
+        "section": "official requirement for DOC-001",
+        "blocks": [
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0008:b006",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0008:b007",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0008:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0008:b009"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-002": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-002"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          9,
+          9,
+          9
+        ],
+        "section": "official requirement for DOC-002",
+        "blocks": [
+          4,
+          5,
+          6
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0009:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0009:b005",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0009:b006"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-003": {
       "status": "review_required",
@@ -567,77 +720,225 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-004": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-004"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          12,
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "section": "official requirement for DOC-004",
+        "blocks": [
+          10,
+          11,
+          12,
+          20,
+          21,
+          22
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b011",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b012",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b021",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0012:b022"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-005": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-005"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "section": "official requirement for DOC-005",
+        "blocks": [
+          24,
+          25,
+          26,
+          27,
+          28
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0013:b024",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0013:b025",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0013:b026",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0013:b027",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0013:b028"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-006": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-006"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          15,
+          15,
+          15,
+          15
+        ],
+        "section": "official requirement for DOC-006",
+        "blocks": [
+          6,
+          7,
+          9,
+          10
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b006",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b007",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b010"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-007": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-007"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          15,
+          15,
+          15,
+          15
+        ],
+        "section": "official requirement for DOC-007",
+        "blocks": [
+          28,
+          29,
+          30,
+          31
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b028",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b029",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b030",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0015:b031"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-008": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-008"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17
+        ],
+        "section": "official requirement for DOC-008",
+        "blocks": [
+          16,
+          17,
+          18,
+          19,
+          9,
+          10,
+          11
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0016:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0016:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0016:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0016:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b011"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-009": {
       "status": "review_required",
@@ -654,32 +955,90 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "DOC-010": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-010"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          17,
+          17,
+          17
+        ],
+        "section": "official requirement for DOC-010",
+        "blocks": [
+          23,
+          24,
+          25
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b023",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b024",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0017:b025"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-011": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-011"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          20,
+          20,
+          20,
+          20,
+          20,
+          20,
+          20
+        ],
+        "section": "official requirement for DOC-011",
+        "blocks": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b005",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b006",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b007",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0020:b009"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-012": {
       "status": "review_required",
@@ -693,21 +1052,59 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-013": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-013"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          24,
+          24,
+          24,
+          25,
+          25,
+          25,
+          25,
+          25
+        ],
+        "section": "official requirement for DOC-013",
+        "blocks": [
+          13,
+          14,
+          16,
+          11,
+          12,
+          14,
+          15,
+          16
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0024:b013",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0024:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0024:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0025:b011",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0025:b012",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0025:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0025:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0025:b016"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-014": {
       "status": "review_required",
@@ -721,7 +1118,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-015": {
       "status": "review_required",
@@ -735,133 +1132,349 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-016": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-016"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          30,
+          30,
+          30
+        ],
+        "section": "official requirement for DOC-016",
+        "blocks": [
+          3,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0030:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0030:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0030:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-017": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-017"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          31,
+          31,
+          31,
+          31,
+          31,
+          31
+        ],
+        "section": "official requirement for DOC-017",
+        "blocks": [
+          4,
+          5,
+          6,
+          19,
+          20,
+          21
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b005",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b006",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0031:b021"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-018": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-018"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          32,
+          32,
+          32
+        ],
+        "section": "official requirement for DOC-018",
+        "blocks": [
+          3,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0032:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0032:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0032:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-019": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-019"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          34,
+          34,
+          34,
+          34
+        ],
+        "section": "official requirement for DOC-019",
+        "blocks": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-020": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-020"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          34,
+          34,
+          34
+        ],
+        "section": "official requirement for DOC-020",
+        "blocks": [
+          13,
+          14,
+          15
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b013",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0034:b015"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-021": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-021"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          35,
+          35,
+          35
+        ],
+        "section": "official requirement for DOC-021",
+        "blocks": [
+          13,
+          14,
+          15
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0035:b013",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0035:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0035:b015"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-022": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-022"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          37,
+          37
+        ],
+        "section": "official requirement for DOC-022",
+        "blocks": [
+          14,
+          15
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0037:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0037:b015"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-023": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-023"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          38,
+          38,
+          38
+        ],
+        "section": "official requirement for DOC-023",
+        "blocks": [
+          3,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-024": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-024"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          38,
+          38,
+          38
+        ],
+        "section": "official requirement for DOC-024",
+        "blocks": [
+          17,
+          18,
+          19
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0038:b019"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-025": {
       "status": "review_required",
@@ -875,21 +1488,44 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-026": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-026"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          40,
+          40,
+          40
+        ],
+        "section": "official requirement for DOC-026",
+        "blocks": [
+          17,
+          18,
+          19
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0040:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0040:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0040:b019"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-027": {
       "status": "review_required",
@@ -903,7 +1539,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-028": {
       "status": "review_required",
@@ -917,21 +1553,44 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-029": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-029"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          47,
+          47,
+          47
+        ],
+        "section": "official requirement for DOC-029",
+        "blocks": [
+          13,
+          14,
+          15
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0047:b013",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0047:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0047:b015"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-030": {
       "status": "review_required",
@@ -945,7 +1604,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-031": {
       "status": "review_required",
@@ -959,49 +1618,136 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-032": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-032"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          50,
+          50,
+          50,
+          52,
+          52,
+          52
+        ],
+        "section": "official requirement for DOC-032",
+        "blocks": [
+          7,
+          8,
+          9,
+          2,
+          3,
+          4
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0050:b007",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0050:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0050:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b004"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-033": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-033"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          52,
+          52,
+          52
+        ],
+        "section": "official requirement for DOC-033",
+        "blocks": [
+          20,
+          21,
+          22
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b021",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0052:b022"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-034": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-034"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          54,
+          54,
+          54,
+          56,
+          56,
+          56
+        ],
+        "section": "official requirement for DOC-034",
+        "blocks": [
+          8,
+          9,
+          10,
+          2,
+          3,
+          4
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0054:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0054:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0054:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0056:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0056:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0056:b004"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-035": {
       "status": "review_required",
@@ -1015,7 +1761,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-036": {
       "status": "review_required",
@@ -1029,7 +1775,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-037": {
       "status": "review_required",
@@ -1043,21 +1789,44 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-038": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-038"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          68,
+          68,
+          68
+        ],
+        "section": "official requirement for DOC-038",
+        "blocks": [
+          11,
+          12,
+          13
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0068:b011",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0068:b012",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0068:b013"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-039": {
       "status": "review_required",
@@ -1085,49 +1854,136 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-041": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-041"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          74,
+          74,
+          74,
+          78,
+          78,
+          78
+        ],
+        "section": "official requirement for DOC-041",
+        "blocks": [
+          19,
+          20,
+          21,
+          2,
+          3,
+          4
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0074:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0074:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0074:b021",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b004"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-042": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-042"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          78,
+          78,
+          78,
+          79,
+          79,
+          79
+        ],
+        "section": "official requirement for DOC-042",
+        "blocks": [
+          14,
+          15,
+          16,
+          2,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0078:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0079:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0079:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0079:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-043": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-043"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          81,
+          81,
+          81
+        ],
+        "section": "official requirement for DOC-043",
+        "blocks": [
+          2,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0081:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0081:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0081:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-044": {
       "status": "review_required",
@@ -1141,7 +1997,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-045": {
       "status": "review_required",
@@ -1155,7 +2011,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-046": {
       "status": "review_required",
@@ -1169,35 +2025,87 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-047": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-047"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          90,
+          90,
+          90,
+          90
+        ],
+        "section": "official requirement for DOC-047",
+        "blocks": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0090:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0090:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0090:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0090:b005"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-048": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-048"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          94,
+          94,
+          94,
+          94
+        ],
+        "section": "official requirement for DOC-048",
+        "blocks": [
+          14,
+          15,
+          16,
+          17
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0094:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0094:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0094:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0094:b017"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-049": {
       "status": "review_required",
@@ -1211,21 +2119,53 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-050": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "DOC-050"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          96,
+          96,
+          96,
+          97,
+          97,
+          97
+        ],
+        "section": "official requirement for DOC-050",
+        "blocks": [
+          14,
+          15,
+          16,
+          24,
+          25,
+          26
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0096:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0096:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0096:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0097:b024",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0097:b025",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0097:b026"
+      ],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "DOC-051": {
       "status": "review_required",
@@ -1239,7 +2179,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-052": {
       "status": "review_required",
@@ -1253,7 +2193,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-053": {
       "status": "review_required",
@@ -1267,7 +2207,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-054": {
       "status": "review_required",
@@ -1281,7 +2221,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-055": {
       "status": "review_required",
@@ -1295,7 +2235,7 @@
       "source_sha256": null,
       "evidence_unit_ids": [],
       "rule_file": "rules/docs/design.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "independent entailment audit rolled back promotion: the rule claim is materially narrower, more detailed, or more mandatory than the cited official span"
     },
     "DOC-KEYBIZ-SELFTEST": {
       "status": "unmapped",
@@ -1346,10 +2286,31 @@
       "legacy_mapping_trusted": false,
       "authority_class": "normative_guidance",
       "evidence_role": "normative_requirement",
-      "applicability": {"profile": "KCMVP-GVI-Part2-2024.03", "mode": ["GCM", "GMAC"], "parameter": "authentication_tag_length"},
-      "source_locator": {"source_id": "KCMVP_GVI_PART2_2024_03", "pages": [31, 34], "section": "GCM input length checks", "blocks": [39, 23]},
+      "applicability": {
+        "profile": "KCMVP-GVI-Part2-2024.03",
+        "mode": [
+          "GCM",
+          "GMAC"
+        ],
+        "parameter": "authentication_tag_length"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_GVI_PART2_2024_03",
+        "pages": [
+          31,
+          34
+        ],
+        "section": "GCM input length checks",
+        "blocks": [
+          39,
+          23
+        ]
+      },
       "source_sha256": "c2487f8fd3fb22048f4676e79a352286adc85d278acbda93ba1958e30599d2d1",
-      "evidence_unit_ids": ["KCMVP_GVI_PART2_2024_03:p0031:b039", "KCMVP_GVI_PART2_2024_03:p0034:b023"],
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0031:b039",
+        "KCMVP_GVI_PART2_2024_03:p0034:b023"
+      ],
       "rule_file": "rules/mode/gcm.yaml",
       "audit_note": "verified against KCMVP GCM encryption and decryption input-length requirements"
     },
@@ -1410,46 +2371,145 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "LEA-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "block_size"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "section": "5.1 LEA specification",
+        "pages": [
+          11,
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "blocks": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0011:b003",
+        "LEA_DATASHEET_KO:p0011:b004",
+        "LEA_DATASHEET_KO:p0011:b005",
+        "LEA_DATASHEET_KO:p0011:b006",
+        "LEA_DATASHEET_KO:p0011:b007",
+        "LEA_DATASHEET_KO:p0011:b008"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "known incorrect or overgeneralized legacy mapping removed; exact official locator required"
+      "audit_note": "standard table 5-1 directly fixes the LEA block size at 16 bytes for every key size"
     },
     "LEA-002": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "key_length"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "section": "Table 5-1 LEA specification",
+        "blocks": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0011:b003",
+        "LEA_DATASHEET_KO:p0011:b004",
+        "LEA_DATASHEET_KO:p0011:b005",
+        "LEA_DATASHEET_KO:p0011:b006",
+        "LEA_DATASHEET_KO:p0011:b007",
+        "LEA_DATASHEET_KO:p0011:b008",
+        "LEA_DATASHEET_KO:p0011:b009",
+        "LEA_DATASHEET_KO:p0011:b010"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "standard table 5-1 directly enumerates 16, 24, and 32-byte LEA keys"
     },
     "LEA-003": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "round_count"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "section": "Table 5-1 LEA specification",
+        "blocks": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0011:b003",
+        "LEA_DATASHEET_KO:p0011:b004",
+        "LEA_DATASHEET_KO:p0011:b005",
+        "LEA_DATASHEET_KO:p0011:b006",
+        "LEA_DATASHEET_KO:p0011:b007",
+        "LEA_DATASHEET_KO:p0011:b008",
+        "LEA_DATASHEET_KO:p0011:b009",
+        "LEA_DATASHEET_KO:p0011:b010"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "standard table 5-1 directly binds 128/192/256-bit keys to 24/28/32 rounds"
     },
     "LEA-004": {
       "status": "review_required",
@@ -1466,18 +2526,41 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "LEA-005": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "byte_word_conversion"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "section": "4.2.3 byte-array to word-array conversion",
+        "blocks": [
+          10,
+          11,
+          12,
+          13
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0010:b010",
+        "LEA_DATASHEET_KO:p0010:b011",
+        "LEA_DATASHEET_KO:p0010:b012",
+        "LEA_DATASHEET_KO:p0010:b013"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "standard section 4.2.3 directly defines B[i]=A[4i+3]||A[4i+2]||A[4i+1]||A[4i]"
     },
     "LEA-006": {
       "status": "review_required",
@@ -1550,18 +2633,41 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "LEA-011": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "delta_constants"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          14,
+          14,
+          14,
+          14
+        ],
+        "section": "5.2.2 key schedule constants",
+        "blocks": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0014:b001",
+        "LEA_DATASHEET_KO:p0014:b002",
+        "LEA_DATASHEET_KO:p0014:b003",
+        "LEA_DATASHEET_KO:p0014:b004"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "standard section 5.2.2 directly enumerates all eight delta constants"
     },
     "LEA-013": {
       "status": "review_required",
@@ -1676,46 +2782,195 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "LEA-021": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "key_length": 128,
+        "parameter": "round_key_layout"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "section": "Algorithm 3 LEA-128 key schedule",
+        "pages": [
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14
+        ],
+        "blocks": [
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0014:b024",
+        "LEA_DATASHEET_KO:p0014:b025",
+        "LEA_DATASHEET_KO:p0014:b026",
+        "LEA_DATASHEET_KO:p0014:b027",
+        "LEA_DATASHEET_KO:p0014:b028",
+        "LEA_DATASHEET_KO:p0014:b029",
+        "LEA_DATASHEET_KO:p0014:b030",
+        "LEA_DATASHEET_KO:p0014:b031",
+        "LEA_DATASHEET_KO:p0014:b032",
+        "LEA_DATASHEET_KO:p0014:b033",
+        "LEA_DATASHEET_KO:p0014:b034",
+        "LEA_DATASHEET_KO:p0014:b035"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "algorithm 3 directly defines RK=(T0,T1,T2,T1,T3,T1)"
     },
     "LEA-022": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "key_length": 256,
+        "parameter": "key_schedule_indexing"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "section": "Algorithm 5 LEA-256 key schedule",
+        "blocks": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0015:b041",
+        "LEA_DATASHEET_KO:p0015:b042",
+        "LEA_DATASHEET_KO:p0015:b043",
+        "LEA_DATASHEET_KO:p0015:b044",
+        "LEA_DATASHEET_KO:p0015:b045",
+        "LEA_DATASHEET_KO:p0015:b046",
+        "LEA_DATASHEET_KO:p0015:b047",
+        "LEA_DATASHEET_KO:p0015:b048",
+        "LEA_DATASHEET_KO:p0015:b049",
+        "LEA_DATASHEET_KO:p0015:b050",
+        "LEA_DATASHEET_KO:p0015:b051",
+        "LEA_DATASHEET_KO:p0015:b052",
+        "LEA_DATASHEET_KO:p0015:b053",
+        "LEA_DATASHEET_KO:p0015:b054",
+        "LEA_DATASHEET_KO:p0015:b055"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "algorithm 5 directly defines all (6i+j) mod 8 updates and round-key selection"
     },
     "LEA-023": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_standard",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "algorithm": "LEA",
+        "parameter": "decryption_round_key_order"
+      },
+      "source_locator": {
+        "source_id": "LEA_DATASHEET_KO",
+        "pages": [
+          17,
+          17,
+          17,
+          17,
+          17,
+          17,
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "section": "5.3.2 decryption key schedule",
+        "blocks": [
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28
+        ]
+      },
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "evidence_unit_ids": [
+        "LEA_DATASHEET_KO:p0017:b018",
+        "LEA_DATASHEET_KO:p0017:b019",
+        "LEA_DATASHEET_KO:p0017:b020",
+        "LEA_DATASHEET_KO:p0017:b021",
+        "LEA_DATASHEET_KO:p0017:b022",
+        "LEA_DATASHEET_KO:p0017:b023",
+        "LEA_DATASHEET_KO:p0017:b024",
+        "LEA_DATASHEET_KO:p0017:b025",
+        "LEA_DATASHEET_KO:p0017:b026",
+        "LEA_DATASHEET_KO:p0017:b027",
+        "LEA_DATASHEET_KO:p0017:b028"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "standard section 5.3.2 directly defines reverse encryption-key order for decryption"
     },
     "LEA-024": {
       "status": "review_required",
@@ -2060,12 +3315,82 @@
       "legacy_mapping_trusted": false,
       "authority_class": "normative_test_interface",
       "evidence_role": "normative_requirement",
-      "applicability": {"algorithm": "LEA", "artifact": "MOVS exchange file", "test_types": ["KAT", "MMT", "MCT"]},
-      "source_locator": {"source_id": "LEA_VALIDATION_SYSTEM", "pages": [13, 14, 15], "section": "MOVS request/response/facts file naming"},
+      "applicability": {
+        "algorithm": "LEA",
+        "artifact": "MOVS exchange file",
+        "test_types": [
+          "KAT",
+          "MMT",
+          "MCT"
+        ]
+      },
+      "source_locator": {
+        "source_id": "LEA_VALIDATION_SYSTEM",
+        "pages": [
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          13,
+          13,
+          13,
+          14,
+          14,
+          14,
+          15,
+          15,
+          15
+        ],
+        "section": "MOVS request/response/facts file naming",
+        "blocks": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          10,
+          16,
+          22,
+          11,
+          17,
+          23,
+          9,
+          15,
+          21
+        ]
+      },
       "source_sha256": "743060e6690e2157c8955bbc57df70f7edbdcb245db8bcc06faa8a75cc8fed42",
-      "evidence_unit_ids": ["LEA_VALIDATION_SYSTEM:p0013:b010", "LEA_VALIDATION_SYSTEM:p0013:b016", "LEA_VALIDATION_SYSTEM:p0013:b022", "LEA_VALIDATION_SYSTEM:p0014:b011", "LEA_VALIDATION_SYSTEM:p0014:b017", "LEA_VALIDATION_SYSTEM:p0014:b023", "LEA_VALIDATION_SYSTEM:p0015:b009", "LEA_VALIDATION_SYSTEM:p0015:b015", "LEA_VALIDATION_SYSTEM:p0015:b021"],
+      "evidence_unit_ids": [
+        "LEA_VALIDATION_SYSTEM:p0012:b003",
+        "LEA_VALIDATION_SYSTEM:p0012:b004",
+        "LEA_VALIDATION_SYSTEM:p0012:b005",
+        "LEA_VALIDATION_SYSTEM:p0012:b006",
+        "LEA_VALIDATION_SYSTEM:p0012:b007",
+        "LEA_VALIDATION_SYSTEM:p0012:b008",
+        "LEA_VALIDATION_SYSTEM:p0012:b009",
+        "LEA_VALIDATION_SYSTEM:p0012:b010",
+        "LEA_VALIDATION_SYSTEM:p0012:b011",
+        "LEA_VALIDATION_SYSTEM:p0013:b010",
+        "LEA_VALIDATION_SYSTEM:p0013:b016",
+        "LEA_VALIDATION_SYSTEM:p0013:b022",
+        "LEA_VALIDATION_SYSTEM:p0014:b011",
+        "LEA_VALIDATION_SYSTEM:p0014:b017",
+        "LEA_VALIDATION_SYSTEM:p0014:b023",
+        "LEA_VALIDATION_SYSTEM:p0015:b009",
+        "LEA_VALIDATION_SYSTEM:p0015:b015",
+        "LEA_VALIDATION_SYSTEM:p0015:b021"
+      ],
       "rule_file": "rules/algorithm/lea.yaml",
-      "audit_note": "verified only for discovered LEA MOVS KAT/MMT/MCT exchange artifacts; absence alone is not a violation"
+      "audit_note": "verified only for discovered LEA MOVS KAT/MMT/MCT exchange artifacts; p.12 binds the allowed modes and 128/192/256-bit keys, while pp.13-15 bind req/fax/rsp naming; absence alone is not a violation"
     },
     "LEA-056": {
       "status": "review_required",
@@ -2194,74 +3519,312 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "TEST-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "TEST-001"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          112,
+          112,
+          112,
+          113,
+          113
+        ],
+        "section": "official requirement for TEST-001",
+        "blocks": [
+          10,
+          16,
+          17,
+          3,
+          4
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0112:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0112:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0112:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b004"
+      ],
       "rule_file": "rules/docs/test.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "TEST-002": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "TEST-002"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113,
+          113
+        ],
+        "section": "official requirement for TEST-002",
+        "blocks": [
+          14,
+          15,
+          16,
+          18,
+          19,
+          20,
+          22,
+          24,
+          28,
+          30,
+          33,
+          36
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b022",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b024",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b028",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b030",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b033",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0113:b036"
+      ],
       "rule_file": "rules/docs/test.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "TEST-003": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "TEST-003"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          116,
+          116,
+          116,
+          116,
+          116,
+          116,
+          116,
+          116,
+          116,
+          116,
+          116
+        ],
+        "section": "official requirement for TEST-003",
+        "blocks": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b004",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b005",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b006",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b007",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b011",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0116:b012"
+      ],
       "rule_file": "rules/docs/test.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "TEST-004": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "TEST-004"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          117,
+          117,
+          117,
+          117,
+          117,
+          118,
+          118,
+          118
+        ],
+        "section": "official requirement for TEST-004",
+        "blocks": [
+          15,
+          16,
+          18,
+          19,
+          20,
+          2,
+          12,
+          21
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0117:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0117:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0117:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0117:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0117:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0118:b002",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0118:b012",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0118:b021"
+      ],
       "rule_file": "rules/docs/test.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "TEST-005": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-Submission-Guide-2025.09",
+        "scope": [
+          "submission_artifacts"
+        ],
+        "document_rule": "TEST-005"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+        "pages": [
+          119,
+          119,
+          119,
+          119,
+          119,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ],
+        "section": "official requirement for TEST-005",
+        "blocks": [
+          17,
+          23,
+          24,
+          25,
+          26,
+          3,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21
+        ]
+      },
+      "source_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "evidence_unit_ids": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0119:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0119:b023",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0119:b024",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0119:b025",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0119:b026",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b003",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b008",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b009",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b010",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b011",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b012",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b013",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b014",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b015",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b016",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b017",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b018",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b019",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b020",
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0120:b021"
+      ],
       "rule_file": "rules/docs/test.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "directly verified against the numbered requirement/VE or dedicated section in the official 2025.09 submission guide"
     },
     "TRC-001": {
       "status": "review_required",
