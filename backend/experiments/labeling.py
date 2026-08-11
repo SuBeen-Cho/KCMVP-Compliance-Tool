@@ -72,17 +72,22 @@ def validate_packet(packet: dict[str, Any]) -> dict[str, Any]:
     _text(packet["snapshot_id"], "snapshot_id")
     _exact(packet["blinding"], {"outcome_fields_removed", "identifiers_neutralized",
                                 "order_randomized", "duplicate_families_grouped",
-                                "blind_audit_passed", "prepared_by"},
+                                "blind_audit_passed", "blind_audit_sha256",
+                                "display_alias_compile_equivalence_claimed", "prepared_by"},
            "blinding")
     if packet["blinding"]["outcome_fields_removed"] is not True:
         raise LabelingError("packet must attest that outcome fields were removed")
     if packet["blinding"]["identifiers_neutralized"] is not True:
         raise LabelingError("packet must attest that identifiers were neutralized")
+    if packet["blinding"]["display_alias_compile_equivalence_claimed"] is not False:
+        raise LabelingError("display aliases must not claim compile equivalence")
     if any(packet["blinding"][key] is not True for key in (
         "order_randomized", "duplicate_families_grouped", "blind_audit_passed",
     )):
         raise LabelingError("packet blind-audit attestations must all pass")
     _text(packet["blinding"]["prepared_by"], "prepared_by")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(packet["blinding"]["blind_audit_sha256"]), re.I):
+        raise LabelingError("blind_audit_sha256 must be a SHA-256 value")
     if not re.fullmatch(r"[0-9a-f]{64}", str(packet["randomization_sha256"]), re.I):
         raise LabelingError("randomization_sha256 must be a SHA-256 value")
     if not isinstance(packet["items"], list) or not packet["items"]:
@@ -146,7 +151,15 @@ def validate_packet(packet: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_packet(*, snapshot_id: str, prepared_by: str, randomization_id: str,
-                 items: list[dict[str, Any]]) -> dict[str, Any]:
+                 items: list[dict[str, Any]], blind_audit_report: dict[str, Any]) -> dict[str, Any]:
+    _exact(blind_audit_report, {"passed", "checks", "audited_items_sha256"}, "blind audit report")
+    checks = blind_audit_report["checks"]
+    if (blind_audit_report["passed"] is not True or not isinstance(checks, dict)
+            or not checks or any(value is not True for value in checks.values())):
+        raise LabelingError("a completed passing blind audit is required before packet issuance")
+    if blind_audit_report["audited_items_sha256"] != _hash(items):
+        raise LabelingError("blind audit report does not bind to packet items")
+    audit_sha256 = _hash(blind_audit_report)
     randomization_sha256 = hashlib.sha256(_text(randomization_id, "randomization_id").encode()).hexdigest()
     grouped: dict[str, list[dict[str, Any]]] = {}
     for item in items:
@@ -160,7 +173,9 @@ def build_packet(*, snapshot_id: str, prepared_by: str, randomization_id: str,
         "schema_version": SCHEMA_VERSION, "snapshot_id": snapshot_id,
         "blinding": {"outcome_fields_removed": True, "identifiers_neutralized": True,
                      "order_randomized": True, "duplicate_families_grouped": True,
-                     "blind_audit_passed": True, "prepared_by": prepared_by},
+                     "blind_audit_passed": True, "blind_audit_sha256": audit_sha256,
+                     "display_alias_compile_equivalence_claimed": False,
+                     "prepared_by": prepared_by},
         "randomization_sha256": randomization_sha256, "items": randomized_items,
     }
     packet = {"packet_id": _hash(core), **core}
@@ -222,6 +237,9 @@ def validate_label_document(packet: dict[str, Any], document: dict[str, Any]) ->
             source = packet_sources[row["candidate_id"]]
             if cite["source_id"] != source["source_id"]:
                 raise LabelingError("source citation must reference the candidate source")
+            if (cite["line_start"] < source["line_start"]
+                    or cite["line_end"] > source["line_end"]):
+                raise LabelingError("source citation must stay within the disclosed source window")
     core = {key: value for key, value in document.items() if key != "label_batch_id"}
     if document["label_batch_id"] != _hash(core):
         raise LabelingError("label_batch_id does not match immutable label contents")
@@ -264,7 +282,15 @@ def agreement_report(packet: dict[str, Any], a: dict[str, Any], b: dict[str, Any
         "annotator_ids": [a["annotator"]["annotator_id"], b["annotator"]["annotator_id"]],
         "n": len(labels_a), "exact_agreement": sum(x == y for x, y in zip(labels_a, labels_b)) / len(labels_a),
         "cohens_kappa_multiclass": cohens_kappa(labels_a, labels_b),
-        "cohens_kappa_one_vs_rest": per_class, "disagreement_count": len(conflict_rows),
+        "cohens_kappa_one_vs_rest": per_class,
+        "label_disagreement_count": sum(x != y for x, y in zip(labels_a, labels_b)),
+        "applicability_disagreement_count": sum(
+            left["requirement_applicability"] != right["requirement_applicability"]
+            for left, right in zip(a["annotations"], b["annotations"])
+        ),
+        # The adjudication queue is the union of label and applicability conflicts.
+        "adjudication_count": len(conflict_rows),
+        "disagreement_count": len(conflict_rows),
     }
     queue_core = {
         "schema_version": SCHEMA_VERSION, "packet_id": packet["packet_id"],

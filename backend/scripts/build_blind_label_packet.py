@@ -38,9 +38,12 @@ def load_catalog() -> dict[str, dict[str, str]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--snapshot", type=Path, required=True)
+    parser.add_argument("--analysis-snapshot", type=Path, required=True,
+                        help="label-free L1 snapshot produced from sanitized analysis sources")
     parser.add_argument("--public-output", type=Path, required=True)
     parser.add_argument("--private-output", type=Path, required=True)
+    parser.add_argument("--equivalence-report", type=Path, required=True,
+                        help="passing strict analysis and detector-blindness report")
     parser.add_argument("--gt-zip", type=Path, action="append", default=[])
     args = parser.parse_args(argv)
     salt_hex = os.environ.get("KCMVP_BLIND_SALT", "")
@@ -50,9 +53,13 @@ def main(argv: list[str] | None = None) -> int:
         salt = bytes.fromhex(salt_hex)
     except ValueError:
         parser.error("KCMVP_BLIND_SALT must be hexadecimal")
-    snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
+    snapshot = json.loads(args.analysis_snapshot.read_text(encoding="utf-8"))
+    equivalence_report = json.loads(args.equivalence_report.read_text(encoding="utf-8"))
     legacy_gt = extract_legacy_gt(args.gt_zip) if args.gt_zip else None
-    public, private = build_packets(snapshot, load_catalog(), salt=salt, legacy_gt=legacy_gt)
+    public, private = build_packets(
+        snapshot, load_catalog(), salt=salt, equivalence_report=equivalence_report,
+        legacy_gt=legacy_gt,
+    )
     write_packets(args.public_output, args.private_output, public, private, REPO)
     print(json.dumps({
         "packet_id": public["packet_id"],

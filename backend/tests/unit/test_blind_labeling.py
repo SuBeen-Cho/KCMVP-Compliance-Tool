@@ -27,8 +27,21 @@ def packet():
         "source": {"source_id": "module_001.c", "line_start": 10, "line_end": 11,
                    "code": "if (n == 16) return 0;", "context": "함수 본문"},
     }
+    audit = {"passed": True, "checks": {"leak_scan": True},
+             "audited_items_sha256": hashlib.sha256(json.dumps(
+                 [item], ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+             ).encode()).hexdigest()}
     return build_packet(snapshot_id="snapshot-1", prepared_by="blind-preparer",
-                        randomization_id="test-randomization", items=[item])
+                        randomization_id="test-randomization", items=[item],
+                        blind_audit_report=audit)
+
+
+def test_packet_builder_requires_explicit_completed_blind_audit():
+    with pytest.raises(LabelingError, match="completed.*blind audit"):
+        build_packet(snapshot_id="snapshot-1", prepared_by="blind-preparer",
+                     randomization_id="test-randomization", items=[],
+                     blind_audit_report={"passed": False, "checks": {"leak_scan": False},
+                                         "audited_items_sha256": "0" * 64})
 
 
 def labels(identity="reviewer-a", label="violation"):
@@ -81,10 +94,21 @@ def test_not_applicable_and_applicability_must_agree():
         validate_label_document(packet(), value)
 
 
+def test_source_citation_must_stay_inside_disclosed_window():
+    value = labels()
+    value["annotations"][0]["source_citations"][0]["line_end"] = 999
+    core = {key: item for key, item in value.items() if key != "label_batch_id"}
+    value["label_batch_id"] = digest(core)
+    with pytest.raises(LabelingError, match="disclosed source window"):
+        validate_label_document(packet(), value)
+
+
 def test_agreement_reports_multiclass_per_class_and_disagreement_queue():
     report, queue = agreement_report(packet(), labels(), labels("reviewer-b", "non_violation"))
     assert report["exact_agreement"] == 0
     assert report["disagreement_count"] == 1
+    assert report["label_disagreement_count"] == 1
+    assert report["adjudication_count"] == 1
     assert set(report["cohens_kappa_one_vs_rest"]) == {
         "violation", "non_violation", "insufficient_context", "not_applicable",
     }

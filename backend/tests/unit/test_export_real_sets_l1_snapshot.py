@@ -65,7 +65,7 @@ def test_export_rejects_archive_traversal_before_engine(tmp_path):
     assert called == []
 
 
-def test_comment_sanitizer_removes_answer_hints_but_preserves_ordinary_comments():
+def test_comment_sanitizer_removes_all_comments_and_preserves_lines():
     raw = (
         "/* ordinary implementation note */\n"
         "int a = 1; // [위반: AES-001]\n"
@@ -74,8 +74,8 @@ def test_comment_sanitizer_removes_answer_hints_but_preserves_ordinary_comments(
         "int c = 3; // 정답 패턴\n"
     )
     cleaned = MODULE._strip_answer_comments_preserve_lines(raw)
-    assert "ordinary implementation note" in cleaned
-    assert "keep this rationale" in cleaned
+    assert "ordinary implementation note" not in cleaned
+    assert "keep this rationale" not in cleaned
     assert "위반" not in cleaned and "expected verdict" not in cleaned and "정답" not in cleaned
     assert cleaned.count("\n") == raw.count("\n")
 
@@ -97,4 +97,5 @@ def test_export_decodes_cp949_without_loss(tmp_path, monkeypatch):
         "artifacts": {"rules_tree_sha256": "c" * 64, "prompts_sha256": "d" * 64},
     })
     MODULE.export_snapshot(base, [1], tmp_path / "snapshot.json", engine=engine)
-    assert "일반 구현 설명" in observed[0]
+    assert "일반 구현 설명" not in observed[0]
+    assert "int a;" in observed[0]

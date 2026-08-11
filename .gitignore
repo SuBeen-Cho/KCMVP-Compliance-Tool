@@ -72,6 +72,8 @@ backend/scripts/*
 !backend/scripts/export_real_sets_l1_snapshot.py
 !backend/scripts/calibrate_threshold.py
 !backend/scripts/evaluate_cipher_implementations.py
+!backend/scripts/audit_blind_equivalence.py
+!backend/scripts/run_gemini_blind_labeling.py
 
 # Frontend generated README
 frontend/README.md

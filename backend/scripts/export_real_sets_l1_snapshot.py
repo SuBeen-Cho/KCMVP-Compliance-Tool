@@ -42,17 +42,11 @@ _ANSWER_HINT = re.compile(
 
 
 def _strip_answer_comments_preserve_lines(text: str) -> str:
-    """Remove only answer-bearing C comments while retaining code and line numbers."""
-    def block(match: re.Match[str]) -> str:
-        raw = match.group(0)
-        return "\n" * raw.count("\n") if _ANSWER_HINT.search(raw) else raw
-
-    text = re.sub(r"/\*.*?\*/", block, text, flags=re.DOTALL)
-    return re.sub(
-        r"//[^\n]*",
-        lambda match: "" if _ANSWER_HINT.search(match.group(0)) else match.group(0),
-        text,
-    )
+    """Remove every comment without renaming code identifiers or shifting lines."""
+    # All comments are excluded because seemingly ordinary prose can contain
+    # an answer cue. Quoted literals are code and therefore remain untouched.
+    from experiments.blind_corpus import strip_answer_comments
+    return strip_answer_comments(text)
 
 
 def _safe_archive_sources(archive: Path, destination: Path) -> list[Path]:

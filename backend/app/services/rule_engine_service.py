@@ -456,17 +456,6 @@ _ROTATION_RULE_IDS = frozenset({
     "LEA-027", "LEA-028", "LEA-029", "LEA-036",
 })
 
-# P3-B: violations_ 파일도 정규화 허용하는 규칙 목록
-# 분석 결과: 아래 규칙은 violations_ 파일에 "우연히 올바른" 회전 값이 없으므로
-# 정규화해도 FN 발생 없음. (LEA-018/019/027/028/029는 violations_ 파일에 올바른 값이
-# 섞여 있어 정규화 시 FN 위험 → P2-2A 유지)
-_ROT_ALWAYS_NORMALIZE = frozenset({
-    "LEA-016",  # violations_lea.c: ROL2/ROL4만 존재, ROL1 없음 → 정규화 안전
-    "LEA-017",  # violations_lea.c: ROL4만 존재, ROL3 없음 → 정규화 안전
-    "LEA-020",  # violations_lea.c: ROL13/17 없음 → 정규화 안전
-    "LEA-036",  # 복호화 역회전(ROR9/ROL5/ROL3): violations_lea_round.c에 LEA-036 위반 없음
-})
-
 # P3-B: 키 스케줄이 존재할 때만 적용할 규칙 (프로젝트에 키 스케줄 함수가 없으면 스킵)
 # lea_block.c 전용 세트처럼 키 스케줄 없이 암복호화만 있는 경우 FP 방지
 _KEY_SCHEDULE_ONLY_RULES = frozenset({
@@ -1966,17 +1955,12 @@ def _apply_project_missing_rule(
                     content = pre if pre else (
                         item.get("stripped_content") or item.get("content") or ""
                     )
-                    # P2-2A: ROL/ROR 변형 — 정규화 적용 범위 제어
-                    # _ROT_ALWAYS_NORMALIZE: violations_ 파일도 정규화 (FN 위험 없음 분석됨)
-                    # 그 외 rotation 규칙: violations_ 파일은 정규화 금지
-                    #   → 위반 파일의 ROL32가 ROL로 치환되어 "발견됨=pass" 판정 시 FN 발생
-                    # apply_bitop: gcc -E 전처리 결과에만 적용 (일반 코드 오탐 방지)
+                    # ROL/ROR spelling normalization is applied uniformly.
+                    # File names must never alter detector behavior: benchmark
+                    # names such as ``violations_*`` are potential answer labels.
+                    # apply_bitop remains limited to preprocessor output.
                     if rule_id in _ROTATION_RULE_IDS:
-                        _fname_lower = (item.get("display") or "").lower()
-                        if rule_id in _ROT_ALWAYS_NORMALIZE:
-                            content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
-                        elif "violations_" not in _fname_lower:
-                            content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
+                        content = _normalize_rotation(content, apply_bitop=_used_preprocessed)
                     search_targets = [content]
                     if rule_id == "LEA-060":
                         search_targets.append(item.get("display") or "")
