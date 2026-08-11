@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "collection": "nonverbatim_external_evidence_candidates",
+  "candidates": [
+    {"unit_id":"NIST_FIPS_197_UPD1_2023:s2.1:block", "source_id":"NIST_FIPS_197_UPD1_2023", "locator":{"section":"2.1", "anchor":"Block"}, "role":"normative_algorithm_definition", "claim_summary":"AES operates on a 128-bit input/output block.", "candidate_rules":["AES-001"]},
+    {"unit_id":"NIST_FIPS_197_UPD1_2023:s5:table3", "source_id":"NIST_FIPS_197_UPD1_2023", "locator":{"section":"5", "table":"3"}, "role":"normative_algorithm_definition", "claim_summary":"AES permits 128-, 192-, and 256-bit keys and associates them with 10, 12, and 14 rounds.", "candidate_rules":["AES-002","AES-003"]},
+    {"unit_id":"RFC_5794_ARIA_2010:s1.1", "source_id":"RFC_5794_ARIA_2010", "locator":{"section":"1.1"}, "role":"informational_algorithm_definition", "claim_summary":"ARIA uses 128-, 192-, and 256-bit keys with 12, 14, and 16 rounds respectively.", "candidate_rules":["ARIA-001"]},
+    {"unit_id":"RFC_4269_SEED_2005:s1.2", "source_id":"RFC_4269_SEED_2005", "locator":{"section":"1.2"}, "role":"informational_algorithm_definition", "claim_summary":"SEED uses a 128-bit key and a 128-bit data block.", "candidate_rules":["SEED-001"]}
+  ],
+  "promotion_gate": "Fetch the exact hash-bound artifact locally, extract a verbatim private span, verify its span hash and locator, and independently review rule entailment before changing rule_evidence_audit status. Informational RFCs cannot be promoted as KCMVP normative requirements."
+}

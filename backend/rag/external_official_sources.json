@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "collection": "external_official_source_registry",
+  "fetched_at": "2026-08-12T03:10:59+09:00",
+  "sources": [
+    {
+      "source_id": "NIST_FIPS_197_UPD1_2023",
+      "title": "Advanced Encryption Standard (AES)",
+      "publisher": "NIST",
+      "document_status": "active_federal_standard",
+      "authority_tier": "normative_algorithm_standard",
+      "version": "FIPS 197-upd1 (2023-05-09)",
+      "canonical_url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf",
+      "expected_sha256": "62c86eb567f13edb8f71826e985da870b04ef6381634f303cdb16e84d47becd1",
+      "byte_length": 1184436,
+      "retrieved_at": "2026-08-12T03:10:59+09:00",
+      "evidence_role": "normative_algorithm_definition",
+      "kcmvp_role": "algorithm_conformance_cross_reference_not_kcmvp_listing_evidence",
+      "redistribution_assessment": "US federal government work is generally not subject to US copyright; repository nevertheless stores metadata and hash only",
+      "storage_policy": "remote_hash_bound_no_verbatim_commit"
+    },
+    {
+      "source_id": "RFC_5794_ARIA_2010",
+      "title": "A Description of the ARIA Encryption Algorithm",
+      "publisher": "RFC Editor",
+      "document_status": "informational_independent_stream",
+      "authority_tier": "informational_algorithm_description",
+      "version": "RFC 5794 (2010-03)",
+      "canonical_url": "https://www.rfc-editor.org/rfc/rfc5794.txt",
+      "expected_sha256": "e83bdeb56937cb26fc4e3cd6c230ddfa971bc27056c5f202d55820af350cd89d",
+      "byte_length": 31049,
+      "retrieved_at": "2026-08-12T03:10:59+09:00",
+      "evidence_role": "informational_algorithm_definition",
+      "kcmvp_role": "cross_check_only_not_normative_kcmvp_requirement",
+      "redistribution_assessment": "subject to IETF Trust legal provisions; metadata, locator, and hash are committed instead of RFC body",
+      "storage_policy": "remote_hash_bound_no_verbatim_commit"
+    },
+    {
+      "source_id": "RFC_4269_SEED_2005",
+      "title": "The SEED Encryption Algorithm",
+      "publisher": "RFC Editor",
+      "document_status": "informational_obsoletes_rfc4009",
+      "authority_tier": "informational_algorithm_description",
+      "version": "RFC 4269 (2005-12)",
+      "canonical_url": "https://www.rfc-editor.org/rfc/rfc4269.txt",
+      "expected_sha256": "a1132bf03be7ff05ae9be59189632f849a200c2f1c86ce9ecc2f94f51b668f54",
+      "byte_length": 34390,
+      "retrieved_at": "2026-08-12T03:10:59+09:00",
+      "evidence_role": "informational_algorithm_definition",
+      "kcmvp_role": "cross_check_only_not_normative_kcmvp_requirement",
+      "redistribution_assessment": "subject to IETF Trust legal provisions; metadata, locator, and hash are committed instead of RFC body",
+      "storage_policy": "remote_hash_bound_no_verbatim_commit"
+    },
+    {
+      "source_id": "ISO_IEC_18033_3_2010",
+      "title": "Information technology -- Security techniques -- Encryption algorithms -- Part 3: Block ciphers",
+      "publisher": "ISO",
+      "document_status": "international_standard_paywalled",
+      "authority_tier": "normative_standard_unavailable_for_unit_review",
+      "version": "ISO/IEC 18033-3:2010, edition 2",
+      "canonical_url": "https://www.iso.org/standard/54531.html",
+      "expected_sha256": null,
+      "byte_length": null,
+      "retrieved_at": null,
+      "metadata_checked_at": "2026-08-12T03:10:59+09:00",
+      "evidence_role": "discovery_only",
+      "kcmvp_role": "not_mapped_without_licensed_standard_text",
+      "redistribution_assessment": "ISO standard text is copyrighted and was not downloaded or committed",
+      "storage_policy": "metadata_only_no_evidence_units"
+    }
+  ]
+}

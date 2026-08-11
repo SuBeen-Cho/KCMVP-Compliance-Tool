@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "collection": "mode_common_entailment_review",
+  "reviewed_rule_count": 36,
+  "new_verified_rule_ids": [],
+  "decision": "no_safe_promotion",
+  "groups": [
+    {
+      "reason": "official algorithm text exists, but current AST/missing detector does not prove equivalent implementations or required state/dataflow scope",
+      "rule_ids": ["CBC-001", "CBC-002", "CCM-001", "CFB-002", "CMAC-001", "CTR-001", "CTR-002", "ECB-002", "GCM-001", "OFB-002"]
+    },
+    {
+      "reason": "claim combines a generic module-security obligation or side-channel inference with a mode-specific detector and is not exactly entailed by a bound unit",
+      "rule_ids": ["CBC-003", "CBC-004", "CCM-005", "CMAC-002", "CMAC-003", "COM-001", "COM-002", "COM-003", "COM-004", "COM-005", "CTR-003", "CTR-004", "CTR-005", "GCM-005"]
+    },
+    {
+      "reason": "available support is a reference implementation manual or the detector claim is narrower/broader than the seven-source normative text",
+      "rule_ids": ["CBC-005", "CBC-061", "CCM-002", "CCM-004", "CFB-001", "CTR-LEA-001", "GCM-003", "GCM-004", "GCM-LEA-002", "OFB-001"]
+    },
+    {
+      "reason": "MCT/test-interface applicability must be established per validation artifact and must not affect ordinary implementation files",
+      "rule_ids": ["CBC-LEA-005", "CTR-LEA-006"]
+    }
+  ]
+}

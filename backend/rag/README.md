@@ -27,3 +27,12 @@ reference, not a normative KCMVP requirement. Runtime retrieval must filter by
 authority tier and may not promote author-authored files in `backend/guidelines/`
 to this collection. Such files belong to the separate `author_commentary`
 collection.
+
+`external_official_sources.json` is a separate hash-bound registry for primary
+sources that are not stored in the repository. `external_evidence_candidates.json`
+contains non-verbatim locator and rule-mapping candidates only; it is not a
+runtime evidence index and cannot make a rule `verified`. FIPS 197-upd1 is a
+normative AES algorithm standard. RFC 5794 and RFC 4269 are Informational
+algorithm descriptions and must not be represented as normative KCMVP
+requirements. ISO text is not indexed without a licensed local copy and an
+independent span-level review.

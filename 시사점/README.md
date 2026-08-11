@@ -6,6 +6,7 @@
 최신 탐색 평가는 [30_동일모델_프록시GT_3view_RAG보정_결과.md](30_동일모델_프록시GT_3view_RAG보정_결과.md)에 기록한다. 이 결과는 동일 모델 test–retest 프록시이며 외부 전문가 GT 성능으로 해석하지 않는다.
 공식 PDF evidence-unit 인덱스, fail-closed 매핑, adaptive router와 인용 검증의 구현·한계는 [31_공식_Evidence_RAG_고도화_구현과_검증.md](31_공식_Evidence_RAG_고도화_구현과_검증.md)에 기록한다.
 동일 counterfactual의 no-RAG·verified oracle·무관 공식 근거 LLM 교차 실험은 [35_공식Evidence_RAG_LLM_utility_교차실험.md](35_공식Evidence_RAG_LLM_utility_교차실험.md)에 기록한다.
+AES·ARIA·SEED의 FIPS·RFC·ISO 외부 일차 출처, hash-bound registry, 저작권 정책과 fail-closed 매핑 후보는 [36_AES_ARIA_SEED_외부공식출처_감사.md](36_AES_ARIA_SEED_외부공식출처_감사.md)에 기록한다.
 
 ## 단계
 
@@ -24,7 +25,7 @@
 
 ## 2026-08-11 현재 완료 상태
 
-- 구현 및 정적 검증: 현재 스냅샷의 규칙 inventory는 165개(코드 지향 96개, 문서 65개, 추적성 4개)이며, 산술 감사, GT 주석 제거, no-RAG 경로, 실행 manifest, 토큰 카운터, confidence 입력 검증, L3 fail-fast를 반영했다. AES 3개, ARIA 1개, SEED 1개의 보수적 명시 모순 규칙이 포함되지만 알고리즘별 일반화 성능은 아직 입증되지 않았다.
+- 구현 및 정적 검증: 현재 스냅샷의 규칙 inventory는 166개(코드 지향 97개, 문서 65개, 추적성 4개)이며, 산술 감사, GT 주석 제거, no-RAG 경로, 실행 manifest, 토큰 카운터, confidence 입력 검증, L3 fail-fast를 반영했다. AES 3개, ARIA 1개, SEED 1개의 보수적 명시 모순 규칙과 KCMVP CMAC 인증값 길이 규칙 1개가 포함되지만 알고리즘별 일반화 성능은 아직 입증되지 않았다.
 - 테스트: backend `317 passed, 1 skipped`; frontend Vite production build 310 modules 통과; MDPI PDF 24쪽 재컴파일 성공.
 - 과거 결과: 코드·입력·프롬프트를 묶는 manifest가 없어 `legacy_unverified`로만 유지한다.
 - 실제 재실행: 동일한 동결 L1 후보 161개에 대해 RAG/no-RAG를 3 pair·6회 AB/BA로 실행하였다. 총 1,014회 호출과 Standard 단가 기준 추정 API 토큰 비용 `$0.3494106`을 기록하였다. 다만 파일명·식별자 label leakage가 남아 탐색적 조건 비교로만 유지한다.
