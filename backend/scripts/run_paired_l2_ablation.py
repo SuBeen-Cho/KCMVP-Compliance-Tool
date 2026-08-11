@@ -40,6 +40,22 @@ CONTROLLED_ENV = {
 Runner = Callable[[list[str], dict[str, str]], subprocess.CompletedProcess[str]]
 
 
+def _git_identity(repo: Path | None = None) -> dict[str, Any]:
+    """Capture a path-free identity of the exact workspace used for execution."""
+    repo = repo or BACKEND.parent
+    def git(*args: str) -> str:
+        completed = subprocess.run(
+            ["git", *args], cwd=repo, check=True, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        return completed.stdout.strip()
+    status = git("status", "--porcelain=v1", "--untracked-files=all").splitlines()
+    return {"executed_git_commit": git("rev-parse", "HEAD"),
+            "branch": git("branch", "--show-current") or "DETACHED",
+            "dirty": bool(status), "changed_entry_count": len(status),
+            "status_sha256": hashlib.sha256("\n".join(status).encode()).hexdigest()}
+
+
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -153,6 +169,7 @@ def run_experiment(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     experiment_run_id = uuid.uuid4().hex
+    git_start = _git_identity()
     executions = []
     expected_candidates = snapshot["l3_candidate_ids"]
     for execution_index, planned in enumerate(schedule, 1):
@@ -266,12 +283,21 @@ def run_experiment(
                 for key in ("retained", "rejected", "unresolved", "request_covered")
             },
         })
+    git_end = _git_identity()
+    stable_identity = git_start == git_end
+    canonical = stable_identity and not git_start["dirty"] and not git_end["dirty"]
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "scope": "paired_ab_ba_l2_context_ablation_from_frozen_l1",
         "experiment_run_id": experiment_run_id,
         "snapshot_id": snapshot["snapshot_id"],
         "snapshot_file_sha256": _sha256_file(snapshot_path),
+        "execution_provenance": {
+            "start": git_start, "end": git_end, "stable_identity": stable_identity,
+            "status": "canonical_clean_stable" if canonical else "experimental_partial",
+            "claim_limit": (None if canonical else
+                            "Non-canonical: workspace was dirty or changed during execution"),
+        },
         "design": {
             "pairs": pairs,
             "condition_run_count": len(schedule),

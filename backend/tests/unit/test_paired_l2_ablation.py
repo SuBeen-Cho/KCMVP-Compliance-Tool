@@ -112,6 +112,10 @@ def test_fake_integration_records_hashes_usage_cost_and_no_secrets(tmp_path, mon
         {"no_rag": True, "seed": "101"}, {"no_rag": False, "seed": "101"},
     ]
     assert manifest["design"]["condition_run_count"] == 4
+    assert manifest["execution_provenance"]["status"] in {
+        "canonical_clean_stable", "experimental_partial"}
+    assert len(manifest["execution_provenance"]["start"]["executed_git_commit"]) == 40
+    assert len(manifest["execution_provenance"]["end"]["status_sha256"]) == 64
     assert manifest["aggregate"]["usage"] == {
         "provider_calls": 4, "input_tokens": 400, "output_tokens": 100,
     }
@@ -133,6 +137,33 @@ def test_fake_integration_records_hashes_usage_cost_and_no_secrets(tmp_path, mon
     serialized = (tmp_path / "run" / "manifest.json").read_text(encoding="utf-8")
     assert "do-not-serialize-this" not in serialized
     assert str(tmp_path) not in serialized
+
+
+def test_git_provenance_marks_clean_stable_only_as_canonical(monkeypatch, tmp_path):
+    path, snapshot = _snapshot_path(tmp_path)
+    calls = []
+    clean = {"executed_git_commit": "a" * 40, "branch": "main", "dirty": False,
+             "changed_entry_count": 0, "status_sha256": "b" * 64}
+    monkeypatch.setattr(MODULE, "_git_identity", lambda: dict(clean))
+    manifest = _run(path, snapshot, tmp_path / "canonical", calls, pairs=1)
+    assert manifest["execution_provenance"]["status"] == "canonical_clean_stable"
+    assert manifest["execution_provenance"]["claim_limit"] is None
+
+
+def test_git_provenance_marks_dirty_or_changed_run_experimental(monkeypatch, tmp_path):
+    path, snapshot = _snapshot_path(tmp_path)
+    calls, captures = [], iter([
+        {"executed_git_commit": "a" * 40, "branch": "main", "dirty": True,
+         "changed_entry_count": 1, "status_sha256": "b" * 64},
+        {"executed_git_commit": "a" * 40, "branch": "main", "dirty": True,
+         "changed_entry_count": 2, "status_sha256": "c" * 64},
+    ])
+    monkeypatch.setattr(MODULE, "_git_identity", lambda: next(captures))
+    manifest = _run(path, snapshot, tmp_path / "experimental", calls, pairs=1)
+    provenance = manifest["execution_provenance"]
+    assert provenance["status"] == "experimental_partial"
+    assert provenance["stable_identity"] is False
+    assert "Non-canonical" in provenance["claim_limit"]
 
 
 def test_tampered_snapshot_fails_before_runner(tmp_path):

@@ -329,13 +329,43 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
         conditions.add(condition)
         score_rows = validate_score_artifact(document, set(reverse))
         validated[condition] = (document, score_rows)
-    common_scored = set.intersection(*(
-        {(row["frozen_candidate_id"], row["repeat"]) for row in score_rows}
-        for _, score_rows in validated.values()
-    ))
+    expected_repeats = None
+    complete_by_condition = {}
+    repeat_stability = {}
     for condition, (document, score_rows) in validated.items():
+        repeats = {item["repeat"] for item in document["coverage"]["repeat_dispositions"]}
+        if expected_repeats is None:
+            expected_repeats = repeats
+        elif repeats != expected_repeats:
+            raise EvaluationJoinError("conditions must use the same repeat identities")
+        grouped_scores: dict[str, list[dict[str, Any]]] = {}
         for score in score_rows:
-            if (score["frozen_candidate_id"], score["repeat"]) not in common_scored:
+            grouped_scores.setdefault(score["frozen_candidate_id"], []).append(score)
+        complete = {cid for cid, values in grouped_scores.items()
+                    if {row["repeat"] for row in values} == repeats}
+        inconsistent = set()
+        for cid in complete:
+            signatures = {(row["initial"], row["rejudge"], row["score_provenance"])
+                          for row in grouped_scores[cid]}
+            if len(signatures) != 1:
+                inconsistent.add(cid)
+        repeat_stability[condition] = {
+            "complete_repeat_candidates": len(complete),
+            "identical_repeat_candidates": len(complete - inconsistent),
+            "identical_rate": ((len(complete - inconsistent) / len(complete)) if complete else 0.0),
+            "inconsistent_ids_sha256": _hash(sorted(inconsistent)),
+        }
+        if inconsistent:
+            raise EvaluationJoinError("deterministic repeat scores differ; calibration aggregation is undefined")
+        complete_by_condition[condition] = complete
+    common_candidates = set.intersection(*complete_by_condition.values())
+    for condition, (document, score_rows) in validated.items():
+        first_by_candidate = {}
+        for score in sorted(score_rows, key=lambda row: row["repeat"]):
+            first_by_candidate.setdefault(score["frozen_candidate_id"], score)
+        for cid in sorted(common_candidates):
+            score = first_by_candidate[cid]
+            if cid not in common_candidates:
                 continue
             oid, group_id = reverse[score["frozen_candidate_id"]]
             initial, rejudge = score["initial"], score["rejudge"]
@@ -345,7 +375,7 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
                 "observation_id": _hash({"artifact": document["artifact_id"], "id": oid,
                                          "repeat": score["repeat"]}),
                 "candidate_id": oid, "group_id": group_id, "condition": condition,
-                "repeat": score["repeat"],
+                "repeat": 0,
                 "ground_truth_violation": labels[oid] == "violation",
                 "initial": {"verdict": "violation" if initial >= 50 else "not_violation",
                             "violation_probability": initial},
@@ -369,15 +399,17 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
             "unselected": _id_summary(universe - selected),
             "score_unresolved": _id_summary({f"{cid}::{repeat}" for cid, repeat in unresolved}),
             "condition_only_scored": _id_summary({f"{cid}::{repeat}"
-                                                    for cid, repeat in scored - common_scored}),
+                                                    for cid, repeat in scored
+                                                    if cid not in common_candidates}),
         }
-    common_keys = {f"{cid}::{repeat}" for cid, repeat in common_scored}
-    common_binary = {f"{reverse[cid][0]}::{repeat}" for cid, repeat in common_scored
+    common_keys = set(common_candidates)
+    common_binary = {reverse[cid][0] for cid in common_candidates
                      if labels[reverse[cid][0]] in {"violation", "non_violation"}}
     return {
         "schema_version": "1.1", "score_semantics": SCORE_SEMANTICS,
         "ground_truth_basis": "same_model_temperature0_test_retest_proxy_not_external_expert_gt",
-        "claim_limit": ("Post-selector calibration proxy on the common-scored subset only; not whole-L1 "
+        "claim_limit": ("Exploratory pooled-condition post-selector calibration proxy on unique candidates "
+                        "only; deterministic repeats are stability checks, not independent samples; not whole-L1 "
                         "performance. Same-model temperature-0 test-retest labels are not independent "
                         "annotators and not an external-expert performance estimate"),
         "eligibility": {"sealed_total": len(labels),
@@ -387,7 +419,8 @@ def build_calibration_proxy(sidecar: Any, gt: Any, score_documents: list[Any]) -
                         "excluded_by_label": {
                             "insufficient_context": label_counts["insufficient_context"],
                             "not_applicable": label_counts["not_applicable"],
-                        }, "excluded_by_disposition": disposition_exclusions},
+                        }, "excluded_by_disposition": disposition_exclusions,
+                        "repeat_stability": repeat_stability},
         "rows": rows,
     }
 
@@ -422,6 +455,6 @@ def paired_binary_report(dataset: dict[str, Any], *, threshold: int = 50) -> dic
     return {"conditions": [left, right], "paired_n": len(by_condition[left]),
             "threshold": threshold, "mcnemar_discordance_counts": dict(discordant),
             "mcnemar_exact_two_sided_p": exact_p,
-            "test_unit_limit": ("Descriptive occurrence-repeat McNemar value; repeats and clone groups "
-                                "are dependent, so it is not a standalone confirmatory p-value"),
+            "test_unit_limit": ("Unique-candidate McNemar value after collapsing deterministic repeats; "
+                                "clone groups remain dependent, so it is not a standalone confirmatory p-value"),
             "claim_limit": dataset["claim_limit"]}

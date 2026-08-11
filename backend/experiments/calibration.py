@@ -69,7 +69,7 @@ def validate_calibration_dataset(dataset: Any) -> list[dict[str, Any]]:
         if (not isinstance(eligibility, dict)
                 or set(eligibility) != {"sealed_total", "binary_eligible", "common_scored",
                                         "common_scored_binary", "excluded_by_label",
-                                        "excluded_by_disposition"}
+                                        "excluded_by_disposition", "repeat_stability"}
                 or set(eligibility.get("excluded_by_label", {})) != {
                     "insufficient_context", "not_applicable",
                 }
@@ -102,6 +102,18 @@ def validate_calibration_dataset(dataset: Any) -> list[dict[str, Any]]:
                         or not isinstance(summary["ids_sha256"], str)
                         or len(summary["ids_sha256"]) != 64):
                     raise CalibrationDataError("proxy disposition ID summary is invalid")
+        stability = eligibility.get("repeat_stability")
+        if not isinstance(stability, dict) or set(stability) != set(dispositions):
+            raise CalibrationDataError("proxy repeat stability conditions are inconsistent")
+        for summary in stability.values():
+            if (not isinstance(summary, dict)
+                    or set(summary) != {"complete_repeat_candidates",
+                                        "identical_repeat_candidates", "identical_rate",
+                                        "inconsistent_ids_sha256"}
+                    or not 0 <= summary["identical_rate"] <= 1
+                    or summary["identical_repeat_candidates"] > summary["complete_repeat_candidates"]
+                    or len(summary["inconsistent_ids_sha256"]) != 64):
+                raise CalibrationDataError("proxy repeat stability summary is invalid")
     elif set(dataset) != _TOP_KEYS:
         raise CalibrationDataError("legacy calibration dataset cannot carry undeclared metadata")
     if dataset["score_semantics"] != SCORE_SEMANTICS:
@@ -267,6 +279,7 @@ def calibrate(
     dataset: Any, *, thresholds: Iterable[int], windows: Iterable[tuple[int, int] | None],
     minimum_recall: float = 1.0, heldout_fraction: float = 0.3,
     bootstrap_iterations: int = 500, seed: int = 42,
+    split_salt: str = "kcmvp-calibration-v1",
 ) -> dict[str, Any]:
     """Select on development data and report one untouched held-out estimate."""
     rows = validate_calibration_dataset(dataset)
@@ -275,7 +288,9 @@ def calibrate(
         raise ValueError("threshold and window grids must not be empty")
     if bootstrap_iterations < 1:
         raise ValueError("bootstrap_iterations must be positive")
-    dev, heldout = grouped_dev_heldout_split(rows, heldout_fraction=heldout_fraction)
+    dev, heldout = grouped_dev_heldout_split(
+        rows, heldout_fraction=heldout_fraction, salt=split_salt,
+    )
     for name, partition in (("development", dev), ("held-out", heldout)):
         if {row["ground_truth_violation"] for row in partition} != {False, True}:
             raise CalibrationDataError(f"{name} partition must contain both ground-truth classes")
@@ -311,6 +326,8 @@ def calibrate(
            if dataset["schema_version"] == "1.1" else {}),
         "selection_protocol": "grouped_dev_selection_then_single_heldout_evaluation",
         "minimum_recall": minimum_recall,
+        "split_salt": split_salt, "heldout_fraction": heldout_fraction,
+        "bootstrap_seed": seed,
         "dev_n": len(dev), "heldout_n": len(heldout),
         "dev_groups": len({row["group_id"] for row in dev}),
         "heldout_groups": len({row["group_id"] for row in heldout}),
