@@ -61,6 +61,7 @@ backend/scripts/
 !backend/scripts/
 backend/scripts/*
 !backend/scripts/export_score_only_artifact.py
+!backend/scripts/migrate_blind_sidecar_groups.py
 !backend/scripts/build_blind_label_packet.py
 !backend/scripts/blind_labeling.py
 !backend/scripts/evaluate_real_sets.py

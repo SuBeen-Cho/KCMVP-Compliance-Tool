@@ -13,7 +13,7 @@ import json
 from typing import Any
 
 from experiments.calibration import SCORE_SEMANTICS
-from experiments.labeling import validate_label_document, validate_packet
+from experiments.labeling import PACKET_VIEWS, validate_label_document, validate_packet
 
 
 class EvaluationJoinError(ValueError):
@@ -37,6 +37,46 @@ def _exact(value: Any, keys: set[str], name: str) -> None:
 def _id_summary(values: set[str]) -> dict[str, Any]:
     ordered = sorted(values)
     return {"count": len(ordered), "ids_sha256": _hash(ordered)}
+
+
+def migrate_v15_sidecar_group_ids(sidecar: Any, packets: dict[str, Any]) -> dict[str, Any]:
+    """Bind packet-visible clone groups into a legacy sealed three-view sidecar.
+
+    Occurrence IDs, transformation metadata, and packet contents remain byte-for-
+    byte values; only the already-public group ID is copied into each occurrence.
+    """
+    required = {"schema_version", "snapshot_id", "equivalence_report_sha256",
+                "generator_manifest_sha256", "order_strategy", "packet_ids",
+                "occurrences", "sidecar_id"}
+    _exact(sidecar, required, "legacy sealed sidecar")
+    old_core = {key: value for key, value in sidecar.items() if key != "sidecar_id"}
+    if sidecar["sidecar_id"] != _hash(old_core):
+        raise EvaluationJoinError("legacy sealed sidecar identity does not match its contents")
+    if set(packets) != set(PACKET_VIEWS):
+        raise EvaluationJoinError("migration requires all three registered packet views")
+    groups_by_view: dict[str, dict[str, str]] = {}
+    for view, packet in packets.items():
+        validate_packet(packet)
+        if packet.get("view") != view or sidecar["packet_ids"].get(view) != packet["packet_id"]:
+            raise EvaluationJoinError("legacy sidecar packet identity does not match migration input")
+        groups_by_view[view] = {item["candidate_id"]: item["group_id"] for item in packet["items"]}
+    occurrence_ids = [row.get("occurrence_id") for row in sidecar["occurrences"]]
+    if (not occurrence_ids or len(occurrence_ids) != len(set(occurrence_ids))
+            or any(set(groups) != set(occurrence_ids) for groups in groups_by_view.values())):
+        raise EvaluationJoinError("packet occurrence sets do not match the legacy sidecar")
+    migrated_occurrences = []
+    for row in sidecar["occurrences"]:
+        if "group_id" in row:
+            raise EvaluationJoinError("sidecar already contains group_id and is not a migration input")
+        oid = row["occurrence_id"]
+        values = {groups[oid] for groups in groups_by_view.values()}
+        if len(values) != 1:
+            raise EvaluationJoinError("three packet views disagree on occurrence group_id")
+        migrated_occurrences.append({**row, "group_id": values.pop()})
+    new_core = {**old_core, "occurrences": migrated_occurrences}
+    migrated = {"sidecar_id": _hash(new_core), **new_core}
+    validate_sidecar(migrated)
+    return migrated
 
 
 def score_artifact_from_l3_result(result: Any, *, condition: str, repeat: int) -> dict[str, Any]:

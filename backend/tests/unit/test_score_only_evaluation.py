@@ -7,7 +7,7 @@ import pytest
 from experiments.calibration import calibrate, grouped_dev_heldout_split, validate_calibration_dataset
 from experiments.score_only_evaluation import (
     EvaluationJoinError, build_calibration_proxy, build_test_retest_proxy_gt,
-    paired_binary_report, score_artifact_from_l3_result,
+    migrate_v15_sidecar_group_ids, paired_binary_report, score_artifact_from_l3_result,
 )
 from experiments.labeling import build_packet
 
@@ -162,3 +162,37 @@ def test_converter_seals_partial_score_dispositions_and_join_uses_common_subset(
 
 def _summary(values):
     return {"count": len(values), "ids_sha256": _hash(sorted(values))}
+
+
+def test_strict_sidecar_group_migration_preserves_occurrences_and_rejects_view_disagreement():
+    items = [{"candidate_id": f"o{i}", "group_id": f"g{i // 2}", "rule_id": "R-1",
+              "requirement": {"text": "requirement", "citations": [{"source": "s", "locator": "1"}]},
+              "source": {"source_id": "a.c", "line_start": 1, "line_end": 1,
+                         "code": "000001: int x;", "context": "context"}} for i in range(4)]
+    audit = {"passed": True, "checks": {"ok": True}, "audited_items_sha256": _hash(items)}
+    packets = {view: build_packet(snapshot_id="snap", prepared_by="test",
+                randomization_id=f"r-{view}", items=copy.deepcopy(items),
+                blind_audit_report=audit, view=view)
+               for view in ("analysis_artifact_aware", "minimal_cue_controlled", "fully_opaque")}
+    occurrences = [{"occurrence_id": f"o{i}", "frozen_candidate_id": f"f{i}", "x": i}
+                   for i in range(4)]
+    core = {"schema_version": "1.1", "snapshot_id": "snap",
+            "equivalence_report_sha256": "a" * 64, "generator_manifest_sha256": "b" * 64,
+            "order_strategy": "sealed", "packet_ids": {v: p["packet_id"] for v, p in packets.items()},
+            "occurrences": occurrences}
+    legacy = {"sidecar_id": _hash(core), **core}
+    migrated = migrate_v15_sidecar_group_ids(legacy, packets)
+    assert [row["occurrence_id"] for row in migrated["occurrences"]] == [f"o{i}" for i in range(4)]
+    assert [row["group_id"] for row in migrated["occurrences"]] == [f"g{i // 2}" for i in range(4)]
+    assert migrated["sidecar_id"] != legacy["sidecar_id"]
+
+    bad_items = copy.deepcopy(items)
+    bad_items[0]["group_id"] = "different"
+    bad_audit = {"passed": True, "checks": {"ok": True}, "audited_items_sha256": _hash(bad_items)}
+    packets["fully_opaque"] = build_packet(
+        snapshot_id="snap", prepared_by="test", randomization_id="bad",
+        items=bad_items, blind_audit_report=bad_audit, view="fully_opaque")
+    core["packet_ids"] = {v: p["packet_id"] for v, p in packets.items()}
+    legacy = {"sidecar_id": _hash(core), **core}
+    with pytest.raises(EvaluationJoinError, match="disagree"):
+        migrate_v15_sidecar_group_ids(legacy, packets)
