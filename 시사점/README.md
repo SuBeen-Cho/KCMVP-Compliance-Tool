@@ -4,6 +4,7 @@
 각 문서는 구현 내용뿐 아니라 독립 감사, 테스트 결과, 논문에 사용할 수 있는 주장 범위를 구분한다.
 
 최신 탐색 평가는 [30_동일모델_프록시GT_3view_RAG보정_결과.md](30_동일모델_프록시GT_3view_RAG보정_결과.md)에 기록한다. 이 결과는 동일 모델 test–retest 프록시이며 외부 전문가 GT 성능으로 해석하지 않는다.
+공식 PDF evidence-unit 인덱스, fail-closed 매핑, adaptive router와 인용 검증의 구현·한계는 [31_공식_Evidence_RAG_고도화_구현과_검증.md](31_공식_Evidence_RAG_고도화_구현과_검증.md)에 기록한다.
 
 ## 단계
 
