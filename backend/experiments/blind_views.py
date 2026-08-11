@@ -275,6 +275,7 @@ def build_three_view_packets(
             })
         sealed_occurrences.append({
             "occurrence_id": occurrence_id, "frozen_candidate_id": frozen["candidate_id"],
+            "group_id": group_id,
             "original_source_id": source_id, "original_line": payload.get("line") or 1,
             "rule_id": rule_id, "minimal_removed_comment_sha256": removed_comments,
             "artifact_removed_comment_sha256": artifact_removed_comments,

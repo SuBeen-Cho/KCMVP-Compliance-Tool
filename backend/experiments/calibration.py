@@ -16,6 +16,7 @@ from typing import Any, Iterable, Sequence
 SCHEMA_VERSION = "1.0"
 SCORE_SEMANTICS = "violation_probability"
 _TOP_KEYS = {"schema_version", "score_semantics", "rows"}
+_PROXY_TOP_KEYS = _TOP_KEYS | {"ground_truth_basis", "claim_limit", "eligibility"}
 _ROW_KEYS = {
     "observation_id", "candidate_id", "group_id", "condition", "repeat",
     "ground_truth_violation", "initial", "rejudge",
@@ -52,10 +53,32 @@ def _judgment(value: Any, *, optional: bool = False) -> dict[str, Any] | None:
 
 def validate_calibration_dataset(dataset: Any) -> list[dict[str, Any]]:
     """Validate and copy a closed, occurrence-level calibration dataset."""
-    if not isinstance(dataset, dict) or set(dataset) != _TOP_KEYS:
+    if not isinstance(dataset, dict) or set(dataset) not in (_TOP_KEYS, _PROXY_TOP_KEYS):
         raise CalibrationDataError("dataset must use the closed calibration schema")
-    if dataset["schema_version"] != SCHEMA_VERSION:
+    if dataset["schema_version"] not in {SCHEMA_VERSION, "1.1"}:
         raise CalibrationDataError("unsupported calibration schema version")
+    if dataset["schema_version"] == "1.1":
+        if set(dataset) != _PROXY_TOP_KEYS:
+            raise CalibrationDataError("proxy calibration dataset must disclose its claim basis")
+        if dataset["ground_truth_basis"] != "same_model_temperature0_test_retest_proxy_not_external_expert_gt":
+            raise CalibrationDataError("proxy ground truth must not claim external expertise")
+        claim = dataset["claim_limit"].lower() if isinstance(dataset["claim_limit"], str) else ""
+        if not all(term in claim for term in ("proxy", "test-retest", "not independent")):
+            raise CalibrationDataError("proxy calibration must disclose same-model test-retest non-independence")
+        eligibility = dataset["eligibility"]
+        if (not isinstance(eligibility, dict)
+                or set(eligibility) != {"sealed_total", "binary_eligible", "excluded_by_label"}
+                or set(eligibility.get("excluded_by_label", {})) != {
+                    "insufficient_context", "not_applicable",
+                }
+                or eligibility["binary_eligible"] != len({
+                    row.get("candidate_id") for row in dataset.get("rows", [])
+                })
+                or eligibility["sealed_total"] != eligibility["binary_eligible"]
+                + sum(eligibility["excluded_by_label"].values())):
+            raise CalibrationDataError("proxy eligibility accounting is inconsistent")
+    elif set(dataset) != _TOP_KEYS:
+        raise CalibrationDataError("legacy calibration dataset cannot carry undeclared metadata")
     if dataset["score_semantics"] != SCORE_SEMANTICS:
         raise CalibrationDataError("score_semantics must be violation_probability")
     if not isinstance(dataset["rows"], list) or not dataset["rows"]:
@@ -256,8 +279,11 @@ def calibrate(
         except CalibrationDataError:
             choices["no_eligible_policy"] += 1
     return {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": dataset["schema_version"],
         "score_semantics": SCORE_SEMANTICS,
+        **({"ground_truth_basis": dataset["ground_truth_basis"],
+            "claim_limit": dataset["claim_limit"], "eligibility": dataset["eligibility"]}
+           if dataset["schema_version"] == "1.1" else {}),
         "selection_protocol": "grouped_dev_selection_then_single_heldout_evaluation",
         "minimum_recall": minimum_recall,
         "dev_n": len(dev), "heldout_n": len(heldout),
