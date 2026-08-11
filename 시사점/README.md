@@ -5,6 +5,7 @@
 
 최신 탐색 평가는 [30_동일모델_프록시GT_3view_RAG보정_결과.md](30_동일모델_프록시GT_3view_RAG보정_결과.md)에 기록한다. 이 결과는 동일 모델 test–retest 프록시이며 외부 전문가 GT 성능으로 해석하지 않는다.
 공식 PDF evidence-unit 인덱스, fail-closed 매핑, adaptive router와 인용 검증의 구현·한계는 [31_공식_Evidence_RAG_고도화_구현과_검증.md](31_공식_Evidence_RAG_고도화_구현과_검증.md)에 기록한다.
+동일 counterfactual의 no-RAG·verified oracle·무관 공식 근거 LLM 교차 실험은 [35_공식Evidence_RAG_LLM_utility_교차실험.md](35_공식Evidence_RAG_LLM_utility_교차실험.md)에 기록한다.
 
 ## 단계
 

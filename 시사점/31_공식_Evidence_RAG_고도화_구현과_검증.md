@@ -6,13 +6,13 @@
 
 ## 2. 공식 근거 코퍼스
 
-로컬에 고정된 KCMVP 및 LEA 관련 PDF 7종을 오프라인에서 파싱하여 12,462개 evidence unit으로 구성한다. unit은 source ID, 발행처, 버전·효력일, 페이지·블록·절·표·각주 locator, 역할, 적용 범위, 원문 SHA-256을 가진다. Git에 보존하는 public index는 원문을 포함하지 않고 locator와 hash만 보존하며, 검색용 local text index는 Git 제외·권한 `0600`으로 생성한다.
+로컬에 고정된 KCMVP 및 LEA 관련 PDF 7종을 오프라인에서 파싱한다. 최초 12,462개 unit을 생성했으나, 페이지별 copyright·무단전재 footer 332개가 requirement로 오인덱싱된 것을 독립 감사에서 확인하여 제거했다. 최종 인덱스는 12,130개 evidence unit이다. unit은 source ID, 발행처, 버전·효력일, 페이지·블록·절·표·각주 locator, 역할, 적용 범위, 원문 SHA-256을 가진다. Git에 보존하는 public index는 원문을 포함하지 않고 locator와 hash만 보존하며, 검색용 local text index는 Git 제외·권한 `0600`으로 생성한다.
 
-두 번의 재생성 실행에서 public/local 산출물은 각각 byte-identical이었다. 감사 후 최종 재생성 계측은 12,462 units, 7 sources, 2.24~2.51초이며 public/local 크기는 각각 약 9.52 MB/10.61 MB이다. 입력 PDF hash drift, 경로 traversal·symlink, locator–unit ID 불일치, source unit count 불일치, public/local pair 불일치는 fail-closed 처리한다.
+두 번의 재생성 실행에서 public/local 산출물은 각각 byte-identical이었다. 감사 후 재생성 계측은 7 sources, 12,130 units이다. 입력 PDF hash drift, 경로 traversal·symlink, locator–unit ID 불일치, source unit count 불일치, public/local pair 불일치는 fail-closed 처리한다.
 
 ## 3. Rule-to-evidence 전수 감사
 
-활성 규칙 165개 전부를 `rule_evidence_audit.json`에 등록했다. 현재 원문과 locator를 직접 대조한 `GCM-002`, `CCM-003`, `LEA-048` 3개만 `verified`이며, 162개는 `review_required` 또는 `unmapped`으로 차단한다. 즉 3/165의 낮은 커버리지는 현재 구현의 한계이자, 미검증 해설을 공식 근거로 위장하지 않는 안전 경계이다.
+활성 규칙 166개 전부를 `rule_evidence_audit.json`에 등록했다. 제출물·시험 규칙의 1차 자동 승격 62개 중 24개는 독립 entailment 감사에서 원문보다 의무를 확대한 것으로 판정하여 다시 차단했다. 이후 `CMAC-004`와 LEA 규칙 8개를 normative unit에 직접 대조했다. 최종 상태는 `verified` 50개, `review_required` 109개, `unmapped` 7개로, 116개는 공식 근거 경로에서 fail-closed한다. `verified` 커버리지 30.12%는 평가된 규칙 비율이지 전체 규칙 정확도가 아니다.
 
 기존의 item ID 첫 파일 선택 heuristic을 제거하고, CTR-001, CBC-LEA-005, LEA-001, COM-002, COM-003, COM-005의 명백한 오매핑을 제거했다. 서버 startup validator는 활성 규칙과 감사 레지스트리의 100% 일치, verified 항목의 권위·역할·적용범위·locator·source hash·unit ID를 검증한다. 저자 해설은 명시적 legacy opt-in에서만 자신의 rule에 한해 열린다.
 
@@ -24,12 +24,13 @@ L3 출력은 evidence unit ID, 원문 support span, applicability, exception 확
 
 ## 5. 실행 검증과 성능
 
-- 전체 backend: 독립 공격 감사 보완 후 `465 passed, 1 skipped`이다.
-- 실제 local index 최초 로드는 해당 실행에서 약 142 ms, 캐시 후 규칙별 조회는 약 0.3~0.7 ms였다.
-- GCM-002는 2개, CCM-003은 1개, LEA-048은 9개의 검증된 unit을 반환했다. CTR-001은 오매핑 제거 후 0개를 반환했다.
+- 전체 backend: LEA 매핑 배치 및 독립 공격 감사 기준 `540 passed, 1 skipped`이다.
+- 최종 50개 verified mapping의 exact unit set, source binding, bundle recall은 모두 1.0이고, 116개 unverified의 fail-closed rate도 1.0이다. 캐시 조회는 중앙값 약 0.399 ms, p95 약 0.473 ms였다.
+- GCM-002는 2개, CCM-003은 1개, CMAC-004는 4개, LEA-048은 18개의 검증된 unit을 반환한다. CTR-001은 오매핑 제거 후 0개를 반환한다.
 - router smoke에서 명시 AST 모순은 skip, 검증된 GCM 규칙은 retrieve, 미검증 CTR 규칙은 evidence-absent abstention으로 분기했다.
 - 공식 원문·API key·workstation 절대경로는 Git 대상 산출물에 포함하지 않았다.
-- 최종 재생성 산출물 SHA-256는 public `cd7e4b09eccad2ee001dbe1b18b737a4b71ef502172e77371b19d8b6b0a844de`, local `f43ec7bee5f0060545a29a4dd78c47a9bcdfd5e95f6de9ec021dad4d56dba8c6`이다. local 산출물은 재생성 감사용이며 Git에 포함하지 않는다.
+- footer 제거 전 12,462-unit 산출물 hash는 historical audit로만 유지한다. 현행 local 인덱스는 실행 환경에서 재생성 검증하며 Git에 포함하지 않는다.
+- 최종 12,130-unit 재생 산출물 SHA-256는 public `efcfb358caecbf14093a28ee480006fbba8b0dcb5c71eb27548b3e0c4db555e5`, local `e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846`이다. 50-rule retrieval 평가 산출물 SHA-256는 `138b48d9cd8fac3852c8c96962b7e3ff6508f2a40bb23d0554e2f01fe3ccf29b`이다.
 
 ## 6. 문헌과 설계 근거
 
