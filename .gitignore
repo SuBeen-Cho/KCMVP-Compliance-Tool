@@ -60,6 +60,8 @@ backend/docs/
 backend/scripts/
 !backend/scripts/
 backend/scripts/*
+!backend/scripts/build_blind_label_packet.py
+!backend/scripts/blind_labeling.py
 !backend/scripts/evaluate_real_sets.py
 !backend/scripts/fetch_cipher_candidates.py
 !backend/scripts/verify_cipher_vectors.py
