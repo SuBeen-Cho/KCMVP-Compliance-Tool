@@ -9,6 +9,7 @@ import yaml
 def test_lea_048_is_normative_only_for_movs_artifacts():
     provenance = mapping_service.get_provenance("LEA-048")
 
+    # MOVS 시험 산출물에 한해 원문 unit까지 검증되었다.
     assert mapping_service.is_audited_active_normative_rule("LEA-048")
     assert provenance["authority_class"] == "normative_test_interface"
     assert provenance["applies_to"] == ["LEA MOVS 시험 교환 산출물"]
@@ -39,11 +40,15 @@ def test_get_provenance_returns_copy_and_handles_legacy_mapping():
     first["status"] = "tampered"
 
     assert mapping_service.get_provenance("LEA-048")["status"] == "active"
-    assert mapping_service.get_provenance("LEA-001") == {}
+    assert mapping_service.get_provenance("LEA-001")["status"] == "review_required"
 
 
 def test_provenance_guideline_resolves_from_repository_ruleset():
-    path = mapping_service.get_guideline_path("LEA-048")
+    # 기존 해설 파일은 명시적 legacy opt-in에서만 열린다.
+    assert mapping_service.get_guideline_path("LEA-048") is None
+    path = mapping_service.get_guideline_path(
+        "LEA-048", allow_unverified_legacy=True
+    )
 
     assert path is not None
     assert path.name == "VER_001_KAT_파일_규격.md"
@@ -55,6 +60,19 @@ def test_retired_guideline_requires_explicit_opt_in():
     path = mapping_service.get_guideline_path("LEA-053", include_retired=True)
     assert path is not None
     assert path.name == "API_004_에러_반환_규격.md"
+
+
+def test_unverified_mapping_fails_closed_but_legacy_is_explicitly_available():
+    assert mapping_service.get_guideline_path("CTR-001") is None
+    assert mapping_service.get_evidence_audit("CTR-001")["review_required"] is True
+    assert not mapping_service.has_verified_normative_evidence("CTR-001")
+
+
+def test_removed_first_filename_heuristic_does_not_resolve_item_id_only():
+    # 경로가 명시되지 않으면 item_id 파일명 부분매칭을 하지 않는다.
+    assert mapping_service.get_guideline_path(
+        "CBC-LEA-005", allow_unverified_legacy=True
+    ) is None
 
 
 def test_lea_048_checks_only_discovered_movs_exchange_names(tmp_path):

@@ -447,9 +447,15 @@ L1 탐지 메시지: {l1_msg}{ast_evidence_section}
 - delegated_target: 다른 함수/파일에 위임되어 오탐이라고 판단한 경우 대상 함수 또는 파일. 없으면 빈 문자열
 - supporting_symbol: 동등 구현 또는 위임을 뒷받침하는 함수명/상수명/변수명. 없으면 빈 문자열
 - removal_risk: low, medium, high 중 하나. 오탐 제거 시 실제 위반을 놓칠 위험도
+- evidence_unit_ids: 판정에 사용한 [EVIDENCE id] 목록. RAG 근거가 없으면 []
+- supporting_spans: 인용 evidence unit에 실제로 존재하는 짧은 원문 span 목록
+- applicability: applicable, not_applicable, uncertain 중 하나
+- exceptions_checked: 확인한 예외 ID/설명 목록(없으면 [])
+- counterevidence: 반대 근거 ID/설명 목록(없으면 [])
+- evidence_entails_verdict: 인용 원문이 해당 판정을 직접 지지하는 경우만 true
 
 반드시 아래 JSON 형식의 객체만 출력하라:
-{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium"}}""".strip()
+{{"is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명 (2~3문장)", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium", "evidence_unit_ids": [], "supporting_spans": [], "applicability": "uncertain", "exceptions_checked": [], "counterevidence": [], "evidence_entails_verdict": false}}""".strip()
 
 
 def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
@@ -468,7 +474,9 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
         ctx_part = f"\n  규격 상세: {ai_ctx}" if ai_ctx else ""
         # 항목별 가이드라인 (pre-fetched, 없으면 빈 문자열)
         guide = entry.get("guideline_text", "")
-        guide_part = f"\n  가이드라인: {guide[:800]}" if guide else ""
+        # Evidence units are atomic: truncation would detach a quoted span from
+        # its unit id/hash and make deterministic citation verification invalid.
+        guide_part = f"\n  가이드라인: {guide}" if guide else ""
         ptype = v.get("pattern_type", "")
         semantics = _detection_semantics(v)
         missing_guide = (
@@ -550,9 +558,11 @@ def _build_batch_prompt(file_path: str, batch: List[Dict[str, Any]]) -> str:
 {items_text}
 
 반드시 아래 JSON 배열 형식만 출력하라 (입력과 동일한 순서, idx는 1부터):
+각 항목에 evidence_unit_ids, supporting_spans, applicability, exceptions_checked,
+counterevidence, evidence_entails_verdict를 반드시 포함하라. [EVIDENCE id]를
+임의로 만들지 말고 제공된 ID만 사용하라.
 [
-  {{"idx": 1, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium"}},
-  {{"idx": 2, "is_real_issue": true 또는 false, "confidence": 0~100 정수, "description": "한글 설명", "suggestion": "수정 방향 한 줄", "insufficient_context": false, "evidence_type": "equivalent_impl", "requirement_scope": "function", "concrete_evidence_line": "동등 구현 코드 한 줄", "delegated_target": "", "supporting_symbol": "함수명 또는 심볼명", "removal_risk": "low"}}
+  {{"idx": 1, "is_real_issue": true, "confidence": 90, "description": "한글 설명", "suggestion": "수정 방향", "insufficient_context": false, "evidence_type": "direct_violation", "requirement_scope": "file", "concrete_evidence_line": "", "delegated_target": "", "supporting_symbol": "", "removal_risk": "medium", "evidence_unit_ids": ["unit-id"], "supporting_spans": ["원문 span"], "applicability": "applicable", "exceptions_checked": [], "counterevidence": [], "evidence_entails_verdict": true}}
 ]""".strip()
 
 
@@ -661,6 +671,19 @@ def _make_l3_result(v: Dict[str, Any], obj: Dict[str, Any]) -> Dict[str, Any]:
         "l3_supporting_symbol": obj.get("supporting_symbol", ""),
         "l3_removal_risk": obj.get("removal_risk", ""),
         "detection_semantics": _detection_semantics(v),
+        "rag_route": v.get("rag_route"),
+        "rag_evidence_unit_ids": [
+            str(unit.get("unit_id") or unit.get("evidence_unit_id"))
+            for unit in (v.get("rag_evidence_bundle") or [])
+        ],
+        "l3_cited_evidence_unit_ids": list(obj.get("evidence_unit_ids") or []),
+        "l3_supporting_spans": list(obj.get("supporting_spans") or []),
+        "l3_applicability": obj.get("applicability"),
+        "l3_exceptions_checked": obj.get("exceptions_checked"),
+        "l3_counterevidence": obj.get("counterevidence"),
+        "l3_evidence_entails_verdict": obj.get("evidence_entails_verdict"),
+        "l3_grounding_verification": obj.get("grounding_verification"),
+        "l3_grounding_abstention_reason": obj.get("grounding_abstention_reason"),
     }
     # Frozen-snapshot experiments require an occurrence-level identity.  Keep it
     # opaque to the model but propagate it through the structured result.

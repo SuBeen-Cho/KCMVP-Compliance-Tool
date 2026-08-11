@@ -136,6 +136,30 @@ def test_preselected_path_preserves_exact_content_and_skips_second_selection(mon
     assert result[0]["detection_semantics"] == "prohibited_presence"
 
 
+def test_retrieval_required_candidate_cannot_be_precondition_rejected(monkeypatch):
+    monkeypatch.setattr(l3_judge, "L3_PROVIDER", "local")
+    monkeypatch.setattr(l3_judge, "_get_code_context", lambda *_a, **_k: "int plain;")
+    monkeypatch.setattr(
+        l3_judge, "_call_gemini_batch_with_retry",
+        lambda *_a, **_k: [{"idx": 1, "is_real_issue": True, "confidence": 90}],
+    )
+    candidate = {
+        "candidate_id": "routed-com-001", "file": "plain.c", "line": 1,
+        "rule_id": "COM-001", "pattern_type": "regex",
+        "detection_semantics": "prohibited_presence",
+        "rag_route": {"decision": "retrieve", "reason": "authority_or_applicability_required"},
+        "rag_evidence_bundle": [], "rag_guideline_text": "",
+    }
+    rejected = set()
+    results = l3_judge.run_l3_contextualizer(
+        {"files": [{"path": "plain.c", "content": "int plain;"}]},
+        [candidate], _preselected=True, _rejected_tracker=rejected,
+    )
+    assert rejected == set()
+    assert len(results) == 1
+    assert results[0]["rule_id"] == "COM-001"
+
+
 def test_occurrence_rejection_key_is_opt_in_and_legacy_default_remains(monkeypatch):
     monkeypatch.setenv("ABLATION_NO_DUAL_VERIFY", "1")
     violation = {

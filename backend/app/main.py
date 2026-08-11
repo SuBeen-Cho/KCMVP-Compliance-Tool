@@ -14,7 +14,9 @@ from app.config import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """서버 시작 시 RAG 인덱스 사전 로딩 — 첫 분석 요청 지연 제거."""
+    from app.services.evidence_mapping_validator import validate_evidence_mapping_registry
     from app.services.rag_service import preload as rag_preload
+    validate_evidence_mapping_registry()
     rag_preload()
     yield
 

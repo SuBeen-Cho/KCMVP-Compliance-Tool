@@ -42,8 +42,15 @@ def test_markdown_parser_keeps_top_level_body_without_h2():
 
 
 @pytest.mark.parametrize("rule_id", NEW_STANDARD_RULES)
-def test_new_standard_guidelines_are_available_to_direct_rag(rule_id):
-    chunks = rag_service.search_evidence(rule_id, top_k=2)
+def test_unverified_author_guidelines_fail_closed_by_default(rule_id):
+    assert rag_service.search_evidence(rule_id, top_k=2) == []
+
+
+@pytest.mark.parametrize("rule_id", NEW_STANDARD_RULES)
+def test_author_guideline_legacy_opt_in_is_rule_scoped(rule_id):
+    chunks = rag_service.search_evidence(
+        rule_id, top_k=2, allow_unverified_legacy=True
+    )
     assert chunks
     assert all(chunk["rule_id"] == rule_id for chunk in chunks)
     assert any(chunk["content"].strip() for chunk in chunks)

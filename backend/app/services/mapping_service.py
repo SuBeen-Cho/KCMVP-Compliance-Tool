@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 _MAPPING_PATH = Path(__file__).resolve().parent.parent.parent / "mapping" / "rule_to_guideline.json"
+_EVIDENCE_AUDIT_PATH = _MAPPING_PATH.with_name("rule_evidence_audit.json")
 
 # 로드 캐시 (싱글턴)
 _mapping: Dict[str, Any] = {}
+_evidence_audit: Dict[str, Any] = {}
 
 
 def _load() -> None:
@@ -57,37 +59,30 @@ def lookup_many(rule_ids: List[str]) -> Dict[str, Dict[str, Any]]:
     return {rid: _mapping.get(rid, {}) for rid in rule_ids}
 
 
-def get_guideline_path(rule_id: str, *, include_retired: bool = False) -> Optional[Path]:
+def get_guideline_path(
+    rule_id: str,
+    *,
+    include_retired: bool = False,
+    allow_unverified_legacy: bool = False,
+) -> Optional[Path]:
     """
     rule_id에 대응하는 guideline MD 파일의 절대경로 반환.
 
-    탐색 순서:
-      1. mapping의 item_ids → 실제 ruleset/ 폴더에서 item_id 패턴 검색
-      2. mapping의 guideline_file → backend/ 기준 상대경로 직접 조회
+    guideline_file에 기록된 명시적 경로만 조회한다. item_id를 파일명에
+    부분 대입하여 첫 번째 파일을 선택하던 legacy heuristic은 잘못된 근거를
+    주입할 수 있어 사용하지 않는다.
     """
     info = lookup(rule_id)
     provenance = info.get("provenance") or {}
     if provenance.get("status") == "retired" and not include_retired:
         return None
+    # A verified official evidence mapping does not promote the legacy Markdown
+    # into an official source. Author commentary always needs an explicit opt-in.
+    if provenance.get("status") != "retired" and not allow_unverified_legacy:
+        return None
     project_root = _MAPPING_PATH.parent.parent.parent  # Kcmvp_main/
 
-    # 1. item_ids 기반으로 실제 DB에서 파일 탐색
-    item_ids = info.get("item_ids", [])
-    db_dirs = [
-        project_root / "ruleset" / "docs",
-        project_root / "ruleset" / "LEA",
-    ]
-    for item_id in item_ids:
-        # item_id 형식: "AS02.09" → 파일명에 "AS02_09" 포함 패턴으로 검색
-        pattern = item_id.replace(".", "_")
-        for db_dir in db_dirs:
-            if not db_dir.exists():
-                continue
-            matches = list(db_dir.rglob(f"*{pattern}*.md")) + list(db_dir.rglob(f"*{pattern}*.MD"))
-            if matches:
-                return matches[0]  # 첫 번째 매칭 파일 반환
-
-    # 2. guideline_file 상대경로 직접 조회 (기존 방식, fallback)
+    # guideline_file 상대경로를 정확히 조회
     rel = info.get("guideline_file")
     if rel:
         candidates = (
@@ -119,12 +114,51 @@ def get_provenance(rule_id: str) -> Dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
+def _load_evidence_audit() -> None:
+    global _evidence_audit
+    if _evidence_audit:
+        return
+    try:
+        payload = json.loads(_EVIDENCE_AUDIT_PATH.read_text(encoding="utf-8"))
+        _evidence_audit = dict(payload.get("rules") or {})
+    except (OSError, ValueError, TypeError):
+        _evidence_audit = {}
+
+
+def get_evidence_audit(rule_id: str) -> Dict[str, Any]:
+    """rule→원문 감사 상태를 반환한다. 미확인은 암묵적 승인하지 않는다."""
+    _load_evidence_audit()
+    value = _evidence_audit.get(rule_id)
+    if not isinstance(value, dict):
+        return {
+            "status": "unmapped",
+            "review_required": True,
+            "evidence_unit_ids": [],
+        }
+    return dict(value)
+
+
+def has_verified_normative_evidence(rule_id: str) -> bool:
+    """실제 원문 evidence unit에 규범적으로 연결된 활성 규칙만 True다."""
+    audit = get_evidence_audit(rule_id)
+    return (
+        audit.get("status") == "verified"
+        and audit.get("authority_class") in {
+            "normative_standard", "normative_guidance", "normative_test_interface"
+        }
+        and audit.get("evidence_role") == "normative_requirement"
+        and bool(audit.get("evidence_unit_ids"))
+        and not audit.get("review_required", False)
+    )
+
+
 def is_audited_active_normative_rule(rule_id: str) -> bool:
-    """provenance 감사가 완료된 부분집합의 활성 규범 규칙인지 판단한다."""
+    """원문 evidence unit까지 검증된 활성 규범 규칙인지 판단한다."""
     provenance = get_provenance(rule_id)
     return (
         provenance.get("status") == "active"
         and provenance.get("evidence_role") == "normative_requirement"
+        and has_verified_normative_evidence(rule_id)
     )
 
 
@@ -136,6 +170,7 @@ def list_all_rule_ids() -> List[str]:
 
 def reload() -> None:
     """매핑 캐시 강제 재로드 (테스트/개발용)."""
-    global _mapping
+    global _mapping, _evidence_audit
     _mapping = {}
+    _evidence_audit = {}
     _load()

@@ -20,6 +20,7 @@ backend/.env
 storage/
 backend/storage/
 backend/data/chroma/
+backend/data/evidence/
 data/
 
 # RAG reference documents (external PDFs, not for public repo)

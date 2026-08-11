@@ -2,7 +2,10 @@
   "_comment": "rule_id → evidence mapping. item_ids는 2025 제출물 작성 안내서 AS 번호에만 사용하고, 외부 표준 식별자는 standard_ids에 기록한다. guidelines/*는 저자 작성 해설일 수 있으며 원문 표준을 대체하지 않는다.",
   "AES-001": {
     "item_ids": [],
-    "standard_ids": ["NIST.FIPS.197-upd1:2.1", "NIST.FIPS.197-upd1:Table3"],
+    "standard_ids": [
+      "NIST.FIPS.197-upd1:2.1",
+      "NIST.FIPS.197-upd1:Table3"
+    ],
     "kcmvp_ref": "NIST FIPS PUB 197-upd1 §2.1 및 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
     "l3_search_query": "AES 블록 크기 128비트 16바이트 명시값",
     "l3_required": false,
@@ -10,7 +13,9 @@
   },
   "AES-002": {
     "item_ids": [],
-    "standard_ids": ["NIST.FIPS.197-upd1:Table3"],
+    "standard_ids": [
+      "NIST.FIPS.197-upd1:Table3"
+    ],
     "kcmvp_ref": "NIST FIPS PUB 197-upd1 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
     "l3_search_query": "AES 키 길이 128 192 256비트 명시값",
     "l3_required": false,
@@ -18,7 +23,9 @@
   },
   "AES-003": {
     "item_ids": [],
-    "standard_ids": ["NIST.FIPS.197-upd1:Table3"],
+    "standard_ids": [
+      "NIST.FIPS.197-upd1:Table3"
+    ],
     "kcmvp_ref": "NIST FIPS PUB 197-upd1 §5 Table 3; KISA AES 검증시스템·벡터 TBD (2026-08-11 확인)",
     "l3_search_query": "AES 키 길이별 라운드 10 12 14 명시 대응",
     "l3_required": false,
@@ -34,23 +41,36 @@
     "guideline_file": "guidelines/COM-001_zeroization.md"
   },
   "COM-002": {
-    "item_ids": [
-      "AS09.19",
-      "AS09.20"
-    ],
-    "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12",
+    "item_ids": [],
+    "kcmvp_ref": "미확인 — AS09.19/09.20 및 LEA API 조항은 일반 오류 오라클 금지를 확립하지 않음",
     "l3_search_query": "에러 처리 에러 코드 통일 오라클 공격 방지",
     "l3_required": true,
-    "guideline_file": "guidelines/COM-002_error_handling.md"
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "COM-003": {
-    "item_ids": [
-      "AS09.19"
-    ],
-    "kcmvp_ref": "암호기술 구현안내서 §3.2",
+    "item_ids": [],
+    "kcmvp_ref": "미확인 — AS09.19는 하드코딩 키·IV 금지의 직접 근거로 사용하지 않음",
     "l3_search_query": "하드코딩 키 IV 금지 런타임 주입",
     "l3_required": true,
-    "guideline_file": "guidelines/COM-003_hardcoded_key.md"
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "COM-004": {
     "item_ids": [
@@ -62,14 +82,20 @@
     "guideline_file": "guidelines/COM-004_csprng.md"
   },
   "COM-005": {
-    "item_ids": [
-      "AS09.29",
-      "AS09.01"
-    ],
-    "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12~§4.3.15",
+    "item_ids": [],
+    "kcmvp_ref": "미확인 — LEA 참조 API 순서를 프로젝트 전체의 보편 의무로 일반화하지 않음",
     "l3_search_query": "온라인 API 호출 순서 init update final 스트리밍",
     "l3_required": true,
-    "guideline_file": "guidelines/COM-005_api_order.md"
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "COM-006": {
     "item_ids": [
@@ -82,7 +108,10 @@
   },
   "ARIA-001": {
     "item_ids": [],
-    "standard_ids": ["IETF.RFC5794:1.1", "IETF.RFC5794:2.3.1"],
+    "standard_ids": [
+      "IETF.RFC5794:1.1",
+      "IETF.RFC5794:2.3.1"
+    ],
     "kcmvp_ref": "KISA 검증대상 ARIA 목록; Informational RFC 5794 §§1.1, 2.3.1 교차사양",
     "l3_search_query": "ARIA 키 길이 16 24 32바이트 라운드 수 12 14 16",
     "l3_required": false,
@@ -90,297 +119,387 @@
   },
   "SEED-001": {
     "item_ids": [],
-    "standard_ids": ["IETF.RFC4269:1.2"],
+    "standard_ids": [
+      "IETF.RFC4269:1.2"
+    ],
     "kcmvp_ref": "KISA 검증대상 SEED 목록; Informational RFC 4269 §1.2 교차사양",
     "l3_search_query": "SEED 비밀키 128비트 16바이트 명시 배열",
     "l3_required": false,
     "guideline_file": "guidelines/SEED-001_key_size.md"
   },
   "LEA-001": {
-    "item_ids": [
-      "AS03.01",
-      "AS03.02"
-    ],
-    "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4",
+    "item_ids": [],
+    "kcmvp_ref": "LEA 표준 규격서 — 키 길이/블록 크기 원문 locator evidence unit 연결 필요",
     "l3_search_query": "LEA 키 길이 128 192 256 비트 블록 크기",
     "l3_required": false,
-    "guideline_file": "guidelines/LEA-001_key_size.md"
+    "guideline_file": "guidelines/LEA-001_key_size.md",
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "LEA-002": {
-    "item_ids": ["LEA.002"],
+    "item_ids": [
+      "LEA.002"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 키 길이 128 192 256 라운드 수",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-003": {
-    "item_ids": ["LEA.002"],
+    "item_ids": [
+      "LEA.002"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 키 길이 라운드 수 일치 검증",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-004": {
-    "item_ids": ["LEA.003"],
+    "item_ids": [
+      "LEA.003"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "32비트 워드 지향 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-005": {
-    "item_ids": ["LEA.004"],
+    "item_ids": [
+      "LEA.004"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "바이트 배열 워드 변환 리틀 엔디안",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_02_데이터_표현/LEA_004_바이트_워드_변환.md"
   },
   "LEA-006": {
-    "item_ids": ["LEA.005"],
+    "item_ids": [
+      "LEA.005"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "워드 비트 색인 방향 31~0",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_02_데이터_표현/LEA_005_비트_색인_규약.md"
   },
   "LEA-007": {
-    "item_ids": ["LEA.007"],
+    "item_ids": [
+      "LEA.007"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "비밀키 바이트 배열 크기 정의",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_007_비밀키_배열_구성.md"
   },
   "LEA-008": {
-    "item_ids": ["LEA.008"],
+    "item_ids": [
+      "LEA.008"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "내부 상태 변수 4개 워드 배열",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_008_내부_상태_변수.md"
   },
   "LEA-009": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "라운드키 6개 워드 192비트 구성",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-010": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 ARX 델타 라운드키 생성",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-011": {
-    "item_ids": ["LEA.009"],
+    "item_ids": [
+      "LEA.009"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "델타 상수 정의 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-012": {
-    "item_ids": ["LEA.009"],
+    "item_ids": [
+      "LEA.009"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "델타 상수 유도 근거 주석",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-013": {
-    "item_ids": ["LEA.011"],
+    "item_ids": [
+      "LEA.011"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 내부 상태 T 초기화",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_011_임시변수_초기화.md"
   },
   "LEA-014": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 모듈러 덧셈 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-015": {
-    "item_ids": ["LEA.009"],
+    "item_ids": [
+      "LEA.009"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "키 스케줄 델타 인덱싱 규칙",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-016": {
-    "item_ids": ["LEA.010"],
+    "item_ids": [
+      "LEA.010"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL1 회전 연산 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-017": {
-    "item_ids": ["LEA.010"],
+    "item_ids": [
+      "LEA.010"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL3 회전 연산 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-018": {
-    "item_ids": ["LEA.010"],
+    "item_ids": [
+      "LEA.010"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL6 회전 연산 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-019": {
-    "item_ids": ["LEA.010"],
+    "item_ids": [
+      "LEA.010"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL11 회전 연산 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-020": {
-    "item_ids": ["LEA.010"],
+    "item_ids": [
+      "LEA.010"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "ROL13 ROL17 회전 연산 192 256 비트",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_010_회전_연산_규격.md"
   },
   "LEA-021": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "LEA-128 라운드키 워드 연접 규칙",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-022": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "LEA-256 키 스케줄 워드 인덱싱",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-023": {
-    "item_ids": ["LEA.016", "LEA.019"],
+    "item_ids": [
+      "LEA.016",
+      "LEA.019"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암복호화 라운드키 역순 관계 검증",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-024": {
-    "item_ids": ["LEA.012"],
+    "item_ids": [
+      "LEA.012"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "워드 간 인터리빙 부재 키 스케줄",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_012_라운드키_생성_구조.md"
   },
   "LEA-025": {
-    "item_ids": ["LEA.009"],
+    "item_ids": [
+      "LEA.009"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.3",
     "l3_search_query": "암복호화 키 스케줄 상수 동일성",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_03_키_스케줄/LEA_009_델타_상수.md"
   },
   "LEA-026": {
-    "item_ids": ["LEA.013"],
+    "item_ids": [
+      "LEA.013"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 초기화 단계 X0 평문",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_013_암호화_초기화.md"
   },
   "LEA-027": {
-    "item_ids": ["LEA.014"],
+    "item_ids": [
+      "LEA.014"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROL9 회전 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-028": {
-    "item_ids": ["LEA.014"],
+    "item_ids": [
+      "LEA.014"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROR5 회전 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-029": {
-    "item_ids": ["LEA.014"],
+    "item_ids": [
+      "LEA.014"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 ROR3 회전 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-030": {
-    "item_ids": ["LEA.014"],
+    "item_ids": [
+      "LEA.014"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암호화 라운드 워드 스왑",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-031": {
-    "item_ids": ["LEA.014"],
+    "item_ids": [
+      "LEA.014"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "XOR ADD 결합 순서 라운드 함수",
     "l3_required": true,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_014_암호화_라운드_연산.md"
   },
   "LEA-032": {
-    "item_ids": ["LEA.016"],
+    "item_ids": [
+      "LEA.016"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "마지막 라운드 함수 구조 동일성",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-033": {
-    "item_ids": ["LEA.017"],
+    "item_ids": [
+      "LEA.017"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 초기화 단계 X0 암호문",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_017_복호화_초기화.md"
   },
   "LEA-034": {
-    "item_ids": ["LEA.018"],
+    "item_ids": [
+      "LEA.018"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 모듈러 뺄셈 연산",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-035": {
-    "item_ids": ["LEA.018"],
+    "item_ids": [
+      "LEA.018"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 라운드 역 워드 스왑",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-036": {
-    "item_ids": ["LEA.018"],
+    "item_ids": [
+      "LEA.018"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 역 회전 ROR9 ROL5 ROL3",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_05_복호화/LEA_018_복호화_역_회전.md"
   },
   "LEA-037": {
-    "item_ids": ["LEA.015"],
+    "item_ids": [
+      "LEA.015"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "최종 암호문 대입 XNr",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_015_암호문_최종_대입.md"
   },
   "LEA-038": {
-    "item_ids": ["LEA.015"],
+    "item_ids": [
+      "LEA.015"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.5",
     "l3_search_query": "복호화 최종 평문 대입",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_015_암호문_최종_대입.md"
   },
   "LEA-039": {
-    "item_ids": ["LEA.016"],
+    "item_ids": [
+      "LEA.016"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "암복호화 정합성 라운드트립 검증",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-040": {
-    "item_ids": ["LEA.016"],
+    "item_ids": [
+      "LEA.016"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.4",
     "l3_search_query": "라운드 루프 경계 조건 off-by-one 방지",
     "l3_required": true,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_04_암호화/LEA_016_암호화_전체_구조.md"
   },
   "LEA-041": {
-    "item_ids": ["LEA.022"],
+    "item_ids": [
+      "LEA.022"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.6",
     "l3_search_query": "부채널 공격 방지 S-box 배제 ARX",
     "l3_required": false,
@@ -396,42 +515,54 @@
     "guideline_file": "guidelines/LEA-042_timing_attack.md"
   },
   "LEA-043": {
-    "item_ids": ["LEA.003"],
+    "item_ids": [
+      "LEA.003"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "레지스터 스필링 방지 최적화 32비트",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-044": {
-    "item_ids": ["SEC.001"],
+    "item_ids": [
+      "SEC.001"
+    ],
     "kcmvp_ref": "암호모듈 구현안내서 §5.2 잔존정보 제거",
     "l3_search_query": "중요 보안매개변수 비밀키 메모리 제거 제로화",
     "l3_required": true,
     "guideline_file": "database/LEA/03_소스코드_구성/03_02_보안_코딩/SEC_001_잔존정보_제로화.md"
   },
   "LEA-045": {
-    "item_ids": ["LEA.003"],
+    "item_ids": [
+      "LEA.003"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.2",
     "l3_search_query": "32비트 워드 연산 원자성 보존",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_003_32비트_워드_연산.md"
   },
   "LEA-046": {
-    "item_ids": ["LEA.021"],
+    "item_ids": [
+      "LEA.021"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 이중 루프 100 1000 키 길이 갱신",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-047": {
-    "item_ids": ["LEA.021"],
+    "item_ids": [
+      "LEA.021"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "운영모드별 MCT 수행 규칙",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-048": {
-    "item_ids": ["VER.001"],
+    "item_ids": [
+      "VER.001"
+    ],
     "kcmvp_ref": "LEA 검증시스템 §6.2–§6.4",
     "l3_search_query": "LEA MOVS KAT MMT MCT REQUEST RESPONSE FACTS 파일명",
     "l3_required": false,
@@ -442,26 +573,37 @@
       "evidence_role": "normative_requirement",
       "source_title": "LEA 검증시스템",
       "source_locator": "§6.2–§6.4 KAT/MMT/MCT REQUEST·RESPONSE·FACTS 파일 절차",
-      "applies_to": ["LEA MOVS 시험 교환 산출물"],
-      "does_not_establish": ["일반 LEA 소스코드 파일명 규칙", "암호모듈 내부 API 명명 규칙"]
+      "applies_to": [
+        "LEA MOVS 시험 교환 산출물"
+      ],
+      "does_not_establish": [
+        "일반 LEA 소스코드 파일명 규칙",
+        "암호모듈 내부 API 명명 규칙"
+      ]
     }
   },
   "LEA-049": {
-    "item_ids": ["LEA.020"],
+    "item_ids": [
+      "LEA.020"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "Variable Key KAT 수행 구현",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-050": {
-    "item_ids": ["LEA.020"],
+    "item_ids": [
+      "LEA.020"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "Variable Text KAT 수행 구현",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-051": {
-    "item_ids": ["API.001"],
+    "item_ids": [
+      "API.001"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.1",
     "l3_search_query": "lea_set_key API 표준 명칭 인자",
     "l3_required": false,
@@ -472,12 +614,19 @@
       "evidence_role": "implementation_example",
       "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
       "source_locator": "§4.3.1",
-      "applies_to": ["매뉴얼이 설명하는 LEA 단독 C 배포 소스"],
-      "does_not_establish": ["모든 독자 LEA 구현의 lea_set_key 함수명 강제", "KCMVP 보안 위반 판정"]
+      "applies_to": [
+        "매뉴얼이 설명하는 LEA 단독 C 배포 소스"
+      ],
+      "does_not_establish": [
+        "모든 독자 LEA 구현의 lea_set_key 함수명 강제",
+        "KCMVP 보안 위반 판정"
+      ]
     }
   },
   "LEA-052": {
-    "item_ids": ["API.003"],
+    "item_ids": [
+      "API.003"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2",
     "l3_search_query": "LEA_KEY 구조체 정의",
     "l3_required": false,
@@ -488,12 +637,19 @@
       "evidence_role": "implementation_example",
       "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
       "source_locator": "§4.3.1",
-      "applies_to": ["매뉴얼이 설명하는 LEA 단독 C 배포 소스"],
-      "does_not_establish": ["모든 독자 LEA 구현의 LEA_KEY 타입명 강제", "KCMVP 보안 위반 판정"]
+      "applies_to": [
+        "매뉴얼이 설명하는 LEA 단독 C 배포 소스"
+      ],
+      "does_not_establish": [
+        "모든 독자 LEA 구현의 LEA_KEY 타입명 강제",
+        "KCMVP 보안 위반 판정"
+      ]
     }
   },
   "LEA-053": {
-    "item_ids": ["API.004"],
+    "item_ids": [
+      "API.004"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12",
     "l3_search_query": "에러 반환 음수 반환 규약",
     "l3_required": false,
@@ -504,257 +660,341 @@
       "evidence_role": "implementation_contract",
       "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
       "source_locator": "§4.3.12 lea_online_init",
-      "applies_to": ["매뉴얼의 lea_online_init 반환 계약"],
-      "does_not_establish": ["모든 LEA API의 음수 에러 반환 의무", "프로젝트 전체의 return -N 구문 존재 의무"]
+      "applies_to": [
+        "매뉴얼의 lea_online_init 반환 계약"
+      ],
+      "does_not_establish": [
+        "모든 LEA API의 음수 에러 반환 의무",
+        "프로젝트 전체의 return -N 구문 존재 의무"
+      ]
     }
   },
   "LEA-054": {
-    "item_ids": ["API.001"],
+    "item_ids": [
+      "API.001"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §3",
     "l3_search_query": "헤더 파일 분리 lea.h lea_locl.h",
     "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_001_핵심_함수명_규격.md"
   },
   "LEA-055": {
-    "item_ids": ["OPT.001"],
+    "item_ids": [
+      "OPT.001"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §5",
     "l3_search_query": "SIMD 가속 구현 파일 SSE NEON",
     "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_03_성능_최적화/OPT_001_SIMD_가속_구현.md"
   },
   "LEA-056": {
-    "item_ids": ["LEA.021"],
+    "item_ids": [
+      "LEA.021"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 연산 루프 구조 100 1000",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-057": {
-    "item_ids": ["LEA.021"],
+    "item_ids": [
+      "LEA.021"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §6 MCT",
     "l3_search_query": "MCT 키 갱신 수식 XOR 암호문",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_021_MCT_구조.md"
   },
   "LEA-058": {
-    "item_ids": ["VER.001"],
+    "item_ids": [
+      "VER.001"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "KAT REQUEST RESPONSE 파일 명칭",
     "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
   },
   "LEA-059": {
-    "item_ids": ["LEA.020"],
+    "item_ids": [
+      "LEA.020"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 MMT",
     "l3_search_query": "다중 블록 메시지 MMT 가변 블록",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-060": {
-    "item_ids": ["LEA.020"],
+    "item_ids": [
+      "LEA.020"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "기지 답안 KAT 참조구현값 일치성",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_06_자가시험_및_보안/LEA_020_KAT_벡터_규격.md"
   },
   "LEA-061": {
-    "item_ids": ["LEA.002"],
+    "item_ids": [
+      "LEA.002"
+    ],
     "kcmvp_ref": "LEA 표준 규격서(KS X 3246) §4.1",
     "l3_search_query": "LEA 허용 키 길이 128 192 256비트",
     "l3_required": false,
     "guideline_file": "database/LEA/01_블록암호_LEA/01_01_알고리즘_개요/LEA_002_키_길이_및_라운드.md"
   },
   "LEA-062": {
-    "item_ids": ["VER.001"],
+    "item_ids": [
+      "VER.001"
+    ],
     "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
     "l3_search_query": "KAT REQUEST RESPONSE 파일 처리 Variable Key Text",
     "l3_required": false,
     "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
   },
   "CBC-002": {
-    "item_ids": ["CBC.002"],
+    "item_ids": [
+      "CBC.002"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC 복호화 수식 IV XOR",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_002_복호화_수식.md"
   },
   "CBC-003": {
-    "item_ids": ["CBC.003"],
+    "item_ids": [
+      "CBC.003"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC IV 길이 관리 128비트",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_003_IV_길이_및_관리.md"
   },
   "CBC-004": {
-    "item_ids": ["CBC.004"],
+    "item_ids": [
+      "CBC.004"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC 패딩 오라클 방지 상수시간 비교",
     "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_004_패딩_오라클_방지.md"
   },
   "CBC-005": {
-    "item_ids": ["CBC.005"],
+    "item_ids": [
+      "CBC.005"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC SSP 관리 제로화 키 IV",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_005_SSP_관리_및_제로화.md"
   },
   "CBC-061": {
-    "item_ids": ["CBC.006"],
+    "item_ids": [
+      "CBC.006"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CBC LEA 전용 API lea_cbc 함수명",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_006_LEA_전용_API.md"
   },
   "CBC-LEA-004": {
-    "item_ids": ["CBC.003"],
+    "item_ids": [
+      "CBC.003"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
     "l3_search_query": "CBC IV 길이 관리 LEA",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_003_IV_길이_및_관리.md"
   },
   "CBC-LEA-005": {
-    "item_ids": ["CBC.005"],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
+    "item_ids": [],
+    "kcmvp_ref": "LEA MCT 키 갱신 요구 — 공식 LEA 검증시스템 원문 locator 재검토 필요",
     "l3_search_query": "CBC SSP 제로화 LEA",
     "l3_required": false,
-    "guideline_file": "database/LEA/02_운영모드/02_01_CBC/CBC_005_SSP_관리_및_제로화.md"
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "CTR-002": {
-    "item_ids": ["CTR.002"],
+    "item_ids": [
+      "CTR.002"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 카운터 유일성 재사용 금지",
     "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_002_카운터_유일성.md"
   },
   "CTR-003": {
-    "item_ids": ["CTR.003"],
+    "item_ids": [
+      "CTR.003"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 초기 카운터 길이 128비트",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_003_초기카운터_길이.md"
   },
   "CTR-004": {
-    "item_ids": ["CTR.004"],
+    "item_ids": [
+      "CTR.004"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR SSP 관리 제로화 키 카운터",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_004_SSP_관리_및_제로화.md"
   },
   "CTR-005": {
-    "item_ids": ["CTR.005"],
+    "item_ids": [
+      "CTR.005"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CTR LEA 전용 API lea_ctr 함수명",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_005_LEA_전용_API.md"
   },
   "CTR-LEA-001": {
-    "item_ids": ["CTR.001"],
+    "item_ids": [
+      "CTR.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR 암복호화 수식 카운터 블록",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_001_암복호화_수식.md"
   },
   "CTR-LEA-004": {
-    "item_ids": ["CTR.004"],
+    "item_ids": [
+      "CTR.004"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
     "l3_search_query": "CTR SSP 제로화 LEA",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_004_SSP_관리_및_제로화.md"
   },
   "CTR-LEA-005": {
-    "item_ids": ["CTR.005"],
+    "item_ids": [
+      "CTR.005"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3",
     "l3_search_query": "CTR LEA API",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_005_LEA_전용_API.md"
   },
   "CTR-LEA-006": {
-    "item_ids": ["CTR.006"],
+    "item_ids": [
+      "CTR.006"
+    ],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §5",
     "l3_search_query": "CTR SIMD 가속 병렬 처리",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_006_SIMD_가속.md"
   },
   "GCM-002": {
-    "item_ids": ["GCM.001"],
+    "item_ids": [
+      "GCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) p.27, p.29",
     "l3_search_query": "KCMVP GCM GMAC 인증값 태그 길이 112 128비트 14 16바이트",
     "l3_required": true,
     "guideline_file": "backend/guidelines/GCM-002_kcmvp_tag_length.md"
   },
   "GCM-005": {
-    "item_ids": ["GCM.001"],
+    "item_ids": [
+      "GCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM 추가 인증 데이터 AAD 처리",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "GCM-LEA-001": {
-    "item_ids": ["GCM.001"],
+    "item_ids": [
+      "GCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM LEA 기본 구조 AEAD",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "GCM-LEA-002": {
-    "item_ids": ["GCM.001"],
+    "item_ids": [
+      "GCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
     "l3_search_query": "GCM 인증 태그 생성 검증",
     "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
   },
   "CCM-002": {
-    "item_ids": ["CCM.002"],
+    "item_ids": [
+      "CCM.002"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM Nonce 유일성 재사용 방지",
     "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_002_Nonce_유일성.md"
   },
   "CCM-003": {
-    "item_ids": ["CCM.001"],
+    "item_ids": [
+      "CCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) p.33~p.36",
     "l3_search_query": "KCMVP CCM 인증값 태그 길이 14 16바이트 112 128비트",
     "l3_required": false,
     "guideline_file": "backend/guidelines/CCM-003_kcmvp_tag_length.md"
   },
   "CCM-004": {
-    "item_ids": ["CCM.001"],
+    "item_ids": [
+      "CCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM 태그 길이 MAC 검증",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CCM-005": {
-    "item_ids": ["CCM.001"],
+    "item_ids": [
+      "CCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM AAD 추가 인증 데이터 처리",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CCM-LEA-001": {
-    "item_ids": ["CCM.001"],
+    "item_ids": [
+      "CCM.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
     "l3_search_query": "CCM LEA 구현 AEAD",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
   },
   "CMAC-002": {
-    "item_ids": ["CMAC.002"],
+    "item_ids": [
+      "CMAC.002"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC 검증 로직 태그 비교",
     "l3_required": true,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_002_검증_로직.md"
   },
   "CMAC-003": {
-    "item_ids": ["CMAC.001"],
+    "item_ids": [
+      "CMAC.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC 보조키 생성 K1 K2",
     "l3_required": false,
     "guideline_file": "database/LEA/02_운영모드/02_05_CMAC/CMAC_001_보조키_생성.md"
   },
   "CMAC-LEA-001": {
-    "item_ids": ["CMAC.001"],
+    "item_ids": [
+      "CMAC.001"
+    ],
     "kcmvp_ref": "암호알고리즘 구현안내서 §4.5 CMAC",
     "l3_search_query": "CMAC LEA 보조키 생성 구조",
     "l3_required": false,
@@ -807,13 +1047,20 @@
     "guideline_file": "guidelines/CBC-001_iv.md"
   },
   "CTR-001": {
-    "item_ids": [
-      "AS09.07"
-    ],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
+    "item_ids": [],
+    "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) CTR 절 — 정확 locator 재검토 필요",
     "l3_search_query": "CTR 카운터 재사용 금지 초기값",
     "l3_required": false,
-    "guideline_file": "guidelines/CTR-001_counter.md"
+    "provenance": {
+      "status": "review_required",
+      "authority_class": "unverified",
+      "evidence_role": "unverified_claim",
+      "source_locator": null,
+      "applies_to": [],
+      "does_not_establish": [
+        "원문 evidence unit 검증 전 RAG 판정 근거"
+      ]
+    }
   },
   "CMAC-001": {
     "item_ids": [

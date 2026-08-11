@@ -11,6 +11,8 @@ ChromaDB 활성화 방법:
   환경변수 RAG_USE_CHROMA=true 설정
 """
 
+import hashlib
+import json
 import math
 import os
 import re
@@ -22,6 +24,11 @@ from app.services.mapping_service import (
     get_guideline_path,
     get_search_query,
     lookup,
+)
+from app.services.rag_grounding import (
+    normalize_evidence_bundle,
+    render_evidence_bundle,
+    route_rag,
 )
 
 
@@ -47,13 +54,73 @@ _chroma_collection = None
 # ChromaDB 보강 검색 캐시 (rule_id → List[Dict]) — 동일 룰 중복 쿼리 방지
 _chroma_boost_cache: Dict[str, List[Dict[str, Any]]] = {}
 
+_EVIDENCE_AUDIT = _PROJECT_ROOT / "backend" / "mapping" / "rule_evidence_audit.json"
+_DEFAULT_OFFICIAL_INDEX = _PROJECT_ROOT / "backend" / "data" / "evidence" / "official_units.local.json"
+_official_index_cache: Dict[str, Any] = {}
+
+
+def _official_index_path() -> Path:
+    configured = os.environ.get("KCMVP_OFFICIAL_EVIDENCE_INDEX", "").strip()
+    return Path(configured).resolve() if configured else _DEFAULT_OFFICIAL_INDEX
+
+
+def _load_verified_official_units(rule_id: str) -> List[Dict[str, Any]]:
+    """Load only the sealed units explicitly verified for ``rule_id``."""
+    try:
+        audit = json.loads(_EVIDENCE_AUDIT.read_text(encoding="utf-8"))
+        row = (audit.get("rules") or {}).get(rule_id) or {}
+        if row.get("status") != "verified":
+            return []
+        expected_ids = list(row.get("evidence_unit_ids") or [])
+        if not expected_ids:
+            return []
+        path = _official_index_path()
+        stat = path.stat()
+        cache_key = f"{path}:{stat.st_mtime_ns}:{stat.st_size}"
+        cached = _official_index_cache.get(cache_key)
+        if cached is None:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if payload.get("schema_version") != "1.0" or payload.get("collection") != "official_source":
+                return []
+            units, sources = payload.get("units"), payload.get("sources")
+            if not isinstance(units, list) or not isinstance(sources, list):
+                return []
+            source_hashes = {str(s.get("source_id")): str(s.get("sha256")) for s in sources}
+            by_id: Dict[str, Dict[str, Any]] = {}
+            for unit in units:
+                if not isinstance(unit, dict) or not isinstance(unit.get("text"), str):
+                    return []
+                text = unit["text"]
+                if hashlib.sha256(text.encode("utf-8")).hexdigest() != unit.get("text_sha256"):
+                    return []
+                by_id[str(unit.get("unit_id"))] = unit
+            cached = {"by_id": by_id, "source_hashes": source_hashes}
+            _official_index_cache.clear()
+            _official_index_cache[cache_key] = cached
+        locator = row.get("source_locator") or {}
+        source_id = str(locator.get("source_id") or "")
+        if cached["source_hashes"].get(source_id) != row.get("source_sha256"):
+            return []
+        selected = [cached["by_id"].get(unit_id) for unit_id in expected_ids]
+        if any(unit is None or unit.get("source_id") != source_id for unit in selected):
+            return []
+        # Trust status is attached only after registry/source/text verification;
+        # the serialized index itself cannot self-assert this field.
+        return [dict(unit, status="verified") for unit in selected if unit is not None]
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return []
+
 
 # ─────────────────────────────────────────────────────────────────
 # 1. Direct-RAG: guideline MD 파일 직접 로드
 # ─────────────────────────────────────────────────────────────────
-def _load_guideline_file(rule_id: str) -> Optional[str]:
-    """mapping을 통해 rule_id에 대응하는 guideline MD 파일 내용 반환."""
-    path = get_guideline_path(rule_id)
+def _load_guideline_file(
+    rule_id: str, *, allow_unverified_legacy: bool = False
+) -> Optional[str]:
+    """저자 작성 guideline은 명시적 legacy opt-in에서만 반환한다."""
+    path = get_guideline_path(
+        rule_id, allow_unverified_legacy=allow_unverified_legacy
+    )
     if path and path.exists():
         return path.read_text(encoding="utf-8")
     return None
@@ -314,6 +381,8 @@ def search_evidence(
     rule_id: str,
     query: Optional[str] = None,
     top_k: int = 3,
+    *,
+    allow_unverified_legacy: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     rule_id 기반으로 가이드라인 근거 청크 검색.
@@ -335,8 +404,22 @@ def search_evidence(
     """
     results: List[Dict[str, Any]] = []
 
-    # 1. Direct-RAG
-    guideline_content = _load_guideline_file(rule_id)
+    official = _load_verified_official_units(rule_id)
+    if official:
+        # The verified mapping is an audited evidence bundle, not a ranked
+        # similarity result.  Returning only top_k could silently drop a table
+        # row, direction, exception, or companion MOVS artifact requirement.
+        return official
+
+    # Author guideline Direct-RAG is a compatibility path, never official
+    # evidence. The normal path is fail-closed and official units are loaded by
+    # rag_grounding from the sealed official index.
+    if not allow_unverified_legacy:
+        return []
+
+    guideline_content = _load_guideline_file(
+        rule_id, allow_unverified_legacy=True
+    )
     if guideline_content:
         sections = _extract_sections_from_md(guideline_content)
         # 핵심 섹션 우선 반환 — 부분 문자열 매칭 (새 DB 파일: "2. 상세 요구사항 (Requirements)" 등)
@@ -354,7 +437,7 @@ def search_evidence(
                 "score": 1.0,  # Direct-RAG는 최고 신뢰도
             })
 
-    # 검색 쿼리 결정 (ChromaDB 보강 및 fallback 공용)
+    # Legacy opt-in이더라도 다른 규칙의 해설을 fallback으로 주입하지 않는다.
     search_q = query or get_search_query(rule_id)
 
     if results:
@@ -363,16 +446,7 @@ def search_evidence(
             results = _boost_with_chroma(results, rule_id, search_q, top_k)
         return results
 
-    # 2. ChromaDB (fallback)
-    if _USE_CHROMA:
-        info = lookup(rule_id)
-        item_ids = info.get("item_ids", [])
-        chroma_results = _chroma_search(search_q, item_ids, top_k)
-        if chroma_results:
-            return chroma_results
-
-    # 3. TF-IDF keyword fallback
-    return _tfidf_search(search_q, top_k)
+    return []
 
 
 def _boost_with_chroma(
@@ -488,7 +562,7 @@ def attach_evidence(
     return result
 
 
-def run_l2_rag_context(violations: list, max_chars: int = 800) -> list:
+def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
     """L2: RAG 기반 맥락 형성 — rule_id별 가이드라인 텍스트를 각 위반 객체에 주입.
 
     L1 위반 리스트를 받아 각 항목에 'rag_guideline_text' 필드를 추가한 뒤 반환.
@@ -500,35 +574,46 @@ def run_l2_rag_context(violations: list, max_chars: int = 800) -> list:
         for violation in result:
             violation["rag_guideline_text"] = ""
             violation["rag_ablation"] = True
+            violation["rag_route"] = {"decision": "skip", "reason": "controlled_ablation"}
+            violation["rag_evidence_bundle"] = []
         return result
     guideline_cache: dict = {}
-    unique_rule_ids = {v.get("rule_id") or "UNKNOWN" for v in result}
-    for rid in unique_rule_ids:
+    bundle_cache: dict = {}
+    retrieve_rule_ids = set()
+    for violation in result:
+        route = route_rag(violation)
+        violation["rag_route"] = route
+        if route["decision"] == "retrieve":
+            retrieve_rule_ids.add(violation.get("rule_id") or "UNKNOWN")
+    for rid in retrieve_rule_ids:
         try:
             chunks = search_evidence(rid, top_k=2)
             if chunks:
-                parts, total = [], 0
-                for c in chunks:
-                    title = c.get("title", "")
-                    content = c.get("content", "")
-                    piece = f"[{title}]\n{content}" if title else content
-                    parts.append(piece)
-                    total += len(piece)
-                    if total >= max_chars:
-                        break
-                guideline_cache[rid] = "\n\n".join(parts)[:max_chars]
+                bundle = normalize_evidence_bundle(chunks)
+                bundle_cache[rid] = bundle
+                guideline_cache[rid] = render_evidence_bundle(bundle, max_chars=max_chars)
             else:
+                bundle_cache[rid] = []
                 guideline_cache[rid] = ""
         except Exception as e:
             print(f"[L2][RAG] 가이드라인 fetch 실패 ({rid}): {e}")
             guideline_cache[rid] = ""
 
     loaded = sum(1 for g in guideline_cache.values() if g)
-    print(f"[L2][RAG] 가이드라인 로드: {loaded}건 (/{len(guideline_cache)})")
+    skipped = sum(1 for v in result if v["rag_route"]["decision"] == "skip")
+    print(f"[L2][RAG] evidence bundle 로드: {loaded}건 (/{len(guideline_cache)}), router skip={skipped}")
 
     for v in result:
         rid = v.get("rule_id") or "UNKNOWN"
-        v["rag_guideline_text"] = guideline_cache.get(rid, "")
+        if v["rag_route"]["decision"] == "retrieve":
+            v["rag_guideline_text"] = guideline_cache.get(rid, "")
+            v["rag_evidence_bundle"] = [dict(u) for u in bundle_cache.get(rid, [])]
+            if not v["rag_evidence_bundle"]:
+                v["rag_grounding_status"] = "evidence_absent"
+        else:
+            v["rag_guideline_text"] = ""
+            v["rag_evidence_bundle"] = []
+            v["rag_grounding_status"] = "not_required"
         v.pop("rag_ablation", None)
     return result
 

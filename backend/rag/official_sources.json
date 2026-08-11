@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "collection": "official_source",
+  "commentary_collection": "author_commentary",
+  "sources": [
+    {
+      "source_id": "KCMVP_GVI_PART2_2024_03",
+      "relative_path": "RAG_document/RAG_LEA/암호알고리즘+구현안내서(GVIPart2)(24.03).pdf",
+      "title": "암호알고리즘 구현안내서(GVI Part 2)",
+      "authority": "KCMVP",
+      "authority_tier": "normative_guidance",
+      "version": "2024.03",
+      "effective_date": "2024-03-01",
+      "expected_sha256": "c2487f8fd3fb22048f4676e79a352286adc85d278acbda93ba1958e30599d2d1",
+      "default_role": "requirement",
+      "applicability": {"scope": ["cryptographic_algorithm_implementation"]}
+    },
+    {
+      "source_id": "LEA_DATASHEET_KO",
+      "relative_path": "RAG_document/RAG_LEA/LEA표준 규격서_LEA A 128-Bit Block Cipher Datasheets-Korean.pdf",
+      "title": "LEA 128비트 블록암호 규격서",
+      "authority": "TTA",
+      "authority_tier": "standard",
+      "version": "local-artifact",
+      "effective_date": null,
+      "expected_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "default_role": "definition",
+      "applicability": {"algorithm": ["LEA"]}
+    },
+    {
+      "source_id": "LEA_SOURCE_MANUAL_V1",
+      "relative_path": "RAG_document/RAG_LEA/블록암호 LEA 소스코드 사용 매뉴얼(v1.0).pdf",
+      "title": "블록암호 LEA 소스코드 사용 매뉴얼",
+      "authority": "KISA",
+      "authority_tier": "reference_implementation_manual",
+      "version": "1.0",
+      "effective_date": null,
+      "expected_sha256": "e01614df6d9f04af344a7f9db2999f2fe923e876c9cdc7359b11fb16c30a59c6",
+      "default_role": "reference_example",
+      "applicability": {"algorithm": ["LEA"], "implementation_profile": ["distributed_reference_source"]}
+    },
+    {
+      "source_id": "LEA_DESIGN_PAPER",
+      "relative_path": "RAG_document/RAG_LEA/LEA논문_LEA A 128-Bit Block Cipher for Fast Encryption on Common Processors-English.pdf",
+      "title": "LEA: A 128-Bit Block Cipher for Fast Encryption on Common Processors",
+      "authority": "academic_publication",
+      "authority_tier": "research_reference",
+      "version": "local-artifact",
+      "effective_date": null,
+      "expected_sha256": "f9b52b82adc4c15bf059d53ca806738d2cecabb464822c30b167dfd7a243da8a",
+      "default_role": "rationale",
+      "applicability": {"algorithm": ["LEA"]}
+    },
+    {
+      "source_id": "KCMVP_GVI_PART1_2024_11",
+      "relative_path": "RAG_document/RAG_LEA/암호모듈+구현안내서(GVIPart1)(24.11).pdf",
+      "title": "암호모듈 구현안내서(GVI Part 1)",
+      "authority": "KCMVP",
+      "authority_tier": "normative_guidance",
+      "version": "2024.11",
+      "effective_date": "2024-11-01",
+      "expected_sha256": "77cf579ba064a9653cda0333af74c54fe576804e64325e4de6b8dbf1336c3a07",
+      "default_role": "requirement",
+      "applicability": {"scope": ["cryptographic_module_implementation"]}
+    },
+    {
+      "source_id": "LEA_VALIDATION_SYSTEM",
+      "relative_path": "RAG_document/RAG_LEA/03. LEA 검증시스템.pdf",
+      "title": "LEA 검증시스템",
+      "authority": "KISA",
+      "authority_tier": "normative_test_interface",
+      "version": "local-artifact",
+      "effective_date": null,
+      "expected_sha256": "743060e6690e2157c8955bbc57df70f7edbdcb245db8bcc06faa8a75cc8fed42",
+      "default_role": "test_procedure",
+      "applicability": {"algorithm": ["LEA"], "scope": ["validation_artifacts"]}
+    },
+    {
+      "source_id": "KCMVP_SUBMISSION_GUIDE_2025_09",
+      "relative_path": "RAG_document/RAG_docs/2025 최신_암호모듈_제출물_작성_안내서(2025.9.).pdf",
+      "title": "암호모듈 제출물 작성 안내서",
+      "authority": "KCMVP",
+      "authority_tier": "normative_guidance",
+      "version": "2025.09",
+      "effective_date": "2025-09-01",
+      "expected_sha256": "30e4adf58c2b8b3c00422352a6ac276a321717e5b12f2394bdd3443fcefa1c89",
+      "default_role": "submission_requirement",
+      "applicability": {"scope": ["submission_artifacts"]}
+    }
+  ]
+}

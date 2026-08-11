@@ -15,6 +15,7 @@ from app.services.llm.gemini_client import (
     GeminiConfigurationError,
 )
 from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
+from app.services.rag_grounding import verify_citation_bound_decision
 
 # 테스트 세트에서 L3가 오탐 제거로 FN을 유발하는 것이 확인된 ast 규칙들.
 # KISA blind test에서 이 규칙들은 FP가 아니므로 FP 제거 임계값을 높여 Recall 보호.
@@ -364,14 +365,25 @@ def _apply_l3_decision(
     def record(decision: str) -> None:
         if decision_records is None:
             return
-        decision_records.append({
+        record_item = {
             "candidate_id": v.get("candidate_id"),
             "initial_violation_probability": obj.get("_initial_violation_probability"),
             "rejudge_violation_probability": obj.get("_rejudge_violation_probability"),
             "score_provenance": "prompt_contract_confidence_proxy_not_calibrated_probability",
             "rejudge_applied": bool(obj.get("_rejudge_applied", False)),
             "decision": decision,
-        })
+        }
+        if v.get("rag_route") is not None:
+            record_item.update({
+                "rag_route": (v.get("rag_route") or {}).get("decision"),
+                "rag_route_reason": (v.get("rag_route") or {}).get("reason"),
+                "grounding_verified": (obj.get("grounding_verification") or {}).get("verified"),
+                "grounding_reason": (obj.get("grounding_verification") or {}).get("reason"),
+                "cited_evidence_unit_count": len(
+                    (obj.get("grounding_verification") or {}).get("cited_unit_ids") or []
+                ),
+            })
+        decision_records.append(record_item)
 
     if rule_id in _L3_NEVER_REMOVE:
         risk_tier = "D"
@@ -423,6 +435,23 @@ def _apply_l3_decision(
         score_relax = _missing_relax_allowed(v, obj, file_path)
 
     if ast_relax or score_relax:
+        grounding = verify_citation_bound_decision(v, obj)
+        obj["grounding_verification"] = grounding
+        if not grounding["verified"]:
+            obj["insufficient_context"] = True
+            obj["grounding_abstention_reason"] = grounding["reason"]
+            _mark_l3_decision(
+                obj, file_path=file_path, risk_tier=risk_tier,
+                removal_allowed=False,
+                blocked_reason=f"grounding_{grounding['reason']}",
+            )
+            results.append(_make_l3_result(v, obj))
+            record("retained_grounding_failed")
+            print(
+                f"[L3] 근거 검증 실패→유지 ({grounding['reason']}): "
+                f"{rule_id} @ {file_path}:{v.get('line')}"
+            )
+            return
         if _fp_removal_verified(v, obj, code_block, file_path):
             _mark_l3_decision(
                 obj, file_path=file_path, risk_tier=risk_tier,
@@ -569,20 +598,29 @@ def run_l3_contextualizer(
                 continue
             # Phase 0: 전제조건 검증 (방안 4) — 파일에 해당 기능 미구현 시 FP 확정
             if not _check_violation_precondition(v, content, file_path):
-                if _rejected_tracker is not None:
-                    _rejected_tracker.add(_reject_key(
-                        v, prefer_candidate_id=_rejected_candidate_ids,
-                    ))
-                if _decision_records is not None:
-                    _decision_records.append({
-                        "candidate_id": v.get("candidate_id"),
-                        "initial_violation_probability": None,
-                        "rejudge_violation_probability": None,
-                        "score_provenance": "not_available_precondition_rejection",
-                        "rejudge_applied": False,
-                        "decision": "rejected_precondition",
-                    })
-                continue
+                # A file-role regex cannot override a routed need for normative
+                # applicability evidence. Such candidates continue to L3 and
+                # are retained if citation verification cannot establish removal.
+                if (v.get("rag_route") or {}).get("decision") == "retrieve":
+                    print(
+                        f"[L3][PC] retrieval-required 후보는 사전제거를 거부: "
+                        f"{v.get('rule_id')} @ {file_path}"
+                    )
+                else:
+                    if _rejected_tracker is not None:
+                        _rejected_tracker.add(_reject_key(
+                            v, prefer_candidate_id=_rejected_candidate_ids,
+                        ))
+                    if _decision_records is not None:
+                        _decision_records.append({
+                            "candidate_id": v.get("candidate_id"),
+                            "initial_violation_probability": None,
+                            "rejudge_violation_probability": None,
+                            "score_provenance": "not_available_precondition_rejection",
+                            "rejudge_applied": False,
+                            "decision": "rejected_precondition",
+                        })
+                    continue
             # Phase 1: Structured Evidence — symbol_graph 데이터를 code_block 앞에 prepend
             structured_ev = _build_structured_evidence(v, symbol_graph)
             if structured_ev:
