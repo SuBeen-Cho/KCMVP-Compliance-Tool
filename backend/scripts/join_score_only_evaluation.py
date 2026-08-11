@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,10 @@ from experiments.score_only_evaluation import (  # noqa: E402
 
 def _load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _write(path: Path, value) -> None:
@@ -40,19 +45,36 @@ def main(argv=None) -> int:
     parser.add_argument("--heldout-fraction", type=float, default=.3)
     parser.add_argument("--minimum-recall", type=float, default=1.0)
     parser.add_argument("--bootstrap-iterations", type=int, default=500)
+    parser.add_argument("--bootstrap-seed", type=int, default=42)
+    parser.add_argument("--split-salt", default="kcmvp-calibration-v1")
     args = parser.parse_args(argv)
     inputs = {path.resolve() for path in [args.sidecar, args.gt, *args.score]}
     if args.output.resolve() in inputs:
         raise EvaluationJoinError("output must not overwrite an input artifact")
-    dataset = build_calibration_proxy(_load(args.sidecar), _load(args.gt),
-                                      [_load(path) for path in args.score])
+    sidecar, gt = _load(args.sidecar), _load(args.gt)
+    scores = [_load(path) for path in args.score]
+    dataset = build_calibration_proxy(sidecar, gt, scores)
     result = {
+        "status": "provisional_missing_paired_manifest_code_commit_binding",
         "claim_limit": dataset["claim_limit"],
+        "provenance": {
+            "snapshot_id": sidecar["snapshot_id"], "sidecar_id": sidecar["sidecar_id"],
+            "sidecar_file_sha256": _sha(args.sidecar), "gt_id": gt["gt_id"],
+            "gt_file_sha256": _sha(args.gt),
+            "score_artifacts": [{"artifact_id": value["artifact_id"],
+                                 "file_sha256": _sha(path)}
+                                for path, value in zip(args.score, scores)],
+            "threshold_grid": args.threshold, "window_grid": [None],
+            "heldout_fraction": args.heldout_fraction, "split_salt": args.split_salt,
+            "bootstrap_iterations": args.bootstrap_iterations,
+            "bootstrap_seed": args.bootstrap_seed,
+        },
         "paired_binary": paired_binary_report(dataset),
         "calibration": calibrate(
             dataset, thresholds=args.threshold, windows=[None],
             minimum_recall=args.minimum_recall, heldout_fraction=args.heldout_fraction,
-            bootstrap_iterations=args.bootstrap_iterations,
+            bootstrap_iterations=args.bootstrap_iterations, seed=args.bootstrap_seed,
+            split_salt=args.split_salt,
         ),
     }
     _write(args.output, result)
