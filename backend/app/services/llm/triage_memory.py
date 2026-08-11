@@ -10,7 +10,7 @@ CryptoLLM few-shot prompting (ESORICS 2024, F1=0.935) 기반.
 - FP 예시는 2개 이하로 유지 (가장 빈번한 오탐 패턴에 집중)
 - TP 예시는 1개로 유지 (위반 기준 명확화)
 - 코드 스니펫은 30줄 이하로 압축
-- violations_*, wrapper, 래퍼 파일 패턴을 FP 예시에 포함
+- 파일명이 아닌 호출 관계·데이터 소유권으로 래퍼와 부분 구현을 판별
 """
 
 from typing import Dict, List, Optional
@@ -26,7 +26,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
         "fp": [
             # FP-1: 래퍼 파일 — 키 제로화는 상위 caller에서 수행
             (
-                "// [FP] violations_cbc.c — 이 파일은 CBC 모드 래퍼. 키 버퍼 소유자가 아님.\n"
+                "// [FP] CBC 모드 래퍼 — 호출 관계상 키 버퍼 소유자가 아님.\n"
                 "int lea_cbc_encrypt(const uint8_t *key, ...) {\n"
                 "    LEA_KEY ctx;\n"
                 "    lea_set_key(&ctx, key, 128);\n"
@@ -65,8 +65,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
 
     # ─────────────────────────────────────────────────────
     # COM-002: 비안전 난수/RNG 사용
-    # 주요 FP: violations_com.c에서 L3가 래퍼 파일로 오판하여 TP를 제거하는 사례
-    # 핵심: violations_ 파일이라도 실제 비-CSPRNG 호출이 있으면 TP
+    # 핵심: 파일명과 무관하게 실제 비-CSPRNG 호출의 데이터 흐름으로 판단
     # ─────────────────────────────────────────────────────
     "COM-002": {
         "fp": [
@@ -87,15 +86,15 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
             ),
         ],
         "tp": [
-            # TP-1: violations_com.c라도 실제 비-CSPRNG로 키 생성하면 TP
+            # TP-1: 실제 비-CSPRNG로 키를 생성하면 TP
             (
-                "// [TP] violations_com.c — 파일명과 무관하게 실제 위반이면 TP\n"
+                "// [TP] 파일명과 무관하게 실제 비-CSPRNG 키 생성이면 TP\n"
                 "// 핵심 판단 기준: rand()/random()/time()으로 암호 키/IV를 생성하면 TP\n"
                 "uint8_t key[16];\n"
                 "for (int i = 0; i < 16; i++) key[i] = rand() % 256;  // ❌ 비-CSPRNG\n"
                 "lea_set_key(&ctx, key, 128);  // 실제 암호 함수에 사용\n"
-                "// is_real_issue=true: violations_ 파일명이어도 실제 비-CSPRNG 키 생성이면 위반\n"
-                "// 주의: 파일이 violations_com.c라고 해서 자동 FP가 아님. 코드를 반드시 확인."
+                "// is_real_issue=true: 실제 비-CSPRNG 출력이 암호 키에 흐르면 위반\n"
+                "// 주의: 파일명으로 TP/FP를 결정하지 말고 코드와 데이터 흐름을 확인."
             ),
         ],
     },
@@ -137,15 +136,15 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
 
     # ─────────────────────────────────────────────────────
     # LEA-016 ~ LEA-020: 키 스케줄 회전 (missing 타입)
-    # 주요 FP 원인: violations_*.c / wrapper 파일에는 키 스케줄이 없어서 발화
+    # 주요 FP 원인: 키 스케줄을 다른 구현에 위임한 래퍼에서 missing 발화
     # ─────────────────────────────────────────────────────
     "LEA-016": {
         "fp": [
             # FP-1: 모드 래퍼 파일 — 키 스케줄 없음이 정상
             (
-                "// [FP] violations_cbc.c — CBC 모드 래퍼, 키 스케줄 위임 구조\n"
+                "// [FP] CBC 모드 래퍼 — 호출 관계상 키 스케줄 위임 구조\n"
                 "// 이 파일에는 ROL1 패턴이 없지만, 키 스케줄은 lea.c 내부에서 수행됨\n"
-                "int violations_cbc_encrypt(const uint8_t *key, const uint8_t *iv,\n"
+                "int cbc_wrapper_encrypt(const uint8_t *key, const uint8_t *iv,\n"
                 "                           const uint8_t *pt, uint8_t *ct, int len) {\n"
                 "    LEA_KEY ctx;\n"
                 "    lea_set_key(&ctx, key, 128);  // LEA 내부에서 ROL1/ROL3 수행\n"
@@ -169,9 +168,9 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "LEA-017": {
         "fp": [
             (
-                "// [FP] 모드 래퍼 / violations_ 파일 — 키 스케줄 없음\n"
+                "// [FP] 키 스케줄을 다른 구현에 위임한 모드 래퍼\n"
                 "// ROL3 패턴 부재는 설계상 당연 (키 스케줄 위임)\n"
-                "// is_real_issue=false: 래퍼/위반시험 파일에서 ROL3 부재"
+                "// is_real_issue=false: 호출 관계로 위임이 확인된 래퍼의 ROL3 부재"
             ),
         ],
         "tp": [
@@ -203,7 +202,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
         "fp": [
             (
                 "// [FP] 키 스케줄 없는 래퍼 파일 — ROL11 부재 정상\n"
-                "// is_real_issue=false: 래퍼/위반시험 파일"
+                "// is_real_issue=false: 키 스케줄 위임이 확인된 래퍼"
             ),
         ],
         "tp": [
@@ -234,14 +233,14 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
 
     # ─────────────────────────────────────────────────────
     # LEA-026 ~ LEA-029: 암호화 초기화 / 라운드키 적용
-    # 주요 FP: violations_ 파일, scope:project 단일파일
+    # 주요 FP: 암호화 본체가 없는 래퍼에 scope:project missing 발화
     # ─────────────────────────────────────────────────────
     "LEA-026": {
         "fp": [
             (
-                "// [FP] violations_lea.c — 암호화 구현이 없는 위반시험 파일\n"
+                "// [FP] 호출 관계상 암호화 본체가 다른 파일에 있는 래퍼\n"
                 "// 이 파일에는 X[]=P[] 초기화 패턴이 없지만 실제 암호화는 lea.c에서\n"
-                "// is_real_issue=false: 위반시험 래퍼 파일에 암호화 구현 없음"
+                "// is_real_issue=false: 위임 근거가 확인된 래퍼에 암호화 본체 없음"
             ),
         ],
         "tp": [
@@ -259,7 +258,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "LEA-027": {
         "fp": [
             (
-                "// [FP] 래퍼/위반시험 파일 — 라운드키 적용 구현 없음\n"
+                "// [FP] 라운드키 적용을 다른 구현에 위임한 래퍼\n"
                 "// 실제 라운드키 적용은 내부 lea.c에서 수행됨\n"
                 "// is_real_issue=false: 라운드키 적용이 다른 파일에 위임"
             ),
@@ -276,7 +275,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "LEA-028": {
         "fp": [
             (
-                "// [FP] 래퍼/위반시험 파일 — 암호화 라운드 미구현\n"
+                "// [FP] 암호화 라운드를 다른 구현에 위임한 래퍼\n"
                 "// is_real_issue=false: 이 파일에 암호화 라운드 구현 없음"
             ),
         ],
@@ -292,7 +291,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "LEA-029": {
         "fp": [
             (
-                "// [FP] 래퍼/위반시험 파일 — 복호화 미구현\n"
+                "// [FP] 복호화를 다른 구현에 위임한 래퍼\n"
                 "// is_real_issue=false: 복호화가 다른 파일에 위임"
             ),
         ],
@@ -307,7 +306,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
 
     # ─────────────────────────────────────────────────────
     # LEA-031: 모듈러 덧셈/XOR 연산 순서 오류
-    # 주요 실수: violations_lea_round.c에서 연속된 라인의 동일 위반을 모두 FP로 제거
+    # 주요 실수: 연속된 라인의 동일 위반을 모두 FP로 제거
     # 핵심: 같은 규칙이 여러 라인에 걸쳐 탐지될 때, 각 인스턴스를 독립적으로 판정
     # ─────────────────────────────────────────────────────
     "LEA-031": {
@@ -321,11 +320,11 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
             ),
         ],
         "tp": [
-            # TP-1: violations_lea_round.c에서도 실제 라운드 연산 오류면 TP
+            # TP-1: 실제 라운드 연산 오류면 TP
             # 연속된 인스턴스(예: 189번, 191번 라인)라도 각각 독립적으로 TP일 수 있음
             (
                 "// [TP] 라운드 연산에서 XOR과 덧셈 순서 오류\n"
-                "// violations_lea_round.c라도 아래 패턴이 있으면 각 라인이 모두 TP\n"
+                "// 파일명과 무관하게 아래 패턴의 각 라인을 독립적으로 판정\n"
                 "X[0] = (X[1] + rk[0]) ^ X[3];  // ❌ 덧셈 후 XOR이어야 하나 순서 오류\n"
                 "X[1] = (X[2] + rk[1]) ^ X[0];  // ❌ 동일 오류가 다음 라인에도 존재\n"
                 "// is_real_issue=true: 연속 라인의 동일 위반은 각각 독립적 TP\n"
@@ -357,7 +356,7 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "LEA-038": {
         "fp": [
             (
-                "// [FP] violations_lea_round.c — 복호화 최종 출력이 없는 부분 구현\n"
+                "// [FP] 호출 관계상 최종 출력을 상위 함수에 위임한 라운드 부분 구현\n"
                 "// 이 파일은 라운드 함수만 구현, 최종 대입은 caller에서 수행\n"
                 "// is_real_issue=false: 최종 출력이 상위 함수에서 수행"
             ),
@@ -494,9 +493,9 @@ _TRIAGE_MEMORY: Dict[str, Dict[str, List[str]]] = {
     "CBC-001": {
         "fp": [
             (
-                "// [FP] violations_cbc.c — CBC XOR 체이닝 미구현이 이 파일의 목적\n"
-                "// 올바른 CBC는 lea_cbc.c에 있으며, 이 파일은 의도적 위반 시험 파일\n"
-                "// is_real_issue=false: 위반시험 파일에서 XOR 체이닝 의도적 누락"
+                "// [FP] 현재 파일은 CBC 본체를 호출만 하는 래퍼\n"
+                "// 호출 관계에서 XOR 체이닝이 lea_cbc.c에 구현되어 있음을 확인\n"
+                "// is_real_issue=false: 위임 근거가 확인된 래퍼에서 XOR 체이닝 부재"
             ),
         ],
         "tp": [

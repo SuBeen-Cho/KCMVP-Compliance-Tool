@@ -1029,6 +1029,39 @@ def _iter_com003_initializer_matches(content: str):
         yield _SourceSpanMatch(content, prefix.start(), end)
 
 
+_TAG_LENGTH_ASSIGNMENT_RE = re.compile(
+    r"(?i)\b(?:(?:gcm|gmac|ccm)_)?"
+    r"(?:tag_(?:len_)?(?:bytes?|bits?)|tag_len|t_len)"
+    r"\s*(?:=|:)\s*(\d+)\b"
+)
+
+
+def _iter_kcmvp_tag_length_matches(content: str, rule_id: str):
+    """Yield literal tag lengths that violate the selected KCMVP profile.
+
+    Explicit ``*_bits`` identifiers are interpreted as bits.  Explicit byte
+    identifiers and the LEA API names ``tag_len``/``t_len`` are bytes.  The
+    latter convention is documented by the LEA source API; guessing units for
+    arbitrary identifiers is deliberately avoided.
+    """
+    # Configuration examples in comments and diagnostics in string literals are
+    # not executable tag-length selections.  Mask them while preserving source
+    # offsets so the shared finding path can still report the original line.
+    masked = _mask_c_comments_and_literals(content)
+    for match in _TAG_LENGTH_ASSIGNMENT_RE.finditer(masked):
+        token = match.group(0).lower().split("=", 1)[0].split(":", 1)[0]
+        value = int(match.group(1))
+        is_bits = "bit" in token
+        if rule_id == "GCM-002":
+            valid = 112 <= value <= 128 if is_bits else 14 <= value <= 16
+        elif rule_id == "CCM-003":
+            valid = value in {112, 128} if is_bits else value in {14, 16}
+        else:
+            valid = True
+        if not valid:
+            yield match
+
+
 def _apply_rule_to_file(
     file_path: Path,
     content: str,
@@ -1169,11 +1202,12 @@ def _apply_rule_to_file(
         # COM-003처럼 여러 줄에 걸친 블록(하드코딩 배열 등)을 한 덩어리로 다루기 위해
         # 매칭 시작 줄(line)과 끝 줄(end_line)을 함께 기록한다.
         lines = content.splitlines()
-        matches = (
-            _iter_com003_initializer_matches(content)
-            if rule.get("id") == "COM-003"
-            else compiled.finditer(content)
-        )
+        if rule.get("id") == "COM-003":
+            matches = _iter_com003_initializer_matches(content)
+        elif rule.get("id") in {"GCM-002", "CCM-003"}:
+            matches = _iter_kcmvp_tag_length_matches(content, rule.get("id", ""))
+        else:
+            matches = compiled.finditer(content)
         for match in matches:
             try:
                 rel_path = file_path.resolve().relative_to(job_root.resolve())
@@ -1678,6 +1712,33 @@ def _apply_project_missing_rule(
         return []
 
     rule_id = rule.get("id")
+
+    # LEA-048은 시험 산출물의 '존재 완전성'이 아니라, 제출물에서
+    # 실제로 발견된 MOVS 교환 파일의 명명만 검사한다. 소스 저장소에
+    # .req/.rsp/.fax가 없는 것은 외부 제출 패키지에 있을 수 있으므로 위반이 아니다.
+    if rule_id == "LEA-048":
+        expected = re.compile(pattern)
+        exchange_name = re.compile(r"(?i)^LEA.*\.(?:req|rsp|fax)$")
+        violations = []
+        for item in search_files if search_files is not None else files:
+            display = item.get("display") or ""
+            basename = Path(display).name
+            if not exchange_name.fullmatch(basename) or expected.fullmatch(basename):
+                continue
+            violations.append({
+                "rule_id": rule_id,
+                "file": display,
+                "line": None,
+                "scope": "submission-package",
+                "message": rule.get("name") or "MOVS 시험 교환 파일 명명 적합성",
+                "severity": rule.get("severity", "high"),
+                "confidence": "후보",
+                "snippet": basename,
+                "needs_ai_review": True,
+                "pattern_type": "artifact_filename",
+            })
+        return violations
+
     found = False
     # 존재 여부 검색 대상: search_files 우선, 없으면 files
     _search = search_files if search_files is not None else files

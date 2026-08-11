@@ -57,7 +57,7 @@ def lookup_many(rule_ids: List[str]) -> Dict[str, Dict[str, Any]]:
     return {rid: _mapping.get(rid, {}) for rid in rule_ids}
 
 
-def get_guideline_path(rule_id: str) -> Optional[Path]:
+def get_guideline_path(rule_id: str, *, include_retired: bool = False) -> Optional[Path]:
     """
     rule_id에 대응하는 guideline MD 파일의 절대경로 반환.
 
@@ -66,6 +66,9 @@ def get_guideline_path(rule_id: str) -> Optional[Path]:
       2. mapping의 guideline_file → backend/ 기준 상대경로 직접 조회
     """
     info = lookup(rule_id)
+    provenance = info.get("provenance") or {}
+    if provenance.get("status") == "retired" and not include_retired:
+        return None
     project_root = _MAPPING_PATH.parent.parent.parent  # Kcmvp_main/
 
     # 1. item_ids 기반으로 실제 DB에서 파일 탐색
@@ -87,9 +90,13 @@ def get_guideline_path(rule_id: str) -> Optional[Path]:
     # 2. guideline_file 상대경로 직접 조회 (기존 방식, fallback)
     rel = info.get("guideline_file")
     if rel:
-        path = _MAPPING_PATH.parent.parent / rel
-        if path.exists():
-            return path
+        candidates = (
+            project_root / rel,
+            _MAPPING_PATH.parent.parent / rel,
+        )
+        for path in candidates:
+            if path.exists():
+                return path
 
     return None
 
@@ -104,6 +111,21 @@ def is_l3_required(rule_id: str) -> bool:
     """해당 rule_id가 L3 판정을 필요로 하는지 여부."""
     info = lookup(rule_id)
     return bool(info.get("l3_required", False))
+
+
+def get_provenance(rule_id: str) -> Dict[str, Any]:
+    """규칙 근거의 권위, 적용 범위 및 비추론 한계를 반환한다."""
+    value = lookup(rule_id).get("provenance", {})
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def is_audited_active_normative_rule(rule_id: str) -> bool:
+    """provenance 감사가 완료된 부분집합의 활성 규범 규칙인지 판단한다."""
+    provenance = get_provenance(rule_id)
+    return (
+        provenance.get("status") == "active"
+        and provenance.get("evidence_role") == "normative_requirement"
+    )
 
 
 def list_all_rule_ids() -> List[str]:

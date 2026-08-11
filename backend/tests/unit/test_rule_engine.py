@@ -38,9 +38,9 @@ class TestSEED001Pipeline:
         from experiments.inventory import build_rule_inventory
 
         inventory = build_rule_inventory(Path(__file__).resolve().parents[2] / "rules")
-        assert inventory["total_rules"] == 166
-        assert inventory["unique_rule_ids"] == 166
-        assert inventory["by_domain"]["algorithm"] == 59
+        assert inventory["total_rules"] == 165
+        assert inventory["unique_rule_ids"] == 165
+        assert inventory["by_domain"]["algorithm"] == 58
 
 
 class TestNewCipherEvidenceTraceability:

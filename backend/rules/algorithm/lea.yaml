@@ -450,28 +450,20 @@ rules:
 - id: LEA-048
   category: algorithm
   algorithm: LEA
-  name: KAT/MMT/MCT REQUEST 파일 형식 규격
+  name: MOVS 시험 교환 파일 명명 적합성
   pattern_type: missing
-  pattern: (?i)LEA(128|192|256)(ECB|CBC|CTR|OFB|CFB\d*)(KAT|MMT|MCT)\.(req|rsp|fax)
+  pattern: (?i)^LEA(128|192|256)(ECB|CBC|CTR|OFB|CFB(?:1|8|128))(KAT|MMT|MCT)\.(req|rsp|fax)$
   severity: high
-  description: REQUEST 파일(.req)은 키, IV(ECB 제외), 평문 또는 암호문을 포함하며, LEA[키길이][모드명][시험유형].req 형식의 파일명을 따라야 함
-  kcmvp_ref: LEA 검증시스템 §6.2
+  description: 제출물에서 발견된 LEA MOVS REQUEST/RESPONSE/FACTS 파일은 LEA[키길이][모드명][시험유형].(req|rsp|fax) 형식의 명명을 따라야 함. 해당 산출물이 하나도 없다는 사실만으로 위반을 발화하지 않음
+  kcmvp_ref: LEA 검증시스템 §6.2–§6.4
   scope: project
   check_in: ["test", "benchmark"]
 # LEA-049 제거: LEA-062로 통합 (Variable Key KAT — VariableKey/variable_key 변형 포함)
 # LEA-050 제거: LEA-062로 통합 (Variable Text KAT — VariableText/variable_text 변형 포함)
-# LEA-051 제거: KISA API 명칭 강제 불필요 — 로직(구조) 검사만 수행
-# LEA-052 제거: LEA_KEY 구조체 명칭 강제 — 다른 구현체에서 FP 발생
-- id: LEA-053
-  category: algorithm
-  algorithm: LEA
-  name: API 에러 발생 시 음수 반환 규약 준수
-  pattern_type: missing
-  pattern: return\s+-\d+
-  severity: medium
-  description: 에러 발생 시 규격대로 음수 값을 반환하여 호출부에 전달해야 함
-  kcmvp_ref: 블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12
-  scope: project
+# LEA-051 제거: 참조 배포본의 lea_set_key 명칭은 독자 구현의 보안 요구사항이 아님
+# LEA-052 제거: 참조 배포본의 LEA_KEY 타입명은 독자 구현에 강제할 수 없음
+# LEA-053 제거: §4.3.12는 lea_online_init의 반환 계약만 설명함. 프로젝트 전체에
+# return -N이 존재해야 한다는 missing 규칙은 적용 범위를 벗어나므로 비활성화함
 # LEA-054 제거: lea_locl.h 헤더 명칭 강제 — KISA 참조구현 전용 명칭
 # LEA-055 제거: lea_t_sse2 등 SIMD 파일명 강제 — 구현체별 명칭 다양
 - id: LEA-056

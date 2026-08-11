@@ -294,6 +294,44 @@ def _has_op(node, op: str) -> bool:
     return False
 
 
+def _looks_like_lea_arx_round(func_def) -> bool:
+    """Return whether the body itself supplies LEA-round structural evidence.
+
+    Names are useful routing evidence in production, but an evaluation mutation
+    may rename every symbol.  Two XORs, two modular additions and an explicit
+    rotation (or rotate helper call) are a conservative, name-independent
+    signature.  It deliberately does *not* identify thin wrappers.
+    """
+    if _is_thin_wrapper(func_def):
+        return False
+    ops = [node.op for node in _collect(func_def, c_ast.BinaryOp)]
+    calls = {name.lower() for name in _call_names_in(func_def)}
+    has_rotate = (
+        ("<<" in ops and ">>" in ops)
+        or any(token in name for name in calls for token in ("rol", "ror", "rotl", "rotr", "rotate"))
+    )
+    return ops.count("^") >= 2 and ops.count("+") >= 2 and has_rotate
+
+
+def _array_decl_dimensions(func_def) -> Dict[str, Optional[int]]:
+    """Collect local/parameter array dimensions without interpreting names."""
+    result: Dict[str, Optional[int]] = {}
+    for decl in _collect(func_def, c_ast.Decl):
+        typ = getattr(decl, "type", None)
+        if getattr(decl, "name", None) and isinstance(typ, c_ast.ArrayDecl):
+            result[decl.name] = _const_value(getattr(typ, "dim", None))
+    return result
+
+
+def _has_32_round_loop(func_def) -> bool:
+    """Return True only when a loop condition contains the LEA-256 bound 32."""
+    for loop in _collect(func_def, c_ast.For):
+        cond = getattr(loop, "cond", None)
+        if any(_const_value(node) == 32 for node in _collect(cond, c_ast.Constant)):
+            return True
+    return False
+
+
 def _call_names_in(node) -> Set[str]:
     """서브트리의 모든 FuncCall 이름 집합."""
     names: Set[str] = set()
@@ -1088,8 +1126,21 @@ def _check_lea_031(root, offset: int, filename: str,
     # LEA-031은 라운드 함수 XOR→ADD 순서를 검사. enc 외에 round/block/arx/lea 등
     # 다양한 함수명으로 구현될 수 있으므로 LEA-040과 동일하게 확장 키워드 사용.
     _LEA031_KW = _ENC_KW + _DEC_KW + ["round", "block", "arx", "lea"]
-    enc_funcs = [fd for fd in _funcs_matching(root, _LEA031_KW)
-                 if not _is_thin_wrapper(fd) and not _is_benchmark_func(fd)]
+    # Body-only routing is an evaluation experiment, not a production
+    # applicability decision.  Generic ARX/checksum code can have the same
+    # shallow operator counts, so callers must opt in explicitly.
+    experimental_routing = bool(
+        (symbol_graph or {}).get("experimental_name_invariant_routing", False)
+    )
+    enc_funcs = [
+        fd for fd in _get_func_defs(root)
+        if (
+            any(kw in _func_name(fd).lower() for kw in _LEA031_KW)
+            or (experimental_routing and _looks_like_lea_arx_round(fd))
+        )
+        and not _is_thin_wrapper(fd)
+        and not _is_benchmark_func(fd)
+    ]
     if not enc_funcs:
         return []
 
@@ -3164,7 +3215,8 @@ def _check_lea_006(root, offset: int, filename: str) -> Optional[List[Dict[str, 
 # ──────────────────────────────────────────────────────────────────
 
 
-def _check_lea_022(root, offset: int, filename: str) -> List[Dict[str, Any]]:
+def _check_lea_022(root, offset: int, filename: str,
+                   symbol_graph: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """LEA-022: LEA-256 키 스케줄에서 T[] 배열 인덱싱이 (6i+j)%8 패턴 사용 여부 확인.
 
     KS X 3246 §5.1.3: LEA-256 라운드키 생성 시 T 배열 워드 인덱스는
@@ -3178,7 +3230,34 @@ def _check_lea_022(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     """
     if not _HAS_PYCPARSER:
         return []
-    key_funcs = _funcs_matching(root, _KEY_KW)
+    # Names are valid routing evidence in normal operation.  The second branch
+    # permits a rename-invariance test using only the normative 8-word state and
+    # 6*i indexing structure from the LEA-256 schedule.
+    experimental_routing = bool(
+        (symbol_graph or {}).get("experimental_name_invariant_routing", False)
+    )
+    key_funcs = []
+    for fd in _get_func_defs(root):
+        func_name = _func_name(fd).lower()
+        named = any(kw in func_name for kw in _KEY_KW)
+        named_256_schedule = "256" in func_name and (
+            func_name.startswith("ks") or "sched" in func_name or "key" in func_name
+        )
+        dims = _array_decl_dimensions(fd)
+        has_eight_word_state = any(dim == 8 for dim in dims.values())
+        has_six_term = any(
+            node.op == "*"
+            and (_const_value(node.left) == 6 or _const_value(node.right) == 6)
+            for node in _collect(fd, c_ast.BinaryOp)
+        )
+        # LEA-022 applies only to the 256-bit schedule.  A name such as
+        # ``key_schedule`` alone does not distinguish the valid 192-bit T[6]
+        # schedule.  Require the normative eight-word state and 32-round bound.
+        applicable_256 = has_eight_word_state and _has_32_round_loop(fd)
+        if ((named or named_256_schedule) and applicable_256) or (
+            experimental_routing and applicable_256 and has_six_term
+        ):
+            key_funcs.append(fd)
     if not key_funcs:
         return []
 
@@ -3186,9 +3265,17 @@ def _check_lea_022(root, offset: int, filename: str) -> List[Dict[str, Any]]:
     for fd in key_funcs:
         fname = _func_name(fd)
         # T[] 배열 접근 수집 (subscript가 비상수 = 루프 내 인덱싱)
+        local_arrays = _array_decl_dimensions(fd)
+        is_named_schedule = any(kw in fname.lower() for kw in _KEY_KW)
+        # Preserve legacy precision for normally named implementations.  Only
+        # the structurally routed (renamed) branch generalizes the state name.
+        state_arrays = (
+            set() if is_named_schedule
+            else {name for name, dim in local_arrays.items() if dim == 8}
+        )
         t_refs = [
             a for a in _collect(fd, c_ast.ArrayRef)
-            if (_array_base(a) or "").upper() == "T"
+            if ((_array_base(a) or "").upper() == "T" or (_array_base(a) or "") in state_arrays)
             and not isinstance(a.subscript, c_ast.Constant)  # 상수 인덱스 제외
         ]
         if not t_refs:
@@ -3196,12 +3283,28 @@ def _check_lea_022(root, offset: int, filename: str) -> List[Dict[str, Any]]:
 
         # (6*i + j) % 8 패턴 확인:
         # subscript가 BinaryOp(%, right=8) 형태이면 준수
+        assignments = {
+            getattr(node.lvalue, "name", None): node.rvalue
+            for node in _collect(fd, c_ast.Assignment)
+            if isinstance(getattr(node, "lvalue", None), c_ast.ID)
+        }
+
         def _has_mod8_pattern(node) -> bool:
-            """subscript에 % 8 또는 %8 패턴 포함 여부"""
-            for op_node in _collect(node, c_ast.BinaryOp):
-                if op_node.op == "%" and _const_value(op_node.right) == 8:
-                    return True
-            return False
+            """Recognize (6*i+j) modulo 8, including the unsigned ``& 7`` form."""
+            if isinstance(node, c_ast.ID) and node.name in assignments:
+                node = assignments[node.name]
+            ops = list(_collect(node, c_ast.BinaryOp))
+            wraps_eight = any(
+                (op.op == "%" and _const_value(op.right) == 8)
+                or (op.op == "&" and _const_value(op.right) == 7)
+                for op in ops
+            )
+            has_six_factor = any(
+                op.op == "*"
+                and (_const_value(op.left) == 6 or _const_value(op.right) == 6)
+                for op in ops
+            )
+            return wraps_eight and has_six_factor
 
         mod8_refs = [r for r in t_refs if _has_mod8_pattern(r.subscript)]
         no_mod_refs = [r for r in t_refs if not _has_mod8_pattern(r.subscript)]

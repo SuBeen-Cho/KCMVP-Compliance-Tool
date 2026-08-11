@@ -1,5 +1,7 @@
 """Regression tests for prompt facts, guideline chunking, and L3 cache isolation."""
 
+from pathlib import Path
+
 import pytest
 
 from app.services import rag_service
@@ -8,6 +10,20 @@ from app.services.llm.prompt_templates import PROMPT_TEMPLATES
 
 
 NEW_STANDARD_RULES = ("AES-001", "AES-002", "AES-003", "ARIA-001", "SEED-001")
+
+
+def test_active_l3_prompts_do_not_encode_synthetic_answer_bearing_filenames():
+    llm_dir = Path(prompt_builder.__file__).resolve().parent
+    prompt_sources = (
+        llm_dir / "prompt_builder.py",
+        llm_dir / "prompt_templates.py",
+        llm_dir / "triage_memory.py",
+    )
+    forbidden = ("violations_", "violations.", "위반시험", "위반 시험")
+
+    for source in prompt_sources:
+        text = source.read_text(encoding="utf-8").lower()
+        assert not any(marker in text for marker in forbidden), source.name
 
 
 def test_lea_010_prompt_uses_standard_delta_constants():

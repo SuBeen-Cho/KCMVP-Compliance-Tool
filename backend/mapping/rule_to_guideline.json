@@ -432,10 +432,19 @@
   },
   "LEA-048": {
     "item_ids": ["VER.001"],
-    "kcmvp_ref": "KCMVP 검증 가이드 §5 KAT",
-    "l3_search_query": "KAT MMT MCT REQUEST 파일 형식 규격",
+    "kcmvp_ref": "LEA 검증시스템 §6.2–§6.4",
+    "l3_search_query": "LEA MOVS KAT MMT MCT REQUEST RESPONSE FACTS 파일명",
     "l3_required": false,
-    "guideline_file": "database/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md"
+    "guideline_file": "ruleset/LEA/03_소스코드_구성/03_04_검증시스템/VER_001_KAT_파일_규격.md",
+    "provenance": {
+      "status": "active",
+      "authority_class": "normative_test_interface",
+      "evidence_role": "normative_requirement",
+      "source_title": "LEA 검증시스템",
+      "source_locator": "§6.2–§6.4 KAT/MMT/MCT REQUEST·RESPONSE·FACTS 파일 절차",
+      "applies_to": ["LEA MOVS 시험 교환 산출물"],
+      "does_not_establish": ["일반 LEA 소스코드 파일명 규칙", "암호모듈 내부 API 명명 규칙"]
+    }
   },
   "LEA-049": {
     "item_ids": ["LEA.020"],
@@ -456,21 +465,48 @@
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.1",
     "l3_search_query": "lea_set_key API 표준 명칭 인자",
     "l3_required": false,
-    "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_001_핵심_함수명_규격.md"
+    "guideline_file": "ruleset/LEA/03_소스코드_구성/03_01_API_명명규칙/API_001_핵심_함수명_규격.md",
+    "provenance": {
+      "status": "retired",
+      "authority_class": "reference_implementation_manual",
+      "evidence_role": "implementation_example",
+      "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
+      "source_locator": "§4.3.1",
+      "applies_to": ["매뉴얼이 설명하는 LEA 단독 C 배포 소스"],
+      "does_not_establish": ["모든 독자 LEA 구현의 lea_set_key 함수명 강제", "KCMVP 보안 위반 판정"]
+    }
   },
   "LEA-052": {
     "item_ids": ["API.003"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.2",
     "l3_search_query": "LEA_KEY 구조체 정의",
     "l3_required": false,
-    "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_003_구조체_및_타입.md"
+    "guideline_file": "ruleset/LEA/03_소스코드_구성/03_01_API_명명규칙/API_003_구조체_및_타입.md",
+    "provenance": {
+      "status": "retired",
+      "authority_class": "reference_implementation_manual",
+      "evidence_role": "implementation_example",
+      "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
+      "source_locator": "§4.3.1",
+      "applies_to": ["매뉴얼이 설명하는 LEA 단독 C 배포 소스"],
+      "does_not_establish": ["모든 독자 LEA 구현의 LEA_KEY 타입명 강제", "KCMVP 보안 위반 판정"]
+    }
   },
   "LEA-053": {
     "item_ids": ["API.004"],
     "kcmvp_ref": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0) §4.3.12",
     "l3_search_query": "에러 반환 음수 반환 규약",
     "l3_required": false,
-    "guideline_file": "database/LEA/03_소스코드_구성/03_01_API_명명규칙/API_004_에러_반환_규격.md"
+    "guideline_file": "ruleset/LEA/03_소스코드_구성/03_01_API_명명규칙/API_004_에러_반환_규격.md",
+    "provenance": {
+      "status": "retired",
+      "authority_class": "reference_implementation_manual",
+      "evidence_role": "implementation_contract",
+      "source_title": "블록암호 LEA 소스코드 사용 매뉴얼(v1.0)",
+      "source_locator": "§4.3.12 lea_online_init",
+      "applies_to": ["매뉴얼의 lea_online_init 반환 계약"],
+      "does_not_establish": ["모든 LEA API의 음수 에러 반환 의무", "프로젝트 전체의 return -N 구문 존재 의무"]
+    }
   },
   "LEA-054": {
     "item_ids": ["API.001"],
@@ -642,10 +678,10 @@
   },
   "GCM-002": {
     "item_ids": ["GCM.001"],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.3 GCM",
-    "l3_search_query": "GCM GHASH 인증 연산 구조",
+    "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) p.27, p.29",
+    "l3_search_query": "KCMVP GCM GMAC 인증값 태그 길이 112 128비트 14 16바이트",
     "l3_required": true,
-    "guideline_file": "database/LEA/02_운영모드/02_08_GCM/GCM_001_기본_구조.md"
+    "guideline_file": "backend/guidelines/GCM-002_kcmvp_tag_length.md"
   },
   "GCM-005": {
     "item_ids": ["GCM.001"],
@@ -677,10 +713,10 @@
   },
   "CCM-003": {
     "item_ids": ["CCM.001"],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.4 CCM",
-    "l3_search_query": "CCM 구조 개요 CBC-MAC CTR",
+    "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) p.33~p.36",
+    "l3_search_query": "KCMVP CCM 인증값 태그 길이 14 16바이트 112 128비트",
     "l3_required": false,
-    "guideline_file": "database/LEA/02_운영모드/02_04_CCM/CCM_001_구조_개요.md"
+    "guideline_file": "backend/guidelines/CCM-003_kcmvp_tag_length.md"
   },
   "CCM-004": {
     "item_ids": ["CCM.001"],

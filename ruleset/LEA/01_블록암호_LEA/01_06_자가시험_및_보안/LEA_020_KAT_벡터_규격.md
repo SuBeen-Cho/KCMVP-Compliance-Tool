@@ -1,7 +1,8 @@
 ---
 category: "블록암호LEA"
 item_id: "LEA.020"
-requirements: ["LEA-048", "LEA-049", "LEA-050", "LEA-051", "LEA-052"]
+requirements: ["LEA-048"]
+evidence_items: ["LEA-KAT-VARIABLE-KEY", "LEA-KAT-VARIABLE-TEXT", "LEA-KAT-RESPONSE-CONTENT", "LEA-KAT-REFERENCE-MATCH"]
 ---
 
 # [LEA.020] KAT 벡터 규격
@@ -11,10 +12,12 @@ KAT(Known Answer Test, 기지 답안 검사)는 LEA 구현의 정확성을 검�
 
 ## 2. 상세 요구사항 (Requirements)
 - **LEA-048**: KAT REQUEST 파일은 `LEA[키길이][운영모드명]KAT.req` 형식의 파일명을 따르며, 키(Key), IV(ECB 모드 제외), 평문(PT) 또는 암호문(CT)을 포함해야 한다.
-- **LEA-049**: Variable Key KAT를 수행해야 한다. 고정 평문에 대해 키 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록한다.
-- **LEA-050**: Variable Text KAT를 수행해야 한다. 고정 키에 대해 평문 값을 변화시키며 암호화를 수행하고, 각 경우의 암호문을 RESPONSE 파일에 기록한다.
-- **LEA-051**: RESPONSE 파일(`*.rsp`)에는 REQUEST 파일의 모든 입력값과 함께 계산된 출력값(암호문 또는 평문)을 기재해야 한다.
-- **LEA-052**: KAT 검증 결과는 LEA 표준 규격서 부록 Ⅰ의 참조구현값과 정확히 일치해야 한다. 1비트라도 불일치하면 구현 오류로 판정한다.
+- **LEA-KAT-VARIABLE-KEY**: Variable Key KAT를 수행한다.
+- **LEA-KAT-VARIABLE-TEXT**: Variable Text KAT를 수행한다.
+- **LEA-KAT-RESPONSE-CONTENT**: RESPONSE 파일에 REQUEST 입력값과 계산된 출력값을 기재한다.
+- **LEA-KAT-REFERENCE-MATCH**: KAT 결과를 규정된 참조값과 대조한다.
+
+`LEA-051` 및 `LEA-052`는 활성 규칙 식별자와 충돌하던 기존 파생 문서의 표기이므로 사용하지 않는다.
 
 ## 3. 작성 예시 (Examples)
 ### 3.1. 참조구현값 (LEA 표준 규격서 부록 Ⅰ)

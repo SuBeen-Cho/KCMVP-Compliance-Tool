@@ -48,15 +48,6 @@ def _detect_file_mode(file_path: str) -> str:
         return ""
 
     # ── 파일 유형별 특수 힌트 (우선 적용) ──────────────────────
-    # violations_*.c 파일: 모드 래퍼 또는 위반 시험 파일
-    if "violations" in fname:
-        return (
-            f"\n[파일 역할 힌트] {fname}은(는) [위반 시험용 / 모드 래퍼 파일]로 추정됩니다.\n"
-            f"  → 키 스케줄(T 배열, ROL 회전, delta 상수) 등의 패턴이 없는 것은 설계상 당연할 수 있습니다.\n"
-            f"  → missing 타입 위반은 '이 파일에 해당 구현이 실제로 있어야 하는가'를 먼저 판단하십시오.\n"
-            f"  → 키 스케줄이 내부 LEA/ARIA 구현 파일에 위임된 경우 is_real_issue=false로 처리하십시오."
-        )
-
     # 시험/검증 파일: test, verify, kat, mct
     if any(kw in fname for kw in ("test", "verify", "kat", "mct")):
         return (
@@ -121,11 +112,11 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
         ],
         "LEA-013": [
             "T[], T[0..3], ctx->T, rk[], round_key[], key_state 등 어떤 이름이든 4개 워드 초기화 배열이 보이면 동등 구현으로 인정 → is_real_issue=false.",
-            "키 스케줄 함수가 없는 모드 래퍼 파일(violations_cbc.c, violations_ctr.c 등)에서는 T 초기화 부재가 당연 → is_real_issue=false.",
+            "호출 관계와 심볼 구조상 키 스케줄을 다른 구현에 위임하는 모드 래퍼라고 확인되면 T 초기화 부재는 해당 파일의 위반이 아님 → is_real_issue=false.",
         ],
         "LEA-044": [
             "memset(ctx, 0, ...) / memset(key, 0, ...) / volatile 루프 제로화가 cleanup/free/reset 함수 안에 있으면 is_real_issue=false.",
-            "이 파일이 부분 구현(helper, violations_*.c, 래퍼 파일)이라면 키 제로화는 호출자 또는 다른 파일에 위임되었을 수 있다 → confidence 50~70.",
+            "호출 관계와 데이터 소유권상 부분 구현·래퍼로 확인되면 키 제로화는 호출자 또는 소유 구현에 위임되었을 수 있다 → confidence 50~70.",
             "파일에 키를 보관하는 구조체/변수 자체가 없으면 is_real_issue=false.",
         ],
         # ── LEA 키 스케줄 회전 ──────────────────────────────────────
@@ -167,10 +158,6 @@ def _missing_rule_review_guidance(rule_id: str) -> str:
             "SIMD/벡터 연산을 쓰지 않는 순수 C 구현이면 일반적으로 원자성 위반 위험이 낮다 → confidence 50 이하 검토 권고.",
         ],
         # ── 기타 ───────────────────────────────────────────────────
-        "LEA-053": [
-            "함수 반환값이 음수(-1, -LEA_ERR_*, LEA_FAIL 등) 또는 0보다 작은 값인지 확인하라.",
-            "에러 처리를 호출자에게 위임하는 내부 helper 함수라면 음수 반환이 없어도 is_real_issue=false.",
-        ],
         "CTR-003": [
             "카운터/nonce가 DRBG, getrandom(), os.urandom(), /dev/urandom 등 안전한 소스에서 생성되면 is_real_issue=false.",
             "clock()/time() 등 예측 가능한 소스로 카운터를 초기화하면 is_real_issue=true.",
