@@ -18,6 +18,7 @@ from app.services.rag_service import _load_verified_official_units
 from experiments.full_stage_boundary_benchmark import benchmark
 from experiments.grounded_ai_ready_eval import _sha, select_exact_ai_ready
 from experiments.l1_snapshot import validate_snapshot
+from experiments.workspace_guard import guarded_output_path
 
 
 def _rule_counts(ids: set[str], by_digest: dict[str, dict[str, Any]]) -> dict[str, int]:
@@ -172,6 +173,7 @@ def main() -> None:
     args = parser.parse_args()
     result = evaluate(args.snapshot, args.prior_ledger, args.prior_public,
                       warm_runs=args.warm_runs)
+    args.output = guarded_output_path(args.output)
     args.output.write_text(
         json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
