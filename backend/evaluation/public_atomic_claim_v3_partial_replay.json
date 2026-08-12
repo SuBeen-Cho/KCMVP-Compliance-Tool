@@ -1,0 +1,23 @@
+{
+  "api_calls": 0,
+  "evaluation": "atomic_v3_offline_ledger_audit",
+  "limitation": "Canonical decisions are present, but missing contract bodies/stamps are not imputed; this audits stored structure outcomes rather than recomputing semantics.",
+  "missing_row_stamps": [
+    "experiment_spec_sha256",
+    "run_instance_sha256",
+    "universe_sha256"
+  ],
+  "population": 41,
+  "private_ledger_sha256": "1a9e385eecc218718194fb9a1b9d766720bc783f172101e45a7a236835b1c4ee",
+  "provenance_status": "legacy_provenance_partial",
+  "schema_version": "1.0",
+  "semantic_authorized": 0,
+  "stored_reasons": {
+    "atomic_claim_verdict_invalid": 3,
+    "atomic_entailment_unconfirmed": 14,
+    "independent_semantic_review_required": 16,
+    "program_fact_insufficient": 8
+  },
+  "structurally_valid_stored": 16,
+  "unique_candidate_bindings": 41
+}

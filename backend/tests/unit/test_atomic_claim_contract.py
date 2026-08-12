@@ -1,8 +1,13 @@
+import hashlib
+
+from app.services import atomic_claim_contract as atomic
 from app.services.atomic_claim_contract import atomic_prompt_contract, build_atomic_contract, verify_atomic_assessments
 
 
 def contract():
-    return {"claims": [{"claim_id":"R:C1", "polarity":"required",
+    return {"registry_schema_version": "1.0",
+        "registry_sha256": hashlib.sha256(atomic._REGISTRY.read_bytes()).hexdigest(),
+        "claims": [{"claim_id":"R:C1", "polarity":"required",
         "allowed_evidence_unit_ids":["u1"], "required_evidence_unit_ids":["u1"],
         "exceptions": []}]}
 
@@ -52,6 +57,12 @@ def test_invented_exception_and_stale_registry_fail_closed():
     assert verify_atomic_assessments(contract(), value)["reason"] == "atomic_exceptions_mismatch"
     c = {**contract(), "registry_schema_version":"1.0", "registry_sha256":"0"*64}
     assert verify_atomic_assessments(c, good())["reason"] == "atomic_registry_hash_mismatch"
+
+
+def test_missing_registry_provenance_never_gets_structural_validity():
+    legacy = {"claims": contract()["claims"]}
+    result = verify_atomic_assessments(legacy, good())
+    assert result == {"verified": False, "reason": "atomic_registry_schema_mismatch"}
 
 
 def test_unicode_prompt_injection_is_only_untrusted_warning():

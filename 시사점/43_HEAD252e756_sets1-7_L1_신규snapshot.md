@@ -26,3 +26,11 @@ commit `252e75637fa7d3997e3e1c61dc32f3e122c50eef`를 detached clean worktree에 
 과거 snapshot은 현재 snapshot 생성에 입력하지 않았다. 양쪽을 각각 strict validate한 뒤 aggregate count만 비교했다. candidate 수는 둘 다 265건이고 rule-frequency delta는 0건이다. 그러나 snapshot ID는 현재 `3e28c0…`, historical `3727dd…`로 다르며 두 자료를 하나의 성능 분모로 혼합하지 않는다.
 
 재현 집계 코드는 `backend/experiments/current_l1_snapshot_report.py`, 공개 결과는 `backend/evaluation/public_current_head_sets1_7_l1.json`에 기록한다. 지연시간은 단일 cold execution이므로 일반적 처리량으로 주장하지 않는다.
+
+## 현재 router 재평가
+
+신규 snapshot 265건을 현재 router에 입력한 API-free 결과는 deterministic 30건(11.32%), AI-ready 41건(15.47%), hold 194건(73.21%)이다. 과거 정책 재생 artifact의 30/8/227과 비교하면 deterministic은 동일하고 AI-ready는 33건 증가하며 hold는 33건 감소한다. 이는 mapping·router 정책 변화의 coverage 차이지 정확도 향상이 아니다.
+
+AI-ready universe는 `select_exact_ai_ready` 공통 함수와 동일한 순서로 봉인한다. 현재 atomic-v3 계약을 포함한 candidate hash-list 결합값은 `184c1390c2b3c5556b5579dbbf6885f9ab463e9e28511b358618695443dda17b`, candidate ID와 routed payload를 결합한 envelope hash-list 결합값은 `a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4`이다. 이 값은 이전 v2 프롬프트 실험의 hash가 아니며, atomic-v3 후보 universe alignment에 사용한다.
+
+router cold batch는 815.589ms, warm 5회 평균는 462.287ms, 중앙값은 455.065ms, nearest-rank p95는 586.585ms이다. 신규 snapshot의 router 공개 artifact는 `backend/evaluation/public_current_head_sets1_7_router.json`에 따로 기록한다.

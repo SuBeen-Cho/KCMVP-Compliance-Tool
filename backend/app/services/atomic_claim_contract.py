@@ -54,10 +54,12 @@ def build_atomic_contract(rule_id: str, evidence: list[dict[str, Any]]) -> dict[
 
 def verify_atomic_assessments(contract: dict[str, Any], decision: dict[str, Any]) -> dict[str, Any]:
     """Structurally verify model choices; semantic correctness remains independently audited."""
-    if contract.get("registry_schema_version") not in {None, "1.0"}:
+    if contract.get("registry_schema_version") != "1.0":
         return {"verified": False, "reason": "atomic_registry_schema_mismatch"}
     sealed = contract.get("registry_sha256")
-    if sealed is not None and sealed != hashlib.sha256(_REGISTRY.read_bytes()).hexdigest():
+    if not isinstance(sealed, str) or len(sealed) != 64:
+        return {"verified": False, "reason": "atomic_registry_hash_missing"}
+    if sealed != hashlib.sha256(_REGISTRY.read_bytes()).hexdigest():
         return {"verified": False, "reason": "atomic_registry_hash_mismatch"}
     expected = {c["claim_id"]: c for c in contract.get("claims", [])}
     if not expected:

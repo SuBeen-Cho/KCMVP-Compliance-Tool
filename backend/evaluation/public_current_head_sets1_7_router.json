@@ -1,0 +1,56 @@
+{
+  "ai_ready_universe": {
+    "atomic_v3_alignment_contract": "same select_exact_ai_ready function and ordered envelope binding",
+    "count": 41,
+    "ordered_candidate_hashes_sha256": "184c1390c2b3c5556b5579dbbf6885f9ab463e9e28511b358618695443dda17b",
+    "ordered_envelope_binding_hashes_sha256": "a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4"
+  },
+  "api_calls": 0,
+  "claim_limit": "Routing coverage and latency only; no LLM decisions or accuracy claim.",
+  "historical_aggregate_comparison": {
+    "comparison_only_not_merged": true,
+    "historical_snapshot_identity": "64c0055e702c2aea16e4188a7a613a64ce15adbfd252d8ce6ea676b2cb109dbf",
+    "stage_count_delta": {
+      "ai_ready": 33,
+      "deterministic": 0,
+      "hold": -33
+    }
+  },
+  "latency_ms": {
+    "cold_batch": 815.5887910397723,
+    "cold_per_candidate": 3.0776935510934806,
+    "warm_batch_mean": 462.28744980180636,
+    "warm_batch_median": 455.06533299339935,
+    "warm_batch_p95_nearest_rank": 586.5845409571193,
+    "warm_per_candidate_mean": 1.7444809426483259
+  },
+  "manifest": {
+    "git_dirty": true,
+    "git_head": "184a07234dc0c2274c2db2b816e219aa7a71cc77",
+    "mapping_tree_sha256": "5c30b456d4aec7dbd4edb364e61dc6cf7b04bbd508e39d4567123fe25959954b",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "rules_tree_sha256": "91c38f8f97d45508e5907680b34792065c31240646cc642a1ccfa6b9e30bff9d",
+    "snapshot_source_tree_sha256": "66023b843f81060bf00505cf8aff203c2ea08233bf672e2639100addcee2d31f"
+  },
+  "schema_version": "1.0",
+  "scope": "current_head_snapshot_current_router_api_free",
+  "snapshot": {
+    "candidate_count": 265,
+    "file_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b",
+    "snapshot_id": "3e28c077799f8f01231b73fd2f65747f9c8668982f53f77daebb39011e1479a7"
+  },
+  "stage_distribution": {
+    "ai_ready": {
+      "count": 41,
+      "ratio": 0.15471698113207547
+    },
+    "deterministic": {
+      "count": 30,
+      "ratio": 0.11320754716981132
+    },
+    "hold": {
+      "count": 194,
+      "ratio": 0.7320754716981132
+    }
+  }
+}

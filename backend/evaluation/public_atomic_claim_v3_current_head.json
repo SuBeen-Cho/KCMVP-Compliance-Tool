@@ -1,0 +1,22 @@
+{
+  "api_calls": 41,
+  "claim_limit": "Structural completeness only; semantic authorization remains zero pending independent review.",
+  "estimated_cost_usd": 0.0082643,
+  "evaluation": "current_head_ai_ready_atomic_v3",
+  "independently_semantically_authorized": 0,
+  "input_tokens": 47743,
+  "latency_ms_mean": 1317.8609512195121,
+  "output_tokens": 8725,
+  "population": 41,
+  "privacy": "aggregate_only",
+  "private_ledger_sha256": "1a9e385eecc218718194fb9a1b9d766720bc783f172101e45a7a236835b1c4ee",
+  "reasons": {
+    "atomic_claim_verdict_invalid": 3,
+    "atomic_entailment_unconfirmed": 14,
+    "independent_semantic_review_required": 16,
+    "program_fact_insufficient": 8
+  },
+  "schema_version": "1.0",
+  "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b",
+  "structurally_valid": 16
+}
