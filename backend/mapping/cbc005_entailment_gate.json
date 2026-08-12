@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "CBC-005",
+  "official_evidence_units": [
+    "KCMVP_GVI_PART2_2024_03:p0191:b004",
+    "KCMVP_GVI_PART2_2024_03:p0191:b005",
+    "KCMVP_GVI_PART2_2024_03:p0191:b006",
+    "KCMVP_GVI_PART2_2024_03:p0191:b007",
+    "KCMVP_GVI_PART2_2024_03:p0191:b008",
+    "KCMVP_GVI_PART2_2024_03:p0191:b009"
+  ],
+  "counterexample_units": [
+    "KCMVP_SUBMISSION_GUIDE_2025_09:p0026:b028"
+  ],
+  "directly_entailed": [
+    "CBC implementations must eliminate the opportunity for a padding-oracle attack.",
+    "Adding a MAC over ciphertext is required to prevent creation of valid attacker-controlled ciphertext."
+  ],
+  "not_directly_entailed": [
+    "Every padding failure must return one generic negative integer.",
+    "The existence of a named padding-error constant is itself a vulnerability.",
+    "A logging or return statement proves that an attacker can externally distinguish outcomes by value, message, timing, or state."
+  ],
+  "required_program_facts": [
+    "authenticated preprocessing and complete service boundary",
+    "CBC decryption and padding-validation applicability",
+    "attacker-observable output, status, timing, and state-transition channels",
+    "equivalence or distinguishability of malformed-padding and other failure paths",
+    "MAC or authenticated-encryption protection and verify-before-release ordering",
+    "interprocedural control flow and all return paths"
+  ],
+  "decision": "remain_fail_closed",
+  "lexical_error_name_is_sufficient": false,
+  "mapping_verified": false,
+  "production_authorized": false
+}
