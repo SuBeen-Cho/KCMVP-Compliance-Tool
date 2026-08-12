@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "rules": ["CBC-LEA-005", "LEA-057"],
+  "normative_scope": "LEA validation-system Monte Carlo test artifact",
+  "required_applicability_facts": [
+    "the analyzed function is part of the MCT harness or validation artifact",
+    "the active algorithm is LEA and mode is CBC",
+    "the applicable key-size variant and MCT iteration state are resolved",
+    "the ciphertext block used by the official update rule is dataflow-resolved"
+  ],
+  "does_not_apply_by_default_to": [
+    "ordinary production CBC encryption",
+    "arbitrary key evolution code",
+    "a function selected only because its name contains mct",
+    "a source selected only by fallback regex or nearby key XOR ciphertext text"
+  ],
+  "current_population": {
+    "CBC-LEA-005": 6,
+    "LEA-057": 2,
+    "shared_occurrences": 2
+  },
+  "authenticated_mct_harness_applicability": 0,
+  "decision": "remain_fail_closed",
+  "production_authorized": false
+}
