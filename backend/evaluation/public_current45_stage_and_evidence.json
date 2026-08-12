@@ -48,8 +48,16 @@
     "atomic_registry_sha256": "cffc1a4dbfcc875ed0d575b9bffb405c49641bcfb9a6668d607ef863e123fd9f",
     "historical_atomic_public_sha256": "43a398161102423dc790a8dbad9ba7dd6990290addc90e39261024e00669f802",
     "router_ai_ready_universe_sha256": "ecccd8e650412d5f6d02a67bdf3b52ca84a96e1e47276e805dabb94f17a9458a",
+    "router_manifest": {
+      "git_dirty": false,
+      "git_head": "1f7e50c9f8f1b80d3b206d4147eba78653ae4fef",
+      "mapping_tree_sha256": "b9e48b0d708a3218bad6dbea79fd2c0c10dd6a38af4c498b7da7ee0a97af83c7",
+      "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+      "rules_tree_sha256": "91c38f8f97d45508e5907680b34792065c31240646cc642a1ccfa6b9e30bff9d",
+      "snapshot_source_tree_sha256": "66023b843f81060bf00505cf8aff203c2ea08233bf672e2639100addcee2d31f"
+    },
     "rule_evidence_audit_sha256": "7e8ff1f876115ef8c4a3d537dce13f083115c33202447e5cabf8a40c33920359",
-    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
   },
   "schema_version": "1.0",
   "stage_distribution": {

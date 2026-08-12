@@ -6,13 +6,13 @@
 
 ## 깨끗한 L1 snapshot
 
-- 기준 commit: `bd440a17aceee3cd88eb31e36993348ca61459ba`
+- 기준 commit: `1f7e50c9f8f1b80d3b206d4147eba78653ae4fef`
 - source: 193개
 - L1 candidate: 265건
-- snapshot ID: `15fc808f1abf6fe63c7de857e1fd972b6aae85dc65a8de2b8f412f10d71952b8`
-- snapshot file SHA-256: `57d5cf0b6381ccf094ac54be6408aedab3ef86d3df62133a57657c90d50dde8d`
+- snapshot ID: `9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06`
+- snapshot file SHA-256: `4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2`
 - mode: `0600`
-- 동일 입력 2회 생성 file SHA-256: 완전 일치
+- clean HEAD에서 생성한 private snapshot과 공개 manifest의 file SHA-256: 일치
 
 private snapshot은 공개 저장소에 포함하지 않았다. 공개 artifact에는 집계, 결합 hash, 규칙군별 빈도만 남겼다.
 
@@ -50,6 +50,6 @@ private snapshot은 공개 저장소에 포함하지 않았다. 공개 artifact�
 
 ## 재현과 한계
 
-재현 코드는 `backend/experiments/current_router_universe_freeze.py`, 공개 결과는 `backend/evaluation/public_current_head_ai_ready45_freeze.json`이다. 외부 API 호출은 0건이다. 공개 평가 시점에는 병렬 개발 파일이 존재하여 artifact scope와 manifest에 dirty worktree가 기록된다. 반면 private snapshot 자체는 위 clean commit에서 두 번 동일하게 생성됐으며 router 의미 입력인 rules·mapping·official index hash는 공개 artifact에 별도 봉인했다.
+재현 코드는 `backend/experiments/current_router_universe_freeze.py`, 공개 결과는 `backend/evaluation/public_current_head_ai_ready45_freeze.json`이다. 외부 API 호출은 0건이다. private snapshot과 공개 평가는 모두 위 clean commit에서 실행했고, artifact scope는 `clean_current_head_router_universe_freeze_api_free`, router manifest의 `git_dirty`는 `false`다. router 의미 입력인 rules·mapping·official index hash와 source tree hash는 공개 artifact에 별도 봉인했다. 지연시간은 해당 clean 재실행에서 cold batch 735.338ms, warm 5회 평균 724.826ms였으며 일반 처리량 성능으로 일반화하지 않는다.
 
 다음 유료 평가나 프로그램 사실 검증은 이 45건 universe hash를 새 실험 사양에 명시해야 한다. 이전 41건과 점수를 병합하려면 새 4건을 동일 프로토콜로 독립 실행한 뒤 41/4 cohort를 분리 보고해야 한다.

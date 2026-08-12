@@ -54,12 +54,12 @@
     "semantic_authorization": "not_measured"
   },
   "latency_ms": {
-    "cold_batch": 574.7781249810942,
-    "cold_per_candidate": 2.1689740565324307,
-    "warm_batch_mean": 592.7958610118367,
-    "warm_batch_median": 595.3935410361737,
-    "warm_batch_p95_nearest_rank": 613.9461669954471,
-    "warm_per_candidate_mean": 2.2369655132522137
+    "cold_batch": 735.3380410349928,
+    "cold_per_candidate": 2.77486053220752,
+    "warm_batch_mean": 724.8263249872252,
+    "warm_batch_median": 764.3650830141269,
+    "warm_batch_p95_nearest_rank": 814.514915982727,
+    "warm_per_candidate_mean": 2.7351936791970766
   },
   "membership_delta": {
     "added_count": 4,
@@ -81,20 +81,20 @@
   },
   "privacy": "aggregate_only_no_candidate_id_source_or_snippet",
   "router_manifest": {
-    "git_dirty": true,
-    "git_head": "bd440a17aceee3cd88eb31e36993348ca61459ba",
+    "git_dirty": false,
+    "git_head": "1f7e50c9f8f1b80d3b206d4147eba78653ae4fef",
     "mapping_tree_sha256": "b9e48b0d708a3218bad6dbea79fd2c0c10dd6a38af4c498b7da7ee0a97af83c7",
     "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
     "rules_tree_sha256": "91c38f8f97d45508e5907680b34792065c31240646cc642a1ccfa6b9e30bff9d",
     "snapshot_source_tree_sha256": "66023b843f81060bf00505cf8aff203c2ea08233bf672e2639100addcee2d31f"
   },
   "schema_version": "1.0",
-  "scope": "dirty_worktree_current_router_universe_freeze_api_free",
+  "scope": "clean_current_head_router_universe_freeze_api_free",
   "snapshot": {
     "candidate_count": 265,
-    "file_sha256": "57d5cf0b6381ccf094ac54be6408aedab3ef86d3df62133a57657c90d50dde8d",
-    "git_commit": "bd440a17aceee3cd88eb31e36993348ca61459ba",
-    "snapshot_id": "15fc808f1abf6fe63c7de857e1fd972b6aae85dc65a8de2b8f412f10d71952b8",
+    "file_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2",
+    "git_commit": "1f7e50c9f8f1b80d3b206d4147eba78653ae4fef",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
     "source_count": 193
   }
 }
