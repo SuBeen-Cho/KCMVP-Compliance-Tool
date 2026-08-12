@@ -1,0 +1,31 @@
+{
+  "api_calls": 0,
+  "authenticated_context": {
+    "complete_service_boundary": 0,
+    "external_observability_proved": 0,
+    "mac_or_ae_ordering_proved": 0,
+    "timing_equivalence_proved": 0
+  },
+  "claim_limit": "Lexical triage only; named errors and logging statements are not semantic vulnerability proof.",
+  "evaluation": "frozen_cbc005_observability_availability_api_free",
+  "outcome": {
+    "production_authorized": 0,
+    "unknown_or_abstain": 5
+  },
+  "population": {
+    "complete_source": 5,
+    "occurrences": 5
+  },
+  "privacy": "aggregate_only",
+  "provenance": {
+    "gate_sha256": "ad207dacc9d4e4e0edb1c1a0933e3d0ec920a3e0524d547ed8b558972fe535a4",
+    "runner_sha256": "78c2eb726c4320e7d74e573f703ee303f0faf7c6d9de2f3deb8cb630cce10227",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
+  },
+  "schema_version": "1.0",
+  "untrusted_lexical_observations": {
+    "constant_definition_only": 2,
+    "logging_statement": 3
+  }
+}
