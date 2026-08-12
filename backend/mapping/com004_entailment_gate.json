@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "COM-004",
+  "review_scope": "official evidence versus the complete detector claim",
+  "evidence_units": [
+    "KCMVP_GVI_PART2_2024_03:p0009:b006",
+    "KCMVP_GVI_PART2_2024_03:p0103:b005",
+    "KCMVP_GVI_PART2_2024_03:p0103:b006"
+  ],
+  "entailed_claims": [
+    "Random values are used for cryptographic keys, nonces, and salts.",
+    "When a cryptographic implementation generates random values, a validated random-number generator is required."
+  ],
+  "not_exactly_entailed_claims": [
+    "Every listed C library function is categorically forbidden in every context.",
+    "Operating-system CSPRNG APIs listed by the author are KCMVP-approved substitutes.",
+    "The mere lexical occurrence of rand, srand, random, drand48, clock, or time proves cryptographic use."
+  ],
+  "program_fact_gate": {
+    "required": [
+      "authenticated preprocessing and build provenance",
+      "reachable def-use from a weak generator result to an audited cryptographic key, IV, nonce, salt, or signature-nonce sink",
+      "dead-code, test-vector, KAT, benchmark, logging, and non-cryptographic-use exclusions",
+      "alias and interprocedural call resolution"
+    ],
+    "lexical_match_is_sufficient": false
+  },
+  "decision": "remain_fail_closed",
+  "mapping_verified": false,
+  "extractor_production_authorized": false,
+  "production_authorized": false
+}
