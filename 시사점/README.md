@@ -47,3 +47,4 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 - [42_AI-ready_41건_canonical_verifier_v2_재실행.md](42_AI-ready_41건_canonical_verifier_v2_재실행.md): canonical decision 보존, 수정 verifier 실측 및 API 없는 replay 결과
 - [43_HEAD252e756_sets1-7_L1_신규snapshot.md](43_HEAD252e756_sets1-7_L1_신규snapshot.md): 현재 코드에 결합된 265건 L1 snapshot과 30/41/194 단계 분포
 - [44_atomic_claim_v3_구조계약_탐색실험.md](44_atomic_claim_v3_구조계약_탐색실험.md): 41건 atomic evidence 구조 준수 실험과 의미 승인 0건, partial provenance 한계
+- [45_program_fact_sealed_shadow_baseline.md](45_program_fact_sealed_shadow_baseline.md): 인증된 프로그램 사실 0/41 기준선과 LEA-011 보수적 extractor 경계

@@ -1,0 +1,26 @@
+{
+  "api_calls": 0,
+  "authenticated_fact_availability": 0,
+  "authenticated_fact_structural_validity": 0,
+  "candidate_universe_sha256": "a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4",
+  "claim_limit": "Availability/authenticity only; no semantic authorization or accuracy without independent GT.",
+  "evaluation": "current_head_ai_ready41_authenticated_program_fact_shadow",
+  "independently_semantically_authorized": 0,
+  "population": 41,
+  "privacy": "aggregate_only; runtime_secret_not_persisted",
+  "provenance": {
+    "atomic_registry_sha256": "05ad5608671acaf39ec7a4b14f24cea35728c404a817e63e9eb1dfdb2405d199",
+    "git_head": "1e44a7258c443dd35062a2e6a43f5e730dadb5fc",
+    "program_fact_contract_sha256": "c5e9bc3fea1b20076e430fded7b8f8bcbc8b118a0d0b986153c265c4d779d289",
+    "runner_sha256": "a63de9fa95b99d875f1d1c469c575375e93ed87f5f55a55c276d993780d4ff19",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "reasons": {
+    "sealed_program_fact_missing": 41
+  },
+  "schema_version": "1.0",
+  "source_observation_availability": {
+    "project_artifact_evidence_present": 0,
+    "snippet_present": 41
+  }
+}
