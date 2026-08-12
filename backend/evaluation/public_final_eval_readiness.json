@@ -23,6 +23,9 @@
         "archive_sha256": "3ff4c0913ed79598f00a84498f56ad6dd3c76ac6cd887bf02eba801f7ec51c84",
         "build_manifest_files": 0,
         "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 0,
+        "root_build_definitions": 0,
         "set": 1,
         "source_files": 4
       },
@@ -30,6 +33,9 @@
         "archive_sha256": "3ff5fb68a24511572649ea92435183e61b8cd80cdcd65323338d011cce6e4870",
         "build_manifest_files": 0,
         "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 0,
+        "root_build_definitions": 0,
         "set": 2,
         "source_files": 4
       },
@@ -37,6 +43,9 @@
         "archive_sha256": "710eb6bd25921b8bb28262b1488bd0661f43e4965040e6531662516a30a6e001",
         "build_manifest_files": 0,
         "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 0,
+        "root_build_definitions": 0,
         "set": 3,
         "source_files": 4
       },
@@ -44,36 +53,49 @@
         "archive_sha256": "99fcf97940355ac556b605e8c5c1a5853a8ece8c8699f53a8eda7877af27f0e0",
         "build_manifest_files": 0,
         "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 0,
+        "root_build_definitions": 0,
         "set": 4,
         "source_files": 4
       },
       {
         "archive_sha256": "ceaa8f4a71422fb2f424320890bcc6c2636c95c08036cf2e78b1650da88be370",
         "build_manifest_files": 4,
-        "compile_context_reconstructable": true,
+        "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 2,
+        "root_build_definitions": 0,
         "set": 5,
         "source_files": 59
       },
       {
         "archive_sha256": "0984ee6d2b4e4795759cb7e56e82790ad6fc70ff933716fbd209d9252ee3db8e",
         "build_manifest_files": 4,
-        "compile_context_reconstructable": true,
+        "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 2,
+        "root_build_definitions": 0,
         "set": 6,
         "source_files": 59
       },
       {
         "archive_sha256": "4043adc560940b2198ffaf2ed0a8eea69831f65c12c2c2a51972c875ff827cd0",
         "build_manifest_files": 4,
-        "compile_context_reconstructable": true,
+        "compile_context_reconstructable": false,
+        "compile_databases": 0,
+        "generated_build_files": 2,
+        "root_build_definitions": 0,
         "set": 7,
         "source_files": 59
       }
     ],
-    "sets_with_build_manifest": 3
+    "sets_with_build_files": 3,
+    "sets_with_build_manifest": 0
   },
   "observed": {
-    "authenticated_program_fact_coverage": 0.0,
-    "citation_entailment": 0.0
+    "authenticated_program_fact_coverage": 0,
+    "citation_entailment": 0
   },
   "ready_for_final_performance_evaluation": false,
   "schema_version": "1.0"

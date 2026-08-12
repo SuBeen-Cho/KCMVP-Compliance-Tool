@@ -6,6 +6,7 @@ from typing import Any
 from experiments.workspace_guard import guarded_output_path
 
 BUILD_NAMES={"compile_commands.json","makefile","cmakelists.txt","meson.build","build.ninja"}
+ROOT_DEFINITIONS={"cmakelists.txt","meson.build"}
 def sha(b:bytes)->str:return hashlib.sha256(b).hexdigest()
 def inspect_archives(paths:list[Path])->dict[str,Any]:
  rows=[]
@@ -13,10 +14,18 @@ def inspect_archives(paths:list[Path])->dict[str,Any]:
   with zipfile.ZipFile(path) as z:
    names=[PurePosixPath(x.filename) for x in z.infolist() if not x.is_dir()]
   build=[str(x) for x in names if x.name.lower() in BUILD_NAMES]
+  compile_db=[str(x) for x in names if x.name.lower()=="compile_commands.json"]
+  root_defs=[str(x) for x in names if len(x.parts)==1 and x.name.lower() in ROOT_DEFINITIONS]
+  generated=[str(x) for x in names if x.name.lower() in {"makefile","build.ninja"}]
   source=sum(x.suffix.lower() in {".c",".h",".cc",".cpp",".hpp"} for x in names)
+  reconstructable=bool(compile_db or root_defs)
   rows.append({"set":number,"archive_sha256":sha(path.read_bytes()),"source_files":source,
-               "build_manifest_files":len(build),"compile_context_reconstructable":bool(build)})
- return {"sets":rows,"set_count":len(rows),"sets_with_build_manifest":sum(x["compile_context_reconstructable"] for x in rows)}
+               "build_manifest_files":len(build),"root_build_definitions":len(root_defs),
+               "compile_databases":len(compile_db),"generated_build_files":len(generated),
+               "compile_context_reconstructable":reconstructable})
+ return {"sets":rows,"set_count":len(rows),
+         "sets_with_build_files":sum(bool(x["build_manifest_files"]) for x in rows),
+         "sets_with_build_manifest":sum(x["compile_context_reconstructable"] for x in rows)}
 def build(inventory:dict[str,Any],*,independent_gt:bool,authenticated_fact_coverage:float,
           citation_entailment:float,clone_disjoint_split:bool)->dict[str,Any]:
  if inventory.get("set_count")!=7:raise ValueError("seven_set_inventory_required")

@@ -26,3 +26,18 @@ def test_archive_inventory_distinguishes_source_only_and_build_context(tmp_path)
  assert inventory["set_count"]==7
  assert inventory["sets_with_build_manifest"]==3
  assert [row["compile_context_reconstructable"] for row in inventory["sets"]]==[False]*4+[True]*3
+
+def test_subdirectory_fragments_and_generated_makefiles_are_not_reconstructable(tmp_path):
+ paths=[]
+ for number in range(1,8):
+  path=tmp_path/f"set-{number}.zip"
+  with zipfile.ZipFile(path,"w") as archive:
+   archive.writestr("src/example.c","int example(void){return 0;}\n")
+   if number>=5:
+    archive.writestr("src/CMakeLists.txt","add_library(example example.c)\n")
+    archive.writestr("test/Makefile","CMAKE_SOURCE_DIR = /stale/absolute/path\n")
+  paths.append(path)
+ inventory=inspect_archives(paths)
+ assert inventory["sets_with_build_files"]==3
+ assert inventory["sets_with_build_manifest"]==0
+ assert all(not row["compile_context_reconstructable"] for row in inventory["sets"])
