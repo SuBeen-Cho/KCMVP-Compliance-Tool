@@ -1,0 +1,24 @@
+{
+  "api_calls": 0,
+  "authenticated_envelopes": 2,
+  "candidate_universe_sha256": "a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4",
+  "claim_limit": "Authenticated absence evidence is not usable preprocessing evidence and cannot authorize a verdict.",
+  "evaluation": "current_head_exact_ai_ready41_lea011_preprocessing_provenance",
+  "population": {
+    "exact_ai_ready": 41,
+    "lea011": 2
+  },
+  "privacy": "aggregate_only; source, identifiers, paths, commands, macros, and runtime secret are not persisted",
+  "production_authorized": 0,
+  "provenance": {
+    "contract_sha256": "a0dae8a0434202b4f1ef2362095b9a08f1d0cbae871ac437e619436fc06a6916",
+    "git_head_at_snapshot_lineage": "9eb04686be40ffc77dea4b04f64b52214087a3f3",
+    "runner_sha256": "0d753c370d8b8867fb41cef2acbcb6b1f94a277925ad1f85f53e8f0e4f14217c",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "reasons": {
+    "preprocessing_context_unavailable": 2
+  },
+  "schema_version": "1.0",
+  "usable_preprocessing_context": 0
+}
