@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "COM-004",
+  "population": 16,
+  "known_clone_groups": 10,
+  "label_unit": "clone_group_representative",
+  "blinded_view": "minimal_cue_controlled",
+  "labels": ["violation", "non_violation", "insufficient_context", "not_applicable"],
+  "required_program_facts": [
+    "weak generator output identity",
+    "reachable flow to a cryptographic key, IV, nonce, salt, or signature nonce",
+    "test, KAT, benchmark, logging, and non-cryptographic context exclusion",
+    "alias and interprocedural resolution status"
+  ],
+  "adjudication": {
+    "reviewers": 2,
+    "independent_first_pass": true,
+    "disagreement_resolution": "third reviewer or documented consensus",
+    "same_model_proxy_gt_forbidden": true
+  },
+  "split": {
+    "unit": "clone_group",
+    "label_independent_freeze_required": true,
+    "heldout_open_count": 1,
+    "candidate_overlap_forbidden": true,
+    "clone_group_overlap_forbidden": true
+  },
+  "metrics": [
+    "coverage",
+    "selective_accuracy",
+    "abstention_rate",
+    "false_positive_rate",
+    "false_negative_rate",
+    "group_bootstrap_confidence_interval"
+  ],
+  "acceptance_gates": {
+    "authenticated_preprocessing_coverage_min": 0.95,
+    "inter_reviewer_kappa_min": 0.8,
+    "citation_entailment_min": 0.95,
+    "production_false_positive_rate_max": 0.02
+  },
+  "status": "preregistered_not_executed",
+  "claim_limit": "No accuracy metric is permitted before independent human adjudication and authenticated program-fact coverage."
+}
