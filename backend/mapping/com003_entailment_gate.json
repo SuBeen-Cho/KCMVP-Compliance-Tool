@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "COM-003",
+  "official_evidence_units": [
+    "KCMVP_GVI_PART1_2024_11:p0076:b020",
+    "KCMVP_SUBMISSION_GUIDE_2025_09:p0082:b010",
+    "KCMVP_SUBMISSION_GUIDE_2025_09:p0101:b030",
+    "KCMVP_SUBMISSION_GUIDE_2025_09:p0102:b007"
+  ],
+  "directly_entailed": [
+    "A hardcoded integrity-verification key requires protective measures such as encoding, encryption, or distributed storage.",
+    "KAT vectors may be hardcoded from referenced standards."
+  ],
+  "not_directly_entailed": [
+    "Every literal array with eight hexadecimal values is a secret key or IV.",
+    "Every cryptographic key must be injected from a file, KMS, or HSM.",
+    "Variable names and nearby comments alone prove secret-key operational use."
+  ],
+  "required_program_facts": [
+    "authenticated preprocessing and build context",
+    "canonical object identity and initializer bytes",
+    "reachable use as an operative secret key, private key, IV, or CSP",
+    "KAT, test-vector, public algorithm constant, S-box, delta, and lookup-table exclusion",
+    "encoding, encryption, masking, or distributed-storage protection status",
+    "alias and interprocedural flow resolution"
+  ],
+  "decision": "remain_fail_closed",
+  "lexical_initializer_is_sufficient": false,
+  "mapping_verified": false,
+  "production_authorized": false
+}
