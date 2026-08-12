@@ -1,0 +1,23 @@
+{
+  "api_calls": 0,
+  "claim_limit": "Verifier replay only; no independent ground truth or accuracy claim.",
+  "evaluation": "offline_grounded_verifier_replay",
+  "experiment_spec_sha256": "85557363d882ffb4b273570d06b0ad7ab4dee26ac36896e50172e10f36c96673",
+  "mapping_sha256": "96fff8e74d9b7bca2dc6970b05fd21352b01ed2bef2068f0fe2c0924588495f6",
+  "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+  "population": 41,
+  "private_ledger_sha256": "8fbd8ea840f0567b4326c2be669f102ed4506da238a01e6eb36b2c79a07dc7b6",
+  "result_sha256": "628d978c0e363140674f799860be2ade5dc68826ab3b5f394660ab5574cb53c1",
+  "run_instance_sha256": "cd00aeb0939ca3ba064db39725351ae21c831009a27d9890243b61e87b81cdfc",
+  "runner_sha256": "108e660c357d018c23dba818a7253af3a2e1545e538bb7b144e9db18e14e1109",
+  "schema_version": "1.0",
+  "snapshot_sha256": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3",
+  "verifier_pass_count": 14,
+  "verifier_reasons": {
+    "citation_bound_verified": 14,
+    "citation_missing": 10,
+    "citation_unknown": 1,
+    "entailment_unconfirmed": 16
+  },
+  "verifier_source_sha256": "21af2a2fc9969ab6e10bf7b6d8e43d6327c32611df224600399f4294e7465789"
+}

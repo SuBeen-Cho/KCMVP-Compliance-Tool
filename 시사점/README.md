@@ -42,3 +42,6 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 3. 점수 계약과 counterfactual 재판정 coverage를 완성한 뒤 개발/보류 분리 threshold calibration을 수행한다.
 4. AES·SEED·ARIA의 정상/변조 corpus와 occurrence 정답을 구축하여 알고리즘별 confusion matrix를 산출한다.
 5. 실행 bundle의 manifest, 입력·출력 hash, 비용 단가 snapshot, 실행 로그를 함께 동결한 뒤에만 논문 성능 수치를 교체한다.
+# 추가 실험 기록
+
+- [42_AI-ready_41건_canonical_verifier_v2_재실행.md](42_AI-ready_41건_canonical_verifier_v2_재실행.md): canonical decision 보존, 수정 verifier 실측 및 API 없는 replay 결과

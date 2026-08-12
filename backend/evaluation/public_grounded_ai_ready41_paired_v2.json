@@ -1,0 +1,92 @@
+{
+  "claim_limit": "Routing utility and grounded-verifier behavior only; no independent GT and no accuracy claim.",
+  "conditions": {
+    "grounded": {
+      "estimated_cost_usd": 0.0054602,
+      "input_tokens": 31462,
+      "latency_ms_mean": 1303.1729512195122,
+      "latency_ms_median": 1241.182,
+      "output_tokens": 5785,
+      "raw_labels": {
+        "abstain": 5,
+        "non_violation": 32,
+        "not_applicable": 2,
+        "violation": 2
+      },
+      "request_count": 41,
+      "verified_final_labels": {
+        "abstain": 27,
+        "non_violation": 12,
+        "violation": 2
+      },
+      "verifier_pass_count": 14,
+      "verifier_reasons": {
+        "citation_bound_verified": 14,
+        "citation_missing": 10,
+        "citation_unknown": 1,
+        "entailment_unconfirmed": 16
+      }
+    },
+    "no_rag": {
+      "estimated_cost_usd": 0.0023019,
+      "input_tokens": 9863,
+      "latency_ms_mean": 1185.3914390243904,
+      "latency_ms_median": 1081.731,
+      "output_tokens": 3289,
+      "raw_labels": {
+        "abstain": 39,
+        "not_applicable": 2
+      },
+      "request_count": 41,
+      "verified_final_labels": {
+        "abstain": 41
+      },
+      "verifier_pass_count": 0,
+      "verifier_reasons": {
+        "evidence_not_supplied": 41
+      }
+    }
+  },
+  "execution": {
+    "conditions": [
+      "no_rag",
+      "grounded"
+    ],
+    "duplicate_request_count": 0,
+    "physical_api_request_count": 82,
+    "physical_estimated_cost_usd": 0.0077621,
+    "physical_input_tokens": 41325,
+    "physical_output_tokens": 9074,
+    "repeats": 1,
+    "retry_count": 0,
+    "unique_analyzed_request_count": 82
+  },
+  "experiment": "historical_265_exact_ai_ready41_paired",
+  "model": "gemini-2.5-flash-lite",
+  "population": {
+    "exact_ai_ready": 41,
+    "historical_candidates": 265,
+    "ordered_candidate_hashes_sha256": "c6dae89018738cbf72c7872514c2ac375e3173db69d682eaafb6044005c98c92",
+    "ordered_envelope_binding_hashes_sha256": "10a6ee289831d668cc79c468e0c9b78a62ccf39a268a1d60fe7da071da7485c4"
+  },
+  "privacy": "aggregate_only; prompts, responses, occurrence IDs and source text are private mode-0600",
+  "prompt_version": "ai-ready-grounded-paired-v2",
+  "provenance": {
+    "git_head": "46d684bf846156923d27677ca3b3a47475709399",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "runner_sha256": "108e660c357d018c23dba818a7253af3a2e1545e538bb7b144e9db18e14e1109",
+    "snapshot_sha256": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3"
+  },
+  "raw_label_transitions": {
+    "abstain->abstain": 5,
+    "abstain->non_violation": 30,
+    "abstain->not_applicable": 2,
+    "abstain->violation": 2,
+    "not_applicable->non_violation": 2
+  },
+  "offline_replay_result_sha256": "628d978c0e363140674f799860be2ade5dc68826ab3b5f394660ab5574cb53c1",
+  "result_sha256": "66d8490fbcd7b2ca5bbd16148a4214a6f682f8af6cd765490bc3c0eaafb7d1eb",
+  "run_id_sha256": "cd00aeb0939ca3ba064db39725351ae21c831009a27d9890243b61e87b81cdfc",
+  "run_started_at": "2026-08-12T04:44:12.737019+00:00",
+  "schema_version": "1.0"
+}

@@ -16,6 +16,7 @@ import statistics
 import subprocess
 import time
 from typing import Any
+from contextlib import contextmanager
 
 from app.services.analysis_stage_contract import ai_is_authorized, close_for_l3
 from app.services.llm.candidate_selector import _select_l3_candidates
@@ -24,7 +25,7 @@ from app.services.rag_service import run_l2_rag_context
 from experiments.full_stage_boundary_benchmark import load_candidates
 
 MODEL = "gemini-2.5-flash-lite"
-PROMPT_VERSION = "ai-ready-grounded-paired-v1"
+PROMPT_VERSION = "ai-ready-grounded-paired-v2"
 LABELS = frozenset({"violation", "non_violation", "not_applicable", "abstain"})
 INPUT_USD_PER_MILLION = 0.10
 OUTPUT_USD_PER_MILLION = 0.40
@@ -89,7 +90,7 @@ def _canonicalize(decision: dict[str, Any], evidence: list[dict[str, Any]]) -> t
     return value, True
 
 
-def _call(client: Any, prompt: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _call(client: Any, prompt: str) -> tuple[dict[str, Any], dict[str, Any], Any]:
     started = time.monotonic()
     response = client.models.generate_content(
         model=MODEL, contents=prompt,
@@ -109,7 +110,30 @@ def _call(client: Any, prompt: str) -> tuple[dict[str, Any], dict[str, Any]]:
     return decision, {"latency_ms": latency, "schema_valid": schema_valid,
                       "input_tokens": getattr(usage, "prompt_token_count", None),
                       "output_tokens": getattr(usage, "candidates_token_count", None),
-                      "response_sha256": _sha(response.text.encode())}
+                      "response_sha256": _sha(response.text.encode())}, raw
+
+
+@contextmanager
+def _exclusive_run(ledger_path: Path):
+    """Refuse concurrent, resumed, or stale-lock execution of paid requests."""
+    lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError as exc:
+        raise RuntimeError("run lock already exists; inspect it instead of deleting automatically") from exc
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode())
+        os.close(fd)
+        if ledger_path.exists() and ledger_path.stat().st_size:
+            raise RuntimeError("exact-once execution requires a new empty ledger")
+        ledger_path.touch(mode=0o600, exist_ok=True)
+        os.chmod(ledger_path, 0o600)
+        yield
+    finally:
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def run(client: Any, snapshot_path: Path, ledger_path: Path, output_path: Path) -> dict[str, Any]:
@@ -121,22 +145,29 @@ def run(client: Any, snapshot_path: Path, ledger_path: Path, output_path: Path) 
                             {"rag_evidence_bundle", "rag_guideline_text", "rag_route"}})
                       for _, row in selected]
     envelope_binding_hashes = [_sha({"candidate_id": cid, "payload": row}) for cid, row in selected]
-    ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    ledger_path.touch(mode=0o600, exist_ok=True)
-    os.chmod(ledger_path, 0o600)
-    rows = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines() if line]
-    completed = {(row["index"], row["condition"]) for row in rows}
+    slots = [(index, condition) for index in range(41) for condition in ("no_rag", "grounded")]
+    if len(slots) != 82 or len(set(slots)) != 82:
+        raise AssertionError("request slot reservation is not exactly 82 unique slots")
     run_started = datetime.now(timezone.utc).isoformat()
     git_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parents[2],
                               check=True, capture_output=True, text=True).stdout.strip()
-    for index, (candidate_id, candidate) in enumerate(selected):
+    run_id = _sha({"started": run_started, "git_head": git_head,
+                   "snapshot_sha256": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+                   "ordered_envelope_binding_hashes": envelope_binding_hashes,
+                   "slots": slots})
+    rows: list[dict[str, Any]] = []
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    with _exclusive_run(ledger_path):
+      for index, (candidate_id, candidate) in enumerate(selected):
         evidence = list(candidate.get("rag_evidence_bundle") or [])
+        prompts = {condition: build_prompt(candidate, [] if condition == "no_rag" else evidence)
+                   for condition in ("no_rag", "grounded")}
+        if prompts["no_rag"].split("official_evidence=", 1)[0] != prompts["grounded"].split("official_evidence=", 1)[0]:
+            raise RuntimeError("paired prompt core mismatch")
         for condition in ("no_rag", "grounded"):
-            if (index, condition) in completed:
-                continue
             supplied = [] if condition == "no_rag" else evidence
-            prompt = build_prompt(candidate, supplied)
-            decision, usage = _call(client, prompt)
+            prompt = prompts[condition]
+            decision, usage, raw_decision = _call(client, prompt)
             canonicalized = False
             verified, reason = False, "evidence_not_supplied"
             if condition == "grounded":
@@ -145,27 +176,28 @@ def run(client: Any, snapshot_path: Path, ledger_path: Path, output_path: Path) 
                 verified, reason = bool(check["verified"]), str(check["reason"])
             raw_label = decision["label"]
             final = raw_label if condition == "grounded" and verified else "abstain"
-            private = {"run_started_at": run_started, "git_head": git_head, "model": MODEL,
+            private = {"run_id": run_id, "run_started_at": run_started, "git_head": git_head, "model": MODEL,
                        "prompt_version": PROMPT_VERSION, "index": index,
                        "candidate_id_sha256": _sha(candidate_id.encode()), "condition": condition,
+                       "candidate_payload_sha256": ordered_hashes[index],
+                       "envelope_binding_sha256": envelope_binding_hashes[index],
+                       "prompt_core_sha256": _sha(prompt.split("official_evidence=", 1)[0].encode()),
                        "prompt_sha256": _sha(prompt.encode()), "raw_label": raw_label,
                        "verified_final": final, "verifier_passed": verified,
                        "verifier_reason": reason, "span_canonicalized": canonicalized,
                        # Private-only replay payload. Earlier v1 ledgers omitted
                        # this and therefore cannot be scientifically reverified.
-                       "decision": decision,
+                       "raw_decision": raw_decision, "decision": decision,
                        "retry_count": 0, **usage}
             with ledger_path.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(private, ensure_ascii=False, sort_keys=True) + "\n")
             rows.append(private)
+    if [(row["index"], row["condition"]) for row in rows] != slots:
+        raise RuntimeError("physical request sequence differs from sealed 82-slot reservation")
     physical_request_count = len(rows)
     physical_input_tokens = sum(row.get("input_tokens") or 0 for row in rows)
     physical_output_tokens = sum(row.get("output_tokens") or 0 for row in rows)
-    unique_rows: dict[tuple[int, str], dict[str, Any]] = {}
-    for row in rows:
-        unique_rows.setdefault((row["index"], row["condition"]), row)
-    rows = list(unique_rows.values())
-    if len(rows) != 82:
+    if len(rows) != 82 or len({(r["index"], r["condition"]) for r in rows}) != 82:
         raise ValueError(f"complete paired ledger expected 82 unique rows, got {len(rows)}")
     by_condition = {}
     for condition in ("no_rag", "grounded"):
@@ -187,7 +219,8 @@ def run(client: Any, snapshot_path: Path, ledger_path: Path, output_path: Path) 
     transitions = Counter(f'{pairs[(i,"no_rag")]["raw_label"]}->{pairs[(i,"grounded")]["raw_label"]}' for i in range(41))
     result = {"schema_version": "1.0", "experiment": "historical_265_exact_ai_ready41_paired",
               "claim_limit": "Routing utility and grounded-verifier behavior only; no independent GT and no accuracy claim.",
-              "model": MODEL, "prompt_version": PROMPT_VERSION, "run_started_at": run_started,
+              "model": MODEL, "prompt_version": PROMPT_VERSION, "run_id_sha256": _sha(run_id.encode()),
+              "run_started_at": run_started,
               "population": {"historical_candidates": 265, "exact_ai_ready": 41,
                              "ordered_candidate_hashes_sha256": _sha(ordered_hashes),
                              "ordered_envelope_binding_hashes_sha256": _sha(envelope_binding_hashes)},

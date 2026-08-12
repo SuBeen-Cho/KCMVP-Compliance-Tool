@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from experiments.grounded_ai_ready_eval import _canonicalize, build_prompt
+from experiments.grounded_ai_ready_eval import _canonicalize, _exclusive_run, build_prompt
 from experiments.replay_grounded_verifier import ReplayUnavailable, replay
 
 
@@ -31,5 +31,29 @@ def test_replay_rejects_label_only_legacy_ledger(tmp_path, monkeypatch):
     ledger = tmp_path / "ledger.jsonl"
     ledger.write_text(json.dumps({"index": 0, "condition": "grounded", "raw_label": "abstain"}) + "\n")
     monkeypatch.setattr("experiments.replay_grounded_verifier.select_exact_ai_ready", lambda _snapshot: [("c", {})])
-    with pytest.raises(ReplayUnavailable, match="lacks canonical decisions"):
+    with pytest.raises(ReplayUnavailable, match="exact 82-slot"):
+        replay(snapshot, ledger)
+
+
+def test_exact_once_lock_rejects_nonempty_ledger_and_existing_lock(tmp_path):
+    ledger = tmp_path / "private.jsonl"
+    ledger.write_text("occupied\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="new empty ledger"):
+        with _exclusive_run(ledger):
+            pass
+    ledger.write_text("", encoding="utf-8")
+    lock = ledger.with_suffix(ledger.suffix + ".lock")
+    lock.write_text("active", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="run lock"):
+        with _exclusive_run(ledger):
+            pass
+
+
+def test_replay_rejects_incomplete_paired_ledger_before_verification(tmp_path, monkeypatch):
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_text("{}", encoding="utf-8")
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text(json.dumps({"index": 0, "condition": "grounded", "run_id": "r"}) + "\n")
+    monkeypatch.setattr("experiments.replay_grounded_verifier.select_exact_ai_ready", lambda _snapshot: [("c", {})])
+    with pytest.raises(ReplayUnavailable, match="exact 82-slot"):
         replay(snapshot, ledger)

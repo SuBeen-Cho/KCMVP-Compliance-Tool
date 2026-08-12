@@ -1,0 +1,97 @@
+{
+  "candidate_universe": {
+    "count": 41,
+    "ordered_identity_match": true
+  },
+  "claim_limit": "No independent GT; this is stability, verification, abstention, and resource comparison, not accuracy.",
+  "input_sha256": {
+    "v1_private": "17573937a1622838ede013cce67d4a2d13bdfd17fcac7e2a3a26e84a03669c15",
+    "v1_public": "16c1515d1d37f3ddfb26140bce948c0ca26cbbe5fd1991bf9416a8b6c7475892",
+    "v2_private": "8fbd8ea840f0567b4326c2be669f102ed4506da238a01e6eb36b2c79a07dc7b6",
+    "v2_public": "e6d9ff6bc3c273ff82860952b07ff3ab8736931c1e155029a60241830545ba2d"
+  },
+  "paired_resource_totals": {
+    "v1": {
+      "analyzed_calls": 82,
+      "duplicate_physical_requests": 11,
+      "estimated_cost_usd": 0.0077621,
+      "input_tokens": 41325,
+      "output_tokens": 9074
+    },
+    "v2": {
+      "analyzed_calls": 82,
+      "duplicate_physical_requests": 0,
+      "estimated_cost_usd": 0.0077621,
+      "input_tokens": 41325,
+      "output_tokens": 9074
+    }
+  },
+  "raw_label_stability": {
+    "exact_match_count": 41,
+    "exact_match_ratio": 1.0,
+    "transitions": {
+      "abstain->abstain": 5,
+      "non_violation->non_violation": 32,
+      "not_applicable->not_applicable": 2,
+      "violation->violation": 2
+    },
+    "v1_distribution": {
+      "abstain": 5,
+      "non_violation": 32,
+      "not_applicable": 2,
+      "violation": 2
+    },
+    "v2_distribution": {
+      "abstain": 5,
+      "non_violation": 32,
+      "not_applicable": 2,
+      "violation": 2
+    }
+  },
+  "schema_version": "1.0",
+  "scope": "aggregate_same_41_v1_no_evidence_vs_v2_grounded",
+  "telemetry": {
+    "v1": {
+      "calls": 41,
+      "estimated_cost_usd": 0.0054602,
+      "input_tokens": 31462,
+      "latency_ms_mean": 1253.484,
+      "latency_ms_total": 51392.846,
+      "output_tokens": 5785
+    },
+    "v2": {
+      "calls": 41,
+      "estimated_cost_usd": 0.0054602,
+      "input_tokens": 31462,
+      "latency_ms_mean": 1303.173,
+      "latency_ms_total": 53430.091,
+      "output_tokens": 5785
+    },
+    "v2_minus_v1": {
+      "input_tokens": 0,
+      "latency_ms_mean": 49.689,
+      "latency_ms_total": 2037.245,
+      "output_tokens": 0
+    }
+  },
+  "v2_final_disposition": {
+    "abstention_count": 27,
+    "abstention_ratio": 0.65853659,
+    "distribution": {
+      "abstain": 27,
+      "non_violation": 12,
+      "violation": 2
+    }
+  },
+  "verifier": {
+    "v1_final_comparison_status": "invalid_for_v2_final_comparison_legacy_verifier_semantics_not_reused",
+    "v2_pass_count": 14,
+    "v2_pass_ratio": 0.34146341,
+    "v2_reason_distribution": {
+      "citation_bound_verified": 14,
+      "citation_missing": 10,
+      "citation_unknown": 1,
+      "entailment_unconfirmed": 16
+    }
+  }
+}
