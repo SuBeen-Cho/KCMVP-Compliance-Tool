@@ -8,7 +8,22 @@ from app.services.lea011_program_fact_extractor import (
 from app.services.program_fact_contract import verify_program_fact
 
 SECRET = b"test-only-lea011-extractor-secret!!"
-GOOD = "uint32_t constants[8] = {" + ",".join(f"0x{x:08X}U" for x in EXPECTED_DELTA) + "};\n"
+TABLE = "const uint32_t constants[8] = {" + ",".join(f"0x{x:08X}U" for x in EXPECTED_DELTA) + "};\n"
+
+
+def complete_source(table=TABLE, *, missing=None, indirect=False):
+    functions = []
+    for bits in (128, 192, 256):
+        if bits == missing:
+            continue
+        expression = ("apply_delta(t, constants, i)" if indirect else
+                      "rotl32(t + constants[i & 7], 1)")
+        functions.append(
+            f"void lea_key_schedule_{bits}(uint32_t t) {{ t = {expression}; }}\n")
+    return table + "".join(functions)
+
+
+GOOD = complete_source()
 
 
 def extract(source=GOOD, **overrides):
@@ -20,7 +35,7 @@ def extract(source=GOOD, **overrides):
 
 
 def expected(source=GOOD, candidate_id="candidate-1"):
-    return {"extractor_id":"lea011-complete-delta-table", "extractor_version":"1.1.0",
+    return {"extractor_id":"lea011-delta-defuse", "extractor_version":"2.0.0",
             "extractor_sha256":extractor_sha256(),
             "source_sha256":hashlib.sha256(source.encode()).hexdigest(),
             "candidate_id":candidate_id, "rule_id":"LEA-011", "claim_id":"LEA-011:C1"}
@@ -32,18 +47,46 @@ def verified(source=GOOD, **kwargs):
         expected(source, kwargs.get("candidate_id", "candidate-1")))
 
 
-def test_exact_complete_table_abstains_until_usage_and_variants_are_proved():
+def test_exact_complete_table_and_direct_all_variant_use_remains_unknown():
     envelope, result = verified()
     assert result == {"verified":True, "state":"unknown", "reason":"fact_verified"}
     assert envelope["observations"][0]["value"][0] == "0xc3efe9db"
-    assert envelope["missing_context"] == ["delta_usage_and_key_variants_unproved"]
+    assert [row["locator"]["key_bits"] for row in envelope["observations"][1:]] == [128, 192, 256]
+    assert envelope["missing_context"] == ["semantic_defuse_and_reachability_unproved"]
 
 
-def test_unlinked_wrong_table_does_not_create_false_contradiction():
+def test_wrong_lexically_used_table_remains_unknown_without_semantic_defuse():
     source = GOOD.replace("0xC3EFE9DBU", "0xC3EFE9DAU")
     envelope, result = verified(source)
     assert result["state"] == "unknown"
-    assert envelope["missing_context"] == ["candidate_table_identity_unproved"]
+    assert envelope["missing_context"] == ["semantic_defuse_and_reachability_unproved"]
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda s: s.replace("t = rotl32", "if (0) t = rotl32"),
+    lambda s: s.replace("constants[i & 7]", "constants[0]"),
+    lambda s: s.replace("constants[i & 7]", "constants[(i + 1) & 7]"),
+])
+def test_dead_or_wrong_index_regex_matches_never_promote(mutation):
+    envelope, result = verified(mutation(GOOD))
+    assert result["state"] == "unknown"
+    assert envelope["missing_context"] == ["semantic_defuse_and_reachability_unproved"]
+
+
+@pytest.mark.parametrize("source,reason", [
+    (complete_source(missing=256), "key_schedule_256_function_unproved"),
+    (complete_source(indirect=True), "delta_direct_defuse_128_unproved"),
+    (GOOD.replace("lea_key_schedule_192", "lea_key_schedule_128_copy"),
+     "key_schedule_128_function_unproved"),
+    (GOOD.replace("rotl32(t + constants[i & 7], 1)", "rotl32(t, 1) + constants[i & 7]", 1),
+     "delta_direct_defuse_128_unproved"),
+    (GOOD.replace("rotl32(t + constants[i & 7], 1)", "rotl32(t + 1, constants[i & 7])", 1),
+     "delta_direct_defuse_128_unproved"),
+])
+def test_incomplete_applicability_or_defuse_abstains(source, reason):
+    envelope, result = verified(source)
+    assert result["state"] == "unknown"
+    assert envelope["missing_context"] == [reason]
 
 
 @pytest.mark.parametrize("source,reason", [
@@ -51,7 +94,7 @@ def test_unlinked_wrong_table_does_not_create_false_contradiction():
     ("#define D 0xC3EFE9DBU\n" + GOOD, "preprocessor_context_present"),
     (GOOD.replace("0xC3EFE9DBU", "DELTA0"), "initializer_not_eight_hex_literals"),
     (GOOD + GOOD.replace("constants", "other"), "ambiguous_typed_tables"),
-    (GOOD.replace("uint32_t", "unsigned int"), "delta_table_missing"),
+    (GOOD.replace("const uint32_t constants", "unsigned int constants"), "delta_table_missing"),
     (GOOD.replace(",0xE5C40957U", ""), "initializer_not_eight_hex_literals"),
     (GOOD.replace("0xC3EFE9DBU", "(0xC3EFE9DBU)"), "initializer_not_eight_hex_literals"),
     ("/* " + GOOD + " */", "delta_table_missing"),

@@ -39,6 +39,12 @@ def evaluate_candidate(candidate_id: str, candidate: dict[str, Any],
         "claim_id": "LEA-011:C1",
     }
     result = verify_program_fact(envelope, runtime_secret, expected)
+    missing = envelope.get("missing_context")
+    extraction_reason = (
+        str(missing[0]) if result["verified"] and isinstance(missing, list) and missing
+        else str(result["reason"])
+    )
     return {"candidate_id": candidate_id, "state": result["state"],
-            "reason": result["reason"], "fact_content_sha256": envelope["content_sha256"],
+            "reason": result["reason"], "extraction_reason": extraction_reason,
+            "fact_content_sha256": envelope["content_sha256"],
             "production_authorized": False}

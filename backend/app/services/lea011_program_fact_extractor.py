@@ -13,8 +13,8 @@ from typing import Any
 
 from app.services.program_fact_contract import build_program_fact, seal_program_fact
 
-EXTRACTOR_ID = "lea011-complete-delta-table"
-EXTRACTOR_VERSION = "1.1.0"
+EXTRACTOR_ID = "lea011-delta-defuse"
+EXTRACTOR_VERSION = "2.0.0"
 RULE_ID = "LEA-011"
 EXPECTED_DELTA = (
     0xC3EFE9DB, 0x44626B02, 0x79E27C8A, 0x78DF30EC,
@@ -24,12 +24,16 @@ EXPECTED_DELTA = (
 # Deliberately excludes inferred-width ``unsigned`` and typedefs whose width
 # cannot be established from the supplied text.
 _TABLE = re.compile(
-    r"(?P<type>uint32_t|uint32_t\s+const|const\s+uint32_t)\s+"
+    r"(?P<type>uint32_t\s+const|const\s+uint32_t)\s+"
     r"(?P<name>[A-Za-z_]\w*)\s*\[\s*8\s*\]\s*=\s*"
     r"\{(?P<body>[^{}]*)\}\s*;",
     re.MULTILINE,
 )
 _INTEGER = re.compile(r"0[xX]([0-9A-Fa-f]{1,8})(?:[uU](?:[lL])?|[lL][uU]?)?")
+_FUNCTION = re.compile(
+    r"(?m)^[ \t]*(?:static\s+)?(?:inline\s+)?(?:void|int|uint32_t)\s+"
+    r"(?P<name>[A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{"
+)
 
 
 def extractor_sha256() -> str:
@@ -99,6 +103,60 @@ def _unknown_reason(source: str, *, source_complete: bool,
     return None
 
 
+def _function_bodies(source: str) -> list[tuple[str, int, int, str]] | None:
+    """Return direct function bodies, or None when braces cannot be proven."""
+    result: list[tuple[str, int, int, str]] = []
+    for match in _FUNCTION.finditer(source):
+        depth = 1
+        cursor = match.end()
+        while cursor < len(source) and depth:
+            if source[cursor] == "{":
+                depth += 1
+            elif source[cursor] == "}":
+                depth -= 1
+            cursor += 1
+        if depth:
+            return None
+        result.append((match.group("name"), match.end(), cursor - 1,
+                       source[match.end():cursor - 1]))
+    return result
+
+
+def _variant_usage(source: str, table_name: str) -> tuple[list[dict[str, Any]], str | None]:
+    """Prove direct delta use in explicit 128/192/256 key-schedule bodies."""
+    functions = _function_bodies(source)
+    if functions is None:
+        return [], "unbalanced_function_context"
+    observations: list[dict[str, Any]] = []
+    for variant in (128, 192, 256):
+        matches = [row for row in functions
+                   if str(variant) in row[0]
+                   and re.search(r"(?i)(?:key.*(?:sched|expand)|(?:sched|expand).*key)", row[0])]
+        if len(matches) != 1:
+            return [], f"key_schedule_{variant}_function_unproved"
+        name, start, _end, body = matches[0]
+        # A direct reference is mandatory. Calls to helpers are not followed,
+        # because that would require interprocedural and alias analysis.
+        direct = re.compile(
+            rf"(?is)(?:rol|rotl|rotate)[A-Za-z0-9_]*\s*\([^;]*\+\s*"
+            rf"\b{re.escape(table_name)}\s*\[[^\]\n]+\][^;]*\)"
+            rf"|(?:rol|rotl|rotate)[A-Za-z0-9_]*\s*\([^;]*"
+            rf"\b{re.escape(table_name)}\s*\[[^\]\n]+\]\s*\+[^;]*\)"
+        )
+        use = direct.search(body)
+        if use is None:
+            return [], f"delta_direct_defuse_{variant}_unproved"
+        absolute = start + use.start()
+        observations.append({
+            "kind": "lea_delta_key_schedule_use",
+            "locator": {**_line_column(source, absolute), "function": name,
+                        "key_bits": variant, "array": table_name},
+            "value": {"direct_array_reference": True,
+                      "addition_operand": True, "rotation_input": True},
+        })
+    return observations, None
+
+
 def extract_lea011_program_fact(
     source: str,
     *,
@@ -145,16 +203,17 @@ def extract_lea011_program_fact(
                             "array": match.group("name"), "element_count": 8},
                 "value": [f"0x{value:08x}" for value in values],
             }]
-            # A declaration alone cannot establish that the key schedule uses
-            # this array, nor which LEA key-size variants reach it. It also
-            # cannot establish that an unrelated, differently-valued array is
-            # the normative delta table. Preserve the lexical observation,
-            # but abstain until data flow proves both identity and use.
-            reason = (
-                "delta_usage_and_key_variants_unproved"
-                if tuple(values) == EXPECTED_DELTA
-                else "candidate_table_identity_unproved"
-            )
+            uses, use_reason = _variant_usage(lexical_source, match.group("name"))
+            observations.extend(uses)
+            if use_reason:
+                reason = use_reason
+            else:
+                # Regex establishes only a lexical co-occurrence.  It cannot
+                # prove reachability, symbol identity/shadowing, alias targets,
+                # correct variant-specific indices, or influence on round-key
+                # output.  Therefore neither a matching nor mismatching table
+                # may be promoted to a semantic program fact here.
+                reason = "semantic_defuse_and_reachability_unproved"
 
     if not observations:
         observations = [{

@@ -1,0 +1,30 @@
+{
+  "api_calls": 0,
+  "candidate_universe_sha256": "a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4",
+  "claim_limit": "Shadow program-fact coverage only; not detector accuracy or production authorization.",
+  "complete_source_resolution": {
+    "method": "snapshot_embedded_content_joined_by_opaque_source_id_and_sha256",
+    "resolved": 2,
+    "unresolved": 0
+  },
+  "evaluation": "current_head_exact_ai_ready41_lea011_defuse_shadow",
+  "fact_states": {
+    "unknown": 2
+  },
+  "population": {
+    "exact_ai_ready": 41,
+    "lea011": 2
+  },
+  "privacy": "aggregate_only; no source, source_id, path, occurrence, or runtime secret persisted",
+  "production_authorized": 0,
+  "provenance": {
+    "extractor_sha256": "cc6c90f368797634fe94c232b01d5f73cc91c2e2b17451c1435f5b4ddab70ed3",
+    "git_head": "5b82e48ef76b623ca5fea1c2771d54af6aa58cf3",
+    "runner_sha256": "ae48b8534c0ee691361ba1afc6a33407d20ee41d84569974d54196a7767fcc5c",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "reasons": {
+    "preprocessor_context_present": 2
+  },
+  "schema_version": "1.0"
+}
