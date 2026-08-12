@@ -1,0 +1,53 @@
+{
+  "api_calls": 0,
+  "evaluation": "atomic_claim_v3_shadow_replay",
+  "interpretation": "Shadow compatibility only. Legacy decisions lack atomic assessments; no fields are imputed and no final verdict is newly authorized.",
+  "legacy_failure_reasons": {
+    "citation_bound_verified": 14,
+    "citation_missing": 10,
+    "citation_unknown": 1,
+    "entailment_unconfirmed": 16
+  },
+  "legacy_v2_verifier_pass": 14,
+  "population": 41,
+  "privacy": "aggregate-only; no occurrence identity, source path, snippet, prompt, span, or decision text",
+  "private_ledger_sha256": "8fbd8ea840f0567b4326c2be669f102ed4506da238a01e6eb36b2c79a07dc7b6",
+  "rule_reason_counts": {
+    "CBC-001": {
+      "citation_bound_verified": 9,
+      "citation_missing": 2,
+      "entailment_unconfirmed": 3
+    },
+    "CTR-001": {
+      "citation_bound_verified": 1,
+      "entailment_unconfirmed": 13
+    },
+    "CTR-002": {
+      "citation_bound_verified": 1,
+      "citation_missing": 4
+    },
+    "LEA-001": {
+      "citation_bound_verified": 1,
+      "citation_unknown": 1
+    },
+    "LEA-002": {
+      "citation_bound_verified": 2
+    },
+    "LEA-011": {
+      "citation_missing": 2
+    },
+    "LEA-021": {
+      "citation_missing": 1
+    },
+    "LEA-023": {
+      "citation_missing": 1
+    }
+  },
+  "schema_version": "1.0",
+  "snapshot_sha256": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3",
+  "three_stage_metrics": {
+    "atomic_contract_structurally_valid": 0,
+    "citation_choice_within_audited_set": 28,
+    "independently_semantically_authorized": 0
+  }
+}
