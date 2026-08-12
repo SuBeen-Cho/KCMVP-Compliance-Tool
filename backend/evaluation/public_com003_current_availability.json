@@ -1,0 +1,33 @@
+{
+  "api_calls": 0,
+  "authenticated_context": {
+    "trusted_preprocessing": 0,
+    "verified_build_manifest": 0,
+    "verified_exception_and_protection_status": 0,
+    "verified_operational_secret_use": 0
+  },
+  "claim_limit": "Availability and lexical triage only; no accuracy or secret-use claim.",
+  "evaluation": "frozen_com003_program_fact_availability_api_free",
+  "outcome": {
+    "production_authorized": 0,
+    "unknown_or_abstain": 14
+  },
+  "population": {
+    "complete_source": 14,
+    "occurrences": 14,
+    "unique_sources": 7
+  },
+  "privacy": "aggregate_only; no candidate identity, path, source, snippet, or literal bytes",
+  "provenance": {
+    "entailment_gate_sha256": "3fbaeac3f9ba2ec7b696f7a2d91e5eed8714be3a285a60207b0d9c634604023a",
+    "runner_sha256": "ceeb3a1da8eac8d2def8b4ee53b144eaec08e3bffd633d6fb62d9e981fcf2688",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
+  },
+  "schema_version": "1.0",
+  "untrusted_lexical_observations": {
+    "iv_or_counter_name": 9,
+    "key_name": 5,
+    "test_name": 1
+  }
+}
