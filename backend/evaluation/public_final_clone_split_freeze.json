@@ -1,0 +1,21 @@
+{
+  "api_calls": 0,
+  "assignment_digest_sha256": "6625036e69cb750bc0e97395d1bafb7cc21471cde8c8ac9b70a38adfa14dd732",
+  "claim_limit": "Split preregistration only; held-out labels and performance remain unopened.",
+  "counts": {
+    "clone_groups": 248,
+    "development_groups": 174,
+    "development_occurrences": 189,
+    "heldout_groups": 74,
+    "heldout_occurrences": 76,
+    "occurrences": 265
+  },
+  "evaluation": "label_independent_clone_split_freeze",
+  "heldout_fraction": 0.3,
+  "labels_accessed": false,
+  "salt_id": "kcmvp-final-confirmatory-split-v1",
+  "schema_version": "1.0",
+  "sidecar_id": "2a48ee12dd6bbc4fb0911765e2931d51f85bda6e993648ed80d138d3b57c44fb",
+  "snapshot_id": "3727ddefc1ef4b482a9500577ee0aca48799f0e70dbfd9bc4a572e1bd7ebf1fe",
+  "split_id": "132260115c51607ced11fb58af2b7eacc01e510ec4689c86397fd4bcc4de5618"
+}
