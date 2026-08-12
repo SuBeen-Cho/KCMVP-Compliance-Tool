@@ -1,0 +1,30 @@
+{
+  "api_calls": 0,
+  "authenticated_context": {
+    "trusted_preprocessing": 0,
+    "verified_build_manifest": 0,
+    "verified_weak_rng_to_sensitive_sink_defuse": 0
+  },
+  "claim_limit": "Availability and lexical triage only; no accuracy, semantic, or dataflow claim.",
+  "evaluation": "frozen_com004_program_fact_availability_api_free",
+  "outcome": {
+    "production_authorized": 0,
+    "unknown_or_abstain": 16
+  },
+  "population": {
+    "complete_source": 16,
+    "occurrences": 16
+  },
+  "privacy": "aggregate_only; no candidate identity, source, path, or snippet",
+  "provenance": {
+    "entailment_gate_sha256": "f24b01d8eddc2dd98517bf60f1fa07063f8b7e8297f0d7aae6aa618daadcc269",
+    "runner_sha256": "99ec69b7c089f692e7f08d8cf39f14b5ef5bc8e2e01209570a304de8df243d91",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
+  },
+  "schema_version": "1.0",
+  "untrusted_lexical_observations": {
+    "seed_or_time": 15,
+    "weak_output_direct": 14
+  }
+}
