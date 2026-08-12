@@ -27,7 +27,8 @@ def inspect_archives(paths:list[Path])->dict[str,Any]:
          "sets_with_build_files":sum(bool(x["build_manifest_files"]) for x in rows),
          "sets_with_build_manifest":sum(x["compile_context_reconstructable"] for x in rows)}
 def build(inventory:dict[str,Any],*,independent_gt:bool,authenticated_fact_coverage:float,
-          citation_entailment:float,clone_disjoint_split:bool)->dict[str,Any]:
+          citation_entailment:float,clone_disjoint_split:bool,
+          split_id:str|None=None)->dict[str,Any]:
  if inventory.get("set_count")!=7:raise ValueError("seven_set_inventory_required")
  gates={"all_sets_have_build_manifest":inventory["sets_with_build_manifest"]==7,
         "independent_human_gt":independent_gt,"authenticated_program_fact_coverage_ge_0_95":authenticated_fact_coverage>=.95,
@@ -35,6 +36,7 @@ def build(inventory:dict[str,Any],*,independent_gt:bool,authenticated_fact_cover
  ready=all(gates.values())
  return {"schema_version":"1.0","evaluation":"final_performance_readiness_gate",
          "ready_for_final_performance_evaluation":ready,"gates":gates,"inventory":inventory,
+         "preregistration":{"clone_split_id":split_id},
          "observed":{"authenticated_program_fact_coverage":authenticated_fact_coverage,"citation_entailment":citation_entailment},
          "decision":"run_final_evaluation" if ready else "continue_priority_development",
          "blocked_metrics":[] if ready else ["final_accuracy","final_precision","final_recall","final_f1","confirmatory_mcnemar"],

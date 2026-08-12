@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "contract": "final_evaluation_external_inputs",
+  "build_context": {
+    "required_sets": 7,
+    "required_per_translation_unit": [
+      "source_sha256",
+      "compiler_binary_sha256",
+      "compiler_version_sha256",
+      "ordered_argv",
+      "logical_working_directory_id",
+      "environment_allowlist",
+      "ordered_include_graph_with_content_sha256",
+      "ordered_macro_define_undef_events",
+      "preprocessed_output_sha256",
+      "exit_code",
+      "diagnostics_sha256"
+    ],
+    "accepted_provenance": ["author_supplied_replayed", "trusted_capture_replayed"],
+    "rejected_as_final": ["synthetic_profile", "stale_generated_makefile", "self_asserted_hash"]
+  },
+  "ground_truth": {
+    "universe_occurrences": 265,
+    "reviewers": 2,
+    "adjudicators": 1,
+    "labels": ["violation", "non_violation", "insufficient_context", "not_applicable"],
+    "view": "minimal_cue_controlled",
+    "reviewer_independence": "mutually_blind_until_both_submissions_sealed",
+    "disagreement_policy": "third_party_adjudication_with_locator",
+    "prohibited_as_final_gt": ["same_model_test_retest", "single_ai_label", "unsealed_consensus"]
+  },
+  "acceptance": {
+    "build_context_set_coverage": 1.0,
+    "authenticated_program_fact_coverage": 0.95,
+    "citation_entailment": 0.95,
+    "clone_split_must_match": "132260115c51607ced11fb58af2b7eacc01e510ec4689c86397fd4bcc4de5618"
+  }
+}

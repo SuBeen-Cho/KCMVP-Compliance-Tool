@@ -13,7 +13,7 @@
     "all_sets_have_build_manifest": false,
     "authenticated_program_fact_coverage_ge_0_95": false,
     "citation_entailment_ge_0_95": false,
-    "clone_disjoint_split_frozen": false,
+    "clone_disjoint_split_frozen": true,
     "independent_human_gt": false
   },
   "inventory": {
@@ -96,6 +96,9 @@
   "observed": {
     "authenticated_program_fact_coverage": 0,
     "citation_entailment": 0
+  },
+  "preregistration": {
+    "clone_split_id": "132260115c51607ced11fb58af2b7eacc01e510ec4689c86397fd4bcc4de5618"
   },
   "ready_for_final_performance_evaluation": false,
   "schema_version": "1.0"
