@@ -1,0 +1,34 @@
+{
+  "api_calls": 0,
+  "claim_limit": "Availability only. Candidate-supplied manifests and self-hashed receipts are untrusted; semantic applicability, accuracy, and ground truth remain unproved.",
+  "coverage": {
+    "callsite_nonoverlap_proved": 0,
+    "chain_available": 0,
+    "complete_source": 4,
+    "operation_graph_input_available": 0,
+    "trusted_preprocessing_manifest": 0
+  },
+  "evaluation": "frozen_current45_new_lea_round_chain_availability_api_free",
+  "fact_state": "unknown",
+  "population": {
+    "frozen_ai_ready": 45,
+    "target_occurrences": 4
+  },
+  "privacy": "aggregate_only; no candidate id, source, path, snippet, manifest, or callsite persisted",
+  "provenance": {
+    "freeze_sha256": "b9faee3eec3d58f158ea0c8c709f63f5eb7e39f882498de7c0418a0df924ed00",
+    "frozen_git_commit": "1f7e50c9f8f1b80d3b206d4147eba78653ae4fef",
+    "router_membership_sha256": "ecccd8e650412d5f6d02a67bdf3b52ca84a96e1e47276e805dabb94f17a9458a",
+    "runner_sha256": "1299efe86c042d7ee543d6e421a9b5ed4da18662c3fbd0d91ce9a50e6579b28f",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
+  },
+  "schema_version": "1.0",
+  "semantic_authorization": 0,
+  "target_rule_counts": {
+    "LEA-027": 1,
+    "LEA-028": 1,
+    "LEA-029": 1,
+    "LEA-030": 1
+  }
+}
