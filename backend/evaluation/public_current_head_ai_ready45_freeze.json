@@ -1,0 +1,100 @@
+{
+  "api_calls": 0,
+  "claim_limit": "Membership and evidence-readiness coverage only; no LLM decision, semantic authorization, or accuracy claim.",
+  "current_router": {
+    "ai_ready_count": 45,
+    "ordered_candidate_payload_hashes_sha256": "430495f3fc249f97d2e6d028e3a103afc1342099e69bbe361c8c30829f5a2d17",
+    "ordered_envelope_binding_hashes_sha256": "ecccd8e650412d5f6d02a67bdf3b52ca84a96e1e47276e805dabb94f17a9458a",
+    "ordered_membership_hashes_sha256": "59cc045f91760417921c3eacb50374e9951ff784087d730bcef4e39c37e1bacd",
+    "rule_family_counts": {
+      "CBC-001": 14,
+      "CTR-001": 14,
+      "CTR-002": 5,
+      "LEA-001": 2,
+      "LEA-002": 2,
+      "LEA-011": 2,
+      "LEA-021": 1,
+      "LEA-023": 1,
+      "LEA-027": 1,
+      "LEA-028": 1,
+      "LEA-029": 1,
+      "LEA-030": 1
+    },
+    "stage_distribution": {
+      "ai_ready": {
+        "count": 45,
+        "ratio": 0.16981132075471697
+      },
+      "deterministic": {
+        "count": 30,
+        "ratio": 0.11320754716981132
+      },
+      "hold": {
+        "count": 190,
+        "ratio": 0.7169811320754716
+      }
+    }
+  },
+  "evidence_readiness": {
+    "added": {
+      "audited_atomic_contract_ready": 4,
+      "count": 4,
+      "verified_official_bundle_ready": 4
+    },
+    "current": {
+      "audited_atomic_contract_ready": 45,
+      "count": 45,
+      "verified_official_bundle_ready": 45
+    },
+    "retained": {
+      "audited_atomic_contract_ready": 41,
+      "count": 41,
+      "verified_official_bundle_ready": 41
+    },
+    "semantic_authorization": "not_measured"
+  },
+  "latency_ms": {
+    "cold_batch": 574.7781249810942,
+    "cold_per_candidate": 2.1689740565324307,
+    "warm_batch_mean": 592.7958610118367,
+    "warm_batch_median": 595.3935410361737,
+    "warm_batch_p95_nearest_rank": 613.9461669954471,
+    "warm_per_candidate_mean": 2.2369655132522137
+  },
+  "membership_delta": {
+    "added_count": 4,
+    "added_rule_family_counts": {
+      "LEA-027": 1,
+      "LEA-028": 1,
+      "LEA-029": 1,
+      "LEA-030": 1
+    },
+    "removed_count": 0,
+    "removed_rule_family_counts": {},
+    "retained_count": 41
+  },
+  "prior_ai_ready41": {
+    "comparison_only_not_merged": true,
+    "count": 41,
+    "ordered_membership_hashes_sha256": "fa99e2fc1e50f1e426302c71206c68b801d177435484aa83af6606d8f8704111",
+    "private_ledger_sha256": "1a9e385eecc218718194fb9a1b9d766720bc783f172101e45a7a236835b1c4ee"
+  },
+  "privacy": "aggregate_only_no_candidate_id_source_or_snippet",
+  "router_manifest": {
+    "git_dirty": true,
+    "git_head": "bd440a17aceee3cd88eb31e36993348ca61459ba",
+    "mapping_tree_sha256": "b9e48b0d708a3218bad6dbea79fd2c0c10dd6a38af4c498b7da7ee0a97af83c7",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "rules_tree_sha256": "91c38f8f97d45508e5907680b34792065c31240646cc642a1ccfa6b9e30bff9d",
+    "snapshot_source_tree_sha256": "66023b843f81060bf00505cf8aff203c2ea08233bf672e2639100addcee2d31f"
+  },
+  "schema_version": "1.0",
+  "scope": "dirty_worktree_current_router_universe_freeze_api_free",
+  "snapshot": {
+    "candidate_count": 265,
+    "file_sha256": "57d5cf0b6381ccf094ac54be6408aedab3ef86d3df62133a57657c90d50dde8d",
+    "git_commit": "bd440a17aceee3cd88eb31e36993348ca61459ba",
+    "snapshot_id": "15fc808f1abf6fe63c7de857e1fd972b6aae85dc65a8de2b8f412f10d71952b8",
+    "source_count": 193
+  }
+}

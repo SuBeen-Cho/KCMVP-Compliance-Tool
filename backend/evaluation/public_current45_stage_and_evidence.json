@@ -1,0 +1,60 @@
+{
+  "api_calls": 0,
+  "claim_limit": "Routing, binding, and budget projection only; no model decision, semantic authorization, detector accuracy, or billing upper-bound claim.",
+  "evaluation": "live_current45_stage_and_evidence_api_free",
+  "evidence_binding": {
+    "atomic_claim_registry_available": 45,
+    "incomplete": 0,
+    "verified_rule_and_required_units_complete": 45
+  },
+  "historical41_comparison": {
+    "atomic_v3_observed_linear_budget_projection": {
+      "estimated_cost_usd": 0.009070573,
+      "input_tokens": 52401,
+      "method": "ceil tokens and scale observed aggregate cost by 45/41",
+      "output_tokens": 9577,
+      "warning": "Planning projection from one historical run, not a guaranteed token or price upper bound."
+    },
+    "call_count_if_one_grounded_call_each": {
+      "current": 45,
+      "delta": 4,
+      "historical": 41
+    },
+    "paired_rag_no_rag_call_count_if_run": 90,
+    "population_delta": 4
+  },
+  "newly_mapped_lea_round": {
+    "all_remain_ai_review_only": true,
+    "occurrences": 4,
+    "rule_counts": {
+      "LEA-027": 1,
+      "LEA-028": 1,
+      "LEA-029": 1,
+      "LEA-030": 1,
+      "LEA-031": 0
+    }
+  },
+  "population": {
+    "live_ai_ready": 45,
+    "snapshot_candidates": 265
+  },
+  "privacy": "aggregate_only; no candidate identifiers, paths, snippets, prompts, or source text",
+  "program_fact": {
+    "authenticated_sealed_fact_available": 0,
+    "production_semantic_authorized": 0,
+    "unsealed_project_artifact_text_available": 0
+  },
+  "provenance": {
+    "atomic_registry_sha256": "cffc1a4dbfcc875ed0d575b9bffb405c49641bcfb9a6668d607ef863e123fd9f",
+    "historical_atomic_public_sha256": "43a398161102423dc790a8dbad9ba7dd6990290addc90e39261024e00669f802",
+    "router_ai_ready_universe_sha256": "ecccd8e650412d5f6d02a67bdf3b52ca84a96e1e47276e805dabb94f17a9458a",
+    "rule_evidence_audit_sha256": "7e8ff1f876115ef8c4a3d537dce13f083115c33202447e5cabf8a40c33920359",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "schema_version": "1.0",
+  "stage_distribution": {
+    "ai_ready": {"count": 45, "ratio": 0.16981132075471697},
+    "deterministic": {"count": 30, "ratio": 0.11320754716981132},
+    "hold": {"count": 190, "ratio": 0.7169811320754716}
+  }
+}

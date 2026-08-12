@@ -56,3 +56,5 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 - [48_LEA_라운드_공식근거_폐쇄감사.md](48_LEA_라운드_공식근거_폐쇄감사.md): LEA-027~031 원문 수식 10개 unit의 폐쇄 감사와 verified 승격
 - [51_LEA_라운드_봉인체인_합성shadow평가.md](51_LEA_라운드_봉인체인_합성shadow평가.md): 공식근거·연산그래프·동일 occurrence callsite를 결합한 6-case shadow chain
 - [52_AI-ready41_LEA라운드_적용성_가용성감사.md](52_AI-ready41_LEA라운드_적용성_가용성감사.md): historical 41 내 대상 occurrence 0건과 분모 0 해석 경계
+- [53_current45_단계분포_근거결합_API예산평가.md](53_current45_단계분포_근거결합_API예산평가.md): 현행 30/45/190 단계 분포와 추가 4건·API 예산 계획치
+- [54_current_HEAD_AI-ready45_독립동결.md](54_current_HEAD_AI-ready45_독립동결.md): current 45 모집단의 ordered membership·envelope 독립 동결
