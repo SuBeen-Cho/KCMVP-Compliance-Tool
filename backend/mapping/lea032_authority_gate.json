@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "LEA-032",
+  "claim": "LEA uses the same structural round function in its final round, unlike AES.",
+  "current_rule_source": "LEA design paper",
+  "current_source_authority": "research_reference",
+  "normative_support": {
+    "source_id": "LEA_DATASHEET_KO",
+    "supports_fixed_iteration_of_algorithm_2": true,
+    "directly_states_aes_comparison": false,
+    "directly_entails_current_detector_scope": false
+  },
+  "current_population": {
+    "occurrences": 10,
+    "proxy_priority_violations": 2,
+    "declaration_or_wrapper_occurrences": 7,
+    "round_loop_occurrences": 2,
+    "other_occurrences": 1
+  },
+  "detector_scope_problem": "fallback name, declaration, wrapper call, or loop count does not prove a distinct final-round structure",
+  "decision": "remain_fail_closed",
+  "mapping_verified": false,
+  "production_authorized": false
+}
