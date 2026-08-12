@@ -1,0 +1,106 @@
+{
+  "deterministic_selective_performance": {
+    "accuracy_abstention_excluded": null,
+    "binary_eligible_verdicts": 23,
+    "binary_population_coverage": 0.18852459,
+    "proxy_label_distribution": {
+      "insufficient_context": 7,
+      "non_violation": 2,
+      "not_applicable": 0,
+      "violation": 21
+    },
+    "reason_unavailable": "The stage contract records routing disposition but no explicit final verdict; a deterministic route must not be coerced to violation or non_violation.",
+    "selective_risk_abstention_excluded": null
+  },
+  "evaluation_design": {
+    "claim_limit": "Internal routing/selective-behavior estimate only; the proxy is not independent human ground truth. This historical-policy replay is not a current end-to-end performance estimate or external precision, recall, or F1.",
+    "deterministic_verdict_semantics": "routing_only_no_final_verdict",
+    "evaluation_scope": "historical_265_snapshot_policy_replay",
+    "input_sha256": {
+      "proxy_gt": "a42b9e40f42f007b22881413feec3c51d55df7752f253552fcccb1f8941ce9ab",
+      "sidecar": "c34381dc8aaac39ceea2b00d76b06c63a16d22694376feba6cc6c7c56ed81cdf",
+      "snapshot": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3"
+    },
+    "proxy_gt_id": "f8256fafac9c62d2800a01c63e5761b1d9bf94de73294be7d1e4888ad3ac3587",
+    "reference": "same_model_temperature_0_test_retest_unanimous_proxy",
+    "snapshot_id": "3727ddefc1ef4b482a9500577ee0aca48799f0e70dbfd9bc4a572e1bd7ebf1fe"
+  },
+  "full_verifier_outcomes": {
+    "accuracy": null,
+    "count": 0,
+    "coverage": 0.0,
+    "reason": "This routing replay invokes no LLM and therefore has no citation-entailment-verified final decisions."
+  },
+  "hold_analysis": {
+    "count": 190,
+    "coverage": 0.71698113,
+    "proxy_label_distribution": {
+      "insufficient_context": 17,
+      "non_violation": 10,
+      "not_applicable": 100,
+      "violation": 63
+    },
+    "proxy_violation_count": 63,
+    "warning": "Hold is abstention and is never counted as a correct prediction."
+  },
+  "population": {
+    "binary_eligible": 122,
+    "proxy_abstention_labels": 143,
+    "proxy_labels": {
+      "insufficient_context": 30,
+      "non_violation": 18,
+      "not_applicable": 113,
+      "violation": 104
+    },
+    "total": 265
+  },
+  "routing_all": {
+    "ai_ready": {
+      "count": 45,
+      "coverage": 0.16981132
+    },
+    "deterministic": {
+      "count": 30,
+      "coverage": 0.11320755
+    },
+    "hold": {
+      "count": 190,
+      "coverage": 0.71698113
+    }
+  },
+  "routing_binary_eligible": {
+    "ai_ready": {
+      "count": 26,
+      "coverage": 0.21311475
+    },
+    "deterministic": {
+      "count": 23,
+      "coverage": 0.18852459
+    },
+    "hold": {
+      "count": 73,
+      "coverage": 0.59836066
+    }
+  },
+  "schema_version": "1.0",
+  "stage_proxy_label_distributions": {
+    "ai_ready": {
+      "insufficient_context": 6,
+      "non_violation": 6,
+      "not_applicable": 13,
+      "violation": 20
+    },
+    "deterministic": {
+      "insufficient_context": 7,
+      "non_violation": 2,
+      "not_applicable": 0,
+      "violation": 21
+    },
+    "hold": {
+      "insufficient_context": 17,
+      "non_violation": 10,
+      "not_applicable": 100,
+      "violation": 63
+    }
+  }
+}

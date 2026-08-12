@@ -1,0 +1,186 @@
+{
+  "api_calls_for_summary": 0,
+  "claim_limit": "Current coverage/candidate density and historical same-model proxy metrics are separate cohorts; no human-GT or certified-module accuracy claim.",
+  "current_current_head": {
+    "aggregate": {
+      "l1_candidates": 265,
+      "physical_lines": 45513,
+      "source_files": 193
+    },
+    "authenticated_program_fact_coverage": 0.0,
+    "router": {
+      "ai_ready": {
+        "count": 45,
+        "ratio": 0.16981132075471697
+      },
+      "deterministic": {
+        "count": 30,
+        "ratio": 0.11320754716981132
+      },
+      "hold": {
+        "count": 190,
+        "ratio": 0.7169811320754716
+      }
+    },
+    "sets": [
+      {
+        "candidates_per_kloc": 129.707113,
+        "dataset_kind": "synthetic_injected",
+        "l1_candidates": 62,
+        "physical_lines": 478,
+        "set": 1,
+        "source_files": 4
+      },
+      {
+        "candidates_per_kloc": 135.857461,
+        "dataset_kind": "synthetic_injected",
+        "l1_candidates": 61,
+        "physical_lines": 449,
+        "set": 2,
+        "source_files": 4
+      },
+      {
+        "candidates_per_kloc": 91.537133,
+        "dataset_kind": "synthetic_injected",
+        "l1_candidates": 53,
+        "physical_lines": 579,
+        "set": 3,
+        "source_files": 4
+      },
+      {
+        "candidates_per_kloc": 105.150215,
+        "dataset_kind": "synthetic_injected",
+        "l1_candidates": 49,
+        "physical_lines": 466,
+        "set": 4,
+        "source_files": 4
+      },
+      {
+        "candidates_per_kloc": 0.964719,
+        "dataset_kind": "commercial_module_case_study",
+        "l1_candidates": 14,
+        "physical_lines": 14512,
+        "set": 5,
+        "source_files": 59
+      },
+      {
+        "candidates_per_kloc": 0.895872,
+        "dataset_kind": "commercial_module_case_study",
+        "l1_candidates": 13,
+        "physical_lines": 14511,
+        "set": 6,
+        "source_files": 59
+      },
+      {
+        "candidates_per_kloc": 0.89544,
+        "dataset_kind": "commercial_module_case_study",
+        "l1_candidates": 13,
+        "physical_lines": 14518,
+        "set": 7,
+        "source_files": 59
+      }
+    ],
+    "snapshot_sha256": "158026136a6a1319b6b5fc170738e961941b83ee48cfa2f55c9a29c044d543f5",
+    "synthetic_compile_shadow": {
+      "elapsed_ms": 3412.888,
+      "pass_rate": 0.2543859649122807,
+      "sets": 7,
+      "syntax_fail": 85,
+      "syntax_pass": 29,
+      "translation_units": 114
+    }
+  },
+  "evaluation": "final_proxy_performance_summary",
+  "historical_proxy": {
+    "grounded_verifier": {
+      "estimated_cost_usd": 0.0077621,
+      "final_abstain": 27,
+      "input_tokens": 41325,
+      "output_tokens": 9074,
+      "pass": 14,
+      "pass_rate": 0.34146341463414637,
+      "physical_calls": 82,
+      "population": 41
+    },
+    "hold_analysis": {
+      "count": 190,
+      "coverage": 0.71698113,
+      "proxy_label_distribution": {
+        "insufficient_context": 17,
+        "non_violation": 10,
+        "not_applicable": 100,
+        "violation": 63
+      },
+      "proxy_violation_count": 63,
+      "warning": "Hold is abstention and is never counted as a correct prediction."
+    },
+    "population": {
+      "binary_eligible": 122,
+      "proxy_abstention_labels": 143,
+      "proxy_labels": {
+        "insufficient_context": 30,
+        "non_violation": 18,
+        "not_applicable": 113,
+        "violation": 104
+      },
+      "total": 265
+    },
+    "post_selector_heldout": {
+      "f1": 0.8780487804878048,
+      "f1_group_bootstrap_95_ci": [
+        0.7733333333333333,
+        0.9545454545454546
+      ],
+      "fn": 4,
+      "fp": 6,
+      "n": 46,
+      "precision": 0.8571428571428571,
+      "recall": 0.9,
+      "tn": 0,
+      "tp": 36
+    },
+    "rag_no_rag": {
+      "mcnemar_exact_p": 0.125,
+      "no_rag_only_correct": 6,
+      "paired_unique_candidates": 78,
+      "rag_only_correct": 1
+    },
+    "routing_all": {
+      "ai_ready": {
+        "count": 45,
+        "coverage": 0.16981132
+      },
+      "deterministic": {
+        "count": 30,
+        "coverage": 0.11320755
+      },
+      "hold": {
+        "count": 190,
+        "coverage": 0.71698113
+      }
+    },
+    "routing_binary_eligible": {
+      "ai_ready": {
+        "count": 26,
+        "coverage": 0.21311475
+      },
+      "deterministic": {
+        "count": 23,
+        "coverage": 0.18852459
+      },
+      "hold": {
+        "count": 73,
+        "coverage": 0.59836066
+      }
+    }
+  },
+  "not_measured": {
+    "certified_module_precision_recall_f1": null,
+    "current_end_to_end_accuracy": null,
+    "four_class_accuracy": null,
+    "macro_f1": null,
+    "reason": "No independent human GT and current/proxy candidate identity differs for one occurrence."
+  },
+  "privacy": "aggregate_only",
+  "schema_version": "1.0"
+}
