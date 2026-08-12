@@ -50,3 +50,4 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 - [45_program_fact_sealed_shadow_baseline.md](45_program_fact_sealed_shadow_baseline.md): 인증된 프로그램 사실 0/41 기준선과 LEA-011 보수적 extractor 경계
 - [46_LEA011_defuse_current_HEAD_평가.md](46_LEA011_defuse_current_HEAD_평가.md): 완전 소스 2/2 재결합과 전처리·SSA 증거 부족으로 인한 안전한 unknown 결과
 - [47_전처리_capture와_LEA001_AST_안전경계.md](47_전처리_capture와_LEA001_AST_안전경계.md): compiler replay 봉인과 LEA-001 타입·구조 증명의 fail-closed 경계
+- [48_LEA001_current_HEAD_전처리_AST_shadow평가.md](48_LEA001_current_HEAD_전처리_AST_shadow평가.md): LEA-001 2건의 manifest 부재와 unknown-only current 평가

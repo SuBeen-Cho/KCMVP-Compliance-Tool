@@ -1,0 +1,34 @@
+{
+  "api_calls": 0,
+  "candidate_universe_sha256": "a699bfb24aee051129f2a5ea909c53a82f7f8848c49389bcafafcca4588195b4",
+  "claim_limit": "Shadow preprocessing/AST coverage only; not detector accuracy or authorization.",
+  "complete_source_resolution": {
+    "resolved": 2,
+    "unresolved": 0
+  },
+  "evaluation": "current_head_exact_ai_ready41_lea001_ast_shadow",
+  "fact_states": {
+    "unknown": 2
+  },
+  "population": {
+    "exact_ai_ready": 41,
+    "lea001": 2
+  },
+  "privacy": "aggregate_only; no source, source_id, path, occurrence, or secret persisted",
+  "production_authorized": 0,
+  "provenance": {
+    "extractor_sha256": "d050f5abd9c9e991d3a7e042297291a72d93f340becfd20091fa4371b4a091ed",
+    "git_head": "5f73b0e2cb6e28047e2671bdb8a7ec8b695c7c94",
+    "runner_sha256": "74e79c5c9a716a0cdc9657a368b5a32ccf5e80535c4e38f94341c035594dd607",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "reasons": {
+    "trusted_preprocessing_manifest_unavailable": 2
+  },
+  "schema_version": "1.0",
+  "structural_complete": 0,
+  "trusted_preprocessing": {
+    "unavailable_or_unverified": 2,
+    "usable": 0
+  }
+}
