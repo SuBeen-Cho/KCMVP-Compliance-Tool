@@ -38,6 +38,10 @@ backend/evaluation/*
 !backend/evaluation/*.schema.json
 !backend/evaluation/public_*.json
 !backend/evaluation/policy_sources.snapshot.json
+!backend/evaluation/STAGE_BOUNDARY_RUNBOOK.ko.md
+!backend/evaluation/stage_boundary_candidate_fixtures.json
+!backend/evaluation/stage_boundary_observations.json
+!backend/evaluation/stage_boundary_result.json
 !backend/evaluation/candidates/
 backend/evaluation/candidates/*
 !backend/evaluation/candidates/sources.lock.json

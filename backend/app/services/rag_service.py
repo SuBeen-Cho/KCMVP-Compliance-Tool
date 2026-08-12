@@ -30,6 +30,7 @@ from app.services.rag_grounding import (
     render_evidence_bundle,
     route_rag,
 )
+from app.services.analysis_stage_contract import stamp
 
 
 def rag_ablation_disabled() -> bool:
@@ -579,6 +580,7 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
             violation["rag_ablation"] = True
             violation["rag_route"] = {"decision": "skip", "reason": "controlled_ablation"}
             violation["rag_evidence_bundle"] = []
+            stamp(violation, "hold", "controlled_ablation_no_official_evidence", "prohibited")
         return result
     guideline_cache: dict = {}
     bundle_cache: dict = {}
@@ -620,6 +622,11 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
             v["rag_evidence_bundle"] = [dict(u) for u in bundle_cache.get(rid, [])]
             if not v["rag_evidence_bundle"]:
                 v["rag_grounding_status"] = "evidence_absent"
+                stamp(v, "hold", "official_evidence_absent", "prohibited",
+                      history=["retrieval_required", "hold"])
+            else:
+                stamp(v, "ai_required", "retrieved_evidence_requires_contextual_judgment", "required",
+                      history=["retrieval_required", "evidence_verified", "ai_required"])
         elif v["rag_route"]["decision"] == "deterministic_verified_rule":
             units = normalize_evidence_bundle(_load_verified_official_units(rid))
             if not units:
@@ -628,6 +635,8 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
                 v["rag_guideline_text"] = ""
                 v["rag_evidence_bundle"] = []
                 v["rag_grounding_status"] = "evidence_absent"
+                stamp(v, "hold", "deterministic_provenance_unavailable", "prohibited",
+                      history=["deterministic", "retrieval_required", "hold"])
                 continue
             v["rag_guideline_text"] = ""
             v["rag_evidence_bundle"] = [dict(unit) for unit in units]
@@ -641,10 +650,12 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
                 "source_sha256": unit.get("source_sha256"),
             } for unit in units]
             v["llm_calls_avoided"] = 1
+            stamp(v, "deterministic", "verified_literal_and_official_provenance", "not_required")
         else:
             v["rag_guideline_text"] = ""
             v["rag_evidence_bundle"] = []
             v["rag_grounding_status"] = "not_required"
+            stamp(v, "deterministic", "deterministic_structural_evidence", "not_required")
         v.pop("rag_ablation", None)
     return result
 

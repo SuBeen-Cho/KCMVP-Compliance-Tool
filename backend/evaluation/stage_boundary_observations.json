@@ -1,0 +1,88 @@
+{
+  "cases": [
+    {
+      "actual_llm_calls": 0,
+      "baseline_llm_calls": 1,
+      "case_id": "literal-gcm-tag-10",
+      "cost_usd": 0.0,
+      "evidence_required": false,
+      "final_disposition": "reject",
+      "input_tokens": 0,
+      "integrity_gate": "pass",
+      "latency_ms": 89.36545799952,
+      "official_evidence_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0031:b039",
+        "KCMVP_GVI_PART2_2024_03:p0034:b023"
+      ],
+      "output_tokens": 0,
+      "route_partition": "selected_deterministic",
+      "stage": "deterministic",
+      "verifier": "pass"
+    },
+    {
+      "actual_llm_calls": 0,
+      "baseline_llm_calls": 1,
+      "case_id": "ast-structural",
+      "cost_usd": 0.0,
+      "evidence_required": false,
+      "final_disposition": "reject",
+      "input_tokens": 0,
+      "integrity_gate": "pass",
+      "latency_ms": 0.01999997766688466,
+      "official_evidence_ids": [],
+      "output_tokens": 0,
+      "route_partition": "selected_deterministic",
+      "stage": "deterministic",
+      "verifier": "not_applicable"
+    },
+    {
+      "actual_llm_calls": 0,
+      "baseline_llm_calls": 0,
+      "case_id": "semantic-retrieval",
+      "cost_usd": 0.0,
+      "evidence_required": true,
+      "final_disposition": "abstain",
+      "input_tokens": 0,
+      "integrity_gate": "pass",
+      "latency_ms": 0.581667001824826,
+      "official_evidence_ids": [
+        "LEA_DATASHEET_KO:p0011:b003",
+        "LEA_DATASHEET_KO:p0011:b004",
+        "LEA_DATASHEET_KO:p0011:b005",
+        "LEA_DATASHEET_KO:p0011:b006",
+        "LEA_DATASHEET_KO:p0011:b007",
+        "LEA_DATASHEET_KO:p0011:b008"
+      ],
+      "output_tokens": 0,
+      "route_partition": "selected_retrieve",
+      "stage": "retrieval",
+      "verifier": "pass"
+    },
+    {
+      "actual_llm_calls": 0,
+      "baseline_llm_calls": 0,
+      "case_id": "controlled-no-rag",
+      "cost_usd": 0.0,
+      "evidence_required": true,
+      "final_disposition": "abstain",
+      "input_tokens": 0,
+      "integrity_gate": "pass",
+      "latency_ms": 0.0195419997908175,
+      "official_evidence_ids": [],
+      "output_tokens": 0,
+      "route_partition": "unresolved",
+      "stage": "abstain",
+      "verifier": "fail"
+    }
+  ],
+  "pricing": {
+    "input_usd_per_million": 0.0,
+    "output_usd_per_million": 0.0
+  },
+  "run": {
+    "dataset": "production-candidate-boundary-v1",
+    "notes": "offline probe; retrieval=AI authorized but not invoked",
+    "system": "production-l2-l3-boundary"
+  },
+  "schema_version": "1.0"
+}

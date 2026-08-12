@@ -17,8 +17,10 @@ from app.services.llm.gemini_client import (
 from app.services.llm.prompt_templates import _HIGH_ISOLATION_RULES
 from app.services.rag_grounding import (
     is_deterministic_verified_bypass,
+    route_rag,
     verify_citation_bound_decision,
 )
+from app.services.analysis_stage_contract import ai_is_authorized, close_for_l3
 
 # 테스트 세트에서 L3가 오탐 제거로 FN을 유발하는 것이 확인된 ast 규칙들.
 # KISA blind test에서 이 규칙들은 FP가 아니므로 FP 제거 임계값을 높여 Recall 보호.
@@ -549,13 +551,37 @@ def run_l3_contextualizer(
                     return None
         return None
 
-    # L3 대상 선정
-    candidates = list(l1_violations) if _preselected else _select_l3_candidates(l1_violations)
-    candidates = [
-        candidate for candidate in candidates
-        if not is_deterministic_verified_bypass(candidate)
-    ]
+    # Production boundary: legacy or contradictory inputs are converted to a
+    # visible hold and can never reach a provider call.
+    forged_legacy_bypass = any(
+        candidate.get("analysis_contract_version") is None
+        and (candidate.get("rag_route") or {}).get("decision") == "deterministic_verified_rule"
+        and not is_deterministic_verified_bypass(candidate)
+        for candidate in l1_violations
+    )
+    contracted = [close_for_l3(candidate) for candidate in l1_violations]
+    candidates = list(contracted) if _preselected else _select_l3_candidates(contracted)
+    gated_candidates = []
+    for candidate in candidates:
+        claimed_route = candidate.get("rag_route") or {}
+        recomputed = route_rag({k: v for k, v in candidate.items() if k != "rag_route"})
+        route_valid = (
+            claimed_route.get("decision") == "retrieve"
+            and recomputed.get("decision") == "retrieve"
+        )
+        if (
+            ai_is_authorized(candidate) and route_valid
+            and not is_deterministic_verified_bypass(candidate)
+        ):
+            gated_candidates.append(candidate)
+    candidates = gated_candidates
     if not candidates:
+        # Preserve the existing loud failure for an attempted forged bypass.
+        # It remains fail-closed: no provider is invoked and no result is emitted.
+        if forged_legacy_bypass and L3_PROVIDER == "gemini" and not GOOGLE_API_KEY:
+            raise GeminiConfigurationError(
+                "invalid legacy deterministic bypass; explicit stage contract required"
+            )
         print("[L3] L3 판정 대상 없음")
         return []
 

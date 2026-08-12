@@ -1,6 +1,6 @@
 import pytest
 
-from app.services import rag_grounding
+from app.services import rag_grounding, rag_service
 from app.services.rag_grounding import (
     normalize_evidence_bundle,
     render_evidence_bundle,
@@ -15,6 +15,15 @@ def _audited_binding(monkeypatch):
         "source_id": "guide", "source_sha256": "a" * 64,
         "unit_ids": frozenset({"guide:p10:s2:requirement:abc"}),
     })
+    # Verification now anchors caller/search material to the live sealed index.
+    monkeypatch.setattr(rag_service, "_load_verified_official_units", lambda _rule_id: [{
+        "unit_id": "guide:p10:s2:requirement:abc",
+        "source_id": "guide", "authority": "KISA", "authority_tier": 1,
+        "locator": {"page": 10, "section": "2"}, "role": "requirement",
+        "text": "인증값의 길이는 112비트 이상이어야 한다.", "status": "active",
+        "version": "2024.03", "effective_date": "2024-03-01",
+        "source_sha256": "a" * 64,
+    }])
 
 
 def _official_unit(**overrides):
@@ -29,6 +38,7 @@ def _official_unit(**overrides):
         "status": "active",
         "version": "2024.03",
         "effective_date": "2024-03-01",
+        "source_sha256": "a" * 64,
     }
     unit.update(overrides)
     return normalize_evidence_bundle([unit])[0]
@@ -182,6 +192,13 @@ def test_locator_hash_and_version_are_enforced():
 
 
 def test_undated_local_artifact_requires_content_addressed_binding(monkeypatch):
+    monkeypatch.setattr(rag_service, "_load_verified_official_units", lambda _rule_id: [{
+        "unit_id": "guide:p10:s2:requirement:abc", "source_id": "guide",
+        "authority": "KISA", "authority_tier": 1,
+        "locator": {"page": 10, "section": "2"}, "role": "requirement",
+        "text": "인증값의 길이는 112비트 이상이어야 한다.", "status": "active",
+        "version": "local-artifact", "effective_date": None, "source_sha256": "a" * 64,
+    }])
     candidate = {
         "rule_id": "LEA-048", "rag_route": {"decision": "retrieve"},
         "rag_evidence_bundle": [_official_unit(

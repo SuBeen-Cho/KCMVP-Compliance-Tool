@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "dataset": "production-candidate-boundary-v1",
+  "cases": [
+    {
+      "case_id": "literal-gcm-tag-10",
+      "mode": "production",
+      "scanner_fixture": {
+        "group": "gcm",
+        "filename": "gcm_fixture.c",
+        "rule_id": "GCM-002",
+        "source": "int gcm_tag_len_bytes = 10;"
+      }
+    },
+    {
+      "case_id": "ast-structural",
+      "mode": "production",
+      "candidate": {
+        "rule_id": "CBC-001",
+        "file": "cbc_fixture.c",
+        "line": 7,
+        "pattern_type": "ast",
+        "ast_evidence": "xor_after_encrypt",
+        "detection_semantics": "structural_violation"
+      }
+    },
+    {
+      "case_id": "semantic-retrieval",
+      "mode": "production",
+      "candidate": {
+        "rule_id": "LEA-001",
+        "file": "lea_fixture.c",
+        "line": 3,
+        "pattern_type": "semantic",
+        "detection_semantics": "required_absence"
+      }
+    },
+    {
+      "case_id": "controlled-no-rag",
+      "mode": "controlled_ablation",
+      "candidate": {
+        "rule_id": "LEA-001",
+        "file": "lea_ablation_fixture.c",
+        "line": 3,
+        "pattern_type": "semantic",
+        "detection_semantics": "required_absence"
+      }
+    }
+  ]
+}

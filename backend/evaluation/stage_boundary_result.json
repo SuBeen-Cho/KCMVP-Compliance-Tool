@@ -1,0 +1,98 @@
+{
+  "case_count": 4,
+  "cost": {
+    "input_tokens": 0,
+    "observed_usd": 0.0,
+    "output_tokens": 0,
+    "pricing_snapshot": {
+      "input_usd_per_million": 0.0,
+      "output_usd_per_million": 0.0
+    },
+    "token_estimated_usd": 0.0
+  },
+  "evidence": {
+    "coverage": 0.5,
+    "covered_cases": 1,
+    "required_cases": 2
+  },
+  "integrity_gate": {
+    "forged": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "live_mismatch": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "pass": {
+      "count": 4,
+      "ratio": 1.0
+    },
+    "route_missing": {
+      "count": 0,
+      "ratio": 0.0
+    }
+  },
+  "latency_ms": {
+    "mean": 22.496666744700633,
+    "p95_nearest_rank": 89.36545799952,
+    "total": 89.98666697880253
+  },
+  "llm": {
+    "actual_calls": 0,
+    "avoidance_ratio": 1.0,
+    "baseline_calls": 2,
+    "calls_avoided": 2
+  },
+  "result_sha256": "2e4ceae1b81df62343d9dfcda714c03750f733bd33fe87368c435fe9e8337046",
+  "run": {
+    "dataset": "production-candidate-boundary-v1",
+    "notes": "offline probe; retrieval=AI authorized but not invoked",
+    "system": "production-l2-l3-boundary"
+  },
+  "schema_version": "1.0",
+  "stage_distribution": {
+    "abstain": {
+      "count": 1,
+      "ratio": 0.25
+    },
+    "ai": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "deterministic": {
+      "count": 2,
+      "ratio": 0.5
+    },
+    "retrieval": {
+      "count": 1,
+      "ratio": 0.25
+    }
+  },
+  "universe_partition": {
+    "selected_deterministic": {
+      "count": 2,
+      "ratio": 0.5
+    },
+    "selected_retrieve": {
+      "count": 1,
+      "ratio": 0.25
+    },
+    "skip": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "unresolved": {
+      "count": 1,
+      "ratio": 0.25
+    }
+  },
+  "verifier": {
+    "abstain_count": 2,
+    "abstain_ratio": 0.5,
+    "fail": 1,
+    "not_applicable": 1,
+    "pass": 2,
+    "pass_ratio_applicable": 0.6666666666666666
+  }
+}

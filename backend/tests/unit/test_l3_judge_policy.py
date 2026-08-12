@@ -3,6 +3,16 @@
 from app.services.llm import l3_judge
 
 
+def _authorize(candidate):
+    candidate.update({
+        "analysis_contract_version": "1.0", "disposition": "ai_required",
+        "disposition_reason": "retrieved_evidence_requires_contextual_judgment",
+        "ai_need": "required",
+        "rag_route": {"decision": "retrieve", "reason": "authority_or_applicability_required"},
+    })
+    return candidate
+
+
 def test_no_dual_verify_ablation_skips_second_pass(monkeypatch):
     called = False
 
@@ -70,6 +80,9 @@ def test_grounded_missing_relax_removes_low_risk_auxiliary(monkeypatch):
     monkeypatch.setenv("ABLATION_NO_DUAL_VERIFY", "1")
     results = []
     rejected = set()
+    monkeypatch.setattr(l3_judge, "verify_citation_bound_decision", lambda *_a, **_k: {
+        "verified": True, "reason": "citation_bound_verified", "cited_unit_ids": ["u1"],
+    })
     violation = {
         "rule_id": "LEA-048",
         "pattern_type": "missing",
@@ -122,11 +135,11 @@ def test_preselected_path_preserves_exact_content_and_skips_second_selection(mon
         l3_judge, "_call_gemini_batch_with_retry",
         lambda *args, **kwargs: [{"idx": 1, "is_real_issue": True, "confidence": 90}],
     )
-    candidate = {
+    candidate = _authorize({
         "candidate_id": "set::a.c::X-1::2::1::hash",
         "file": "a.c", "line": 2, "rule_id": "X-1",
         "pattern_type": "regex", "detection_semantics": "prohibited_presence",
-    }
+    })
     result = l3_judge.run_l3_contextualizer(
         {"files": [{"path": "a.c", "content": original, "lines": original.splitlines()}]},
         [candidate], _preselected=True, _rejected_candidate_ids=True,
@@ -143,13 +156,12 @@ def test_retrieval_required_candidate_cannot_be_precondition_rejected(monkeypatc
         l3_judge, "_call_gemini_batch_with_retry",
         lambda *_a, **_k: [{"idx": 1, "is_real_issue": True, "confidence": 90}],
     )
-    candidate = {
+    candidate = _authorize({
         "candidate_id": "routed-com-001", "file": "plain.c", "line": 1,
         "rule_id": "COM-001", "pattern_type": "regex",
         "detection_semantics": "prohibited_presence",
-        "rag_route": {"decision": "retrieve", "reason": "authority_or_applicability_required"},
         "rag_evidence_bundle": [], "rag_guideline_text": "",
-    }
+    })
     rejected = set()
     results = l3_judge.run_l3_contextualizer(
         {"files": [{"path": "plain.c", "content": "int plain;"}]},
@@ -162,6 +174,9 @@ def test_retrieval_required_candidate_cannot_be_precondition_rejected(monkeypatc
 
 def test_occurrence_rejection_key_is_opt_in_and_legacy_default_remains(monkeypatch):
     monkeypatch.setenv("ABLATION_NO_DUAL_VERIFY", "1")
+    monkeypatch.setattr(l3_judge, "verify_citation_bound_decision", lambda *_a, **_k: {
+        "verified": True, "reason": "citation_bound_verified", "cited_unit_ids": ["u1"],
+    })
     violation = {
         "candidate_id": "occurrence-2", "rule_id": "X-1", "file": "a.c",
         "line": 4, "pattern_type": "regex",

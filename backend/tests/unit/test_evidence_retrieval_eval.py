@@ -39,6 +39,10 @@ def test_four_conditions_measure_retrieval_and_fail_closed_verifier(monkeypatch)
         lambda rule_id: {"unit_ids": frozenset({"good"}), "source_id": "source-ok", "source_sha256": "a" * 64},
     )
     good, bad = _unit("good"), _unit("bad", "source-wrong")
+    monkeypatch.setattr(
+        "app.services.rag_service._load_verified_official_units",
+        lambda rule_id: [good],
+    )
     result = evaluate(_gt(), {"good": good, "bad": bad}, [good, bad], repeats=2,
                       search=lambda *a, **k: [good])
     summary = result["summary"]

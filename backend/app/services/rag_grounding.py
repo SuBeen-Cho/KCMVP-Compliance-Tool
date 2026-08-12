@@ -281,10 +281,10 @@ def verify_citation_bound_decision(
 ) -> Dict[str, Any]:
     """Verify L3 citations deterministically; uncertain evidence never removes."""
     route = candidate.get("rag_route")
-    # Candidates produced before the router existed preserve legacy behaviour;
-    # newly routed candidates always carry this field and fail closed.
-    if not grounding_enabled() or route is None:
+    if not grounding_enabled():
         return {"verified": True, "reason": "retrieval_not_required", "cited_unit_ids": []}
+    if route is None:
+        return {"verified": False, "reason": "route_missing", "cited_unit_ids": []}
     if not isinstance(route, dict):
         return {"verified": False, "reason": "invalid_rag_route", "cited_unit_ids": []}
     route_decision = route.get("decision")
@@ -404,4 +404,22 @@ def verify_citation_bound_decision(
         return {"verified": False, "reason": "counterevidence_unchecked", "cited_unit_ids": cited_ids}
     if counterevidence:
         return {"verified": False, "reason": "counterevidence_present", "cited_unit_ids": cited_ids}
+    # Caller/search-cache material is never its own trust root. Compare every
+    # otherwise-valid citation with the current sealed official index.
+    from app.services.rag_service import _load_verified_official_units
+    live_by_id = {
+        str(unit.get("unit_id")): normalize_evidence_bundle([unit])[0]
+        for unit in _load_verified_official_units(rule_id)
+    }
+    if any(unit_id not in live_by_id for unit_id in cited_ids):
+        return {"verified": False, "reason": "citation_not_in_live_official_index", "cited_unit_ids": cited_ids}
+    exact_fields = (
+        "source_id", "source_sha256", "locator", "span", "span_sha256",
+        "status", "version", "effective_date", "evidence_role",
+        "authority", "authority_tier", "applicability",
+    )
+    for unit in cited:
+        live = live_by_id[str(unit["unit_id"])]
+        if any(unit.get(field) != live.get(field) for field in exact_fields):
+            return {"verified": False, "reason": "citation_live_index_mismatch", "cited_unit_ids": cited_ids}
     return {"verified": True, "reason": "citation_bound_verified", "cited_unit_ids": cited_ids}
