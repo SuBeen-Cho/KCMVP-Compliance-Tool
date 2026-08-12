@@ -1,0 +1,60 @@
+{
+  "dataset": {
+    "candidate_count": 265,
+    "content_policy": "aggregate_only_no_candidate_ids_or_source_text",
+    "interpretation_scope": "historical_policy_replay_not_current_end_to_end",
+    "snapshot_sha256": "64c0055e702c2aea16e4188a7a613a64ce15adbfd252d8ce6ea676b2cb109dbf"
+  },
+  "execution": {
+    "external_api_calls": 0,
+    "production_function": "run_l2_rag_context",
+    "warm_run_count": 20
+  },
+  "latency_ms": {
+    "cold_batch": 157.83937502419576,
+    "cold_per_candidate": 0.5956202831101727,
+    "warm_batch_mean": 31.544308207230642,
+    "warm_batch_median": 24.448541516903788,
+    "warm_batch_p95_nearest_rank": 70.22716599749401,
+    "warm_per_candidate_mean": 0.11903512531030432
+  },
+  "projected_llm_calls": {
+    "measured_calls_avoided": null,
+    "measurement_kind": "routing_projection_no_eligible_all_call_comparator",
+    "naive_all_candidates_upper_bound": 265,
+    "need_gated": 8,
+    "need_gated_ratio": 0.03018867924528302,
+    "upper_bound_reduction_ratio": 0.969811320754717
+  },
+  "reproducibility_manifest": {
+    "git_dirty": true,
+    "git_head": "de1ab8f39568cd8f80f32398ee9ff8c550631c06",
+    "mapping_tree_sha256": "66bdab8783aafc83d49a0056f61e14b5dcbe3751e6a1354719d8fba2bb83ca24",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "rules_tree_sha256": "899d1545a3c811c7dda57f6883eab3ee55c345208e2b8fabcc92f24b431b35f3",
+    "snapshot_source_tree_sha256": "66023b843f81060bf00505cf8aff203c2ea08233bf672e2639100addcee2d31f"
+  },
+  "result_sha256": "d2e33c894c36611362496117745d12dbc914f037a53ebb73485192e1508c1299",
+  "schema_version": "1.0",
+  "stage_distribution": {
+    "ai_ready": {
+      "count": 8,
+      "ratio": 0.03018867924528302
+    },
+    "deterministic": {
+      "count": 30,
+      "ratio": 0.11320754716981132
+    },
+    "hold": {
+      "count": 227,
+      "ratio": 0.8566037735849057
+    }
+  },
+  "verified_evidence": {
+    "bundle_available_count": 12,
+    "measurement_status": "not_measured_without_llm_decision_entailment",
+    "required_count": 235,
+    "verifier_full_pass_count": null,
+    "verifier_full_pass_coverage": null
+  }
+}
