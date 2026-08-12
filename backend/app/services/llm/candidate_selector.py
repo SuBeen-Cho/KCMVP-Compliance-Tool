@@ -90,8 +90,6 @@ def _select_l3_candidates(
             forced_in.append(v)
         elif verdict is False:
             forced_out_ids.add(id(v))
-    forced_in_ids = {id(v) for v in forced_in}
-
     # Strategy F: needs_ai_review=True인 위반을 L3 대상에 포함
     # missing 타입도 L3 판정 대상에 포함 (②관련함수발췌 + ③역방향탐색 컨텍스트 활용)
     eligible = [
@@ -102,6 +100,12 @@ def _select_l3_candidates(
         and id(v) not in forced_out_ids
         and not is_deterministic_verified_bypass(v)
     ]
+    eligible_ids = {id(v) for v in eligible}
+    # TP-like names affect routing priority only, never the semantic verdict.
+    # Once normally eligible, however, they must not disappear under bucket or
+    # per-rule caps (the previous code computed this set but never consumed it).
+    forced_in = [v for v in forced_in if id(v) in eligible_ids]
+    forced_in_ids = {id(v) for v in forced_in}
     print(f"[L1.5] 강제포함={len(forced_in)}건, 강제제외={len(forced_out_ids)}건")
 
     severity_rank = {"high": 0, "medium": 1, "low": 2}
@@ -128,7 +132,8 @@ def _select_l3_candidates(
 
     # 버킷 1: ast 타입 — fallback 위반(confidence="후보") 우선, 이후 severity 순
     # [Priority 5] fallback-only 규칙 위반은 AI 재판정 필수 → cap 초과 시 먼저 검토받도록
-    ast_pool = [v for v in eligible if v.get("pattern_type") == "ast"]
+    ast_pool = [v for v in eligible
+                if id(v) not in forced_in_ids and v.get("pattern_type") == "ast"]
     ast_fallback_count = sum(1 for v in ast_pool if v.get("confidence") == "후보")
     bucket_ast = _fill_bucket(
         ast_pool,
@@ -144,7 +149,7 @@ def _select_l3_candidates(
     # 버킷 2: high severity regex/semantic (missing 제외)
     high_pool = [
         v for v in eligible
-        if id(v) not in selected_keys
+        if id(v) not in selected_keys and id(v) not in forced_in_ids
         and v.get("pattern_type") in ("regex", "semantic")
         and v.get("severity") == "high"
     ]
@@ -154,7 +159,7 @@ def _select_l3_candidates(
     # 버킷 3: 나머지 non-missing
     other_pool = [
         v for v in eligible
-        if id(v) not in selected_keys
+        if id(v) not in selected_keys and id(v) not in forced_in_ids
         and v.get("pattern_type") != "missing"
     ]
     bucket_other = _fill_bucket(other_pool, max_items=b3_cap, per_rule_max=4)
@@ -166,7 +171,7 @@ def _select_l3_candidates(
     # COM-001 후보가 잘리는 것을 막기 위함.
     missing_pool = [
         v for v in eligible
-        if id(v) not in selected_keys
+        if id(v) not in selected_keys and id(v) not in forced_in_ids
         and v.get("pattern_type") == "missing"
     ]
     if n_total <= 30:
@@ -181,7 +186,7 @@ def _select_l3_candidates(
         per_rule_max=missing_per_rule_max,
     )
 
-    result = bucket_ast + bucket_high + bucket_other + bucket_missing
+    result = forced_in + bucket_ast + bucket_high + bucket_other + bucket_missing
     ast_fb_in_bucket = sum(1 for v in bucket_ast if v.get("confidence") == "후보")
     print(
         f"[L3] 대상 선정: N={n_total}, cap={total_cap}, "
