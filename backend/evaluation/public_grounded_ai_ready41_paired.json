@@ -1,0 +1,89 @@
+{
+  "claim_limit": "Routing utility and grounded-verifier behavior only; no independent GT and no accuracy claim.",
+  "conditions": {
+    "grounded": {
+      "estimated_cost_usd": 0.0054602,
+      "input_tokens": 31462,
+      "latency_ms_mean": 1253.4840487804877,
+      "latency_ms_median": 1186.907,
+      "output_tokens": 5785,
+      "raw_labels": {
+        "abstain": 5,
+        "non_violation": 32,
+        "not_applicable": 2,
+        "violation": 2
+      },
+      "request_count": 41,
+      "verified_final_labels": {
+        "abstain": 37,
+        "non_violation": 4
+      },
+      "verifier_pass_count": 4,
+      "verifier_reasons": {
+        "citation_bound_verified": 4,
+        "citation_missing": 10,
+        "citation_unknown": 1,
+        "source_applicability_mismatch": 26
+      }
+    },
+    "no_rag": {
+      "estimated_cost_usd": 0.0023019,
+      "input_tokens": 9863,
+      "latency_ms_mean": 1074.2926585365853,
+      "latency_ms_median": 1064.198,
+      "output_tokens": 3289,
+      "raw_labels": {
+        "abstain": 39,
+        "not_applicable": 2
+      },
+      "request_count": 41,
+      "verified_final_labels": {
+        "abstain": 41
+      },
+      "verifier_pass_count": 0,
+      "verifier_reasons": {
+        "evidence_not_supplied": 41
+      }
+    }
+  },
+  "execution": {
+    "conditions": [
+      "no_rag",
+      "grounded"
+    ],
+    "duplicate_request_count": 11,
+    "physical_api_request_count": 93,
+    "physical_estimated_cost_usd": 0.0088118,
+    "physical_input_tokens": 48030,
+    "physical_output_tokens": 10022,
+    "repeats": 1,
+    "retry_count": 0,
+    "unique_analyzed_request_count": 82
+  },
+  "experiment": "historical_265_exact_ai_ready41_paired",
+  "model": "gemini-2.5-flash-lite",
+  "population": {
+    "exact_ai_ready": 41,
+    "historical_candidates": 265,
+    "ordered_candidate_hashes_sha256": "a4a26d74159abf49b64b0dc68f24006b636563d460390852ec8f942580b6a1b1",
+    "ordered_envelope_binding_hashes_sha256": "ae99576dde23ddd3ce6341be22ca99b943988b46a624005203c5fa606ed30cfb"
+  },
+  "privacy": "aggregate_only; prompts, responses, occurrence IDs and source text are private mode-0600",
+  "prompt_version": "ai-ready-grounded-paired-v1",
+  "provenance": {
+    "git_head": "e4d1b95985515a09f100e87ef15466d961fa52fe",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "runner_sha256": "73047aac048f402232c5eddebfca24f4d8a431cea9e5c382c787290a797252ef",
+    "snapshot_sha256": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3"
+  },
+  "raw_label_transitions": {
+    "abstain->abstain": 5,
+    "abstain->non_violation": 30,
+    "abstain->not_applicable": 2,
+    "abstain->violation": 2,
+    "not_applicable->non_violation": 2
+  },
+  "result_sha256": "b872e49e273da20e7adade8711a94e9ce45f03b54a90d4030852e4ba6b0e8da5",
+  "run_started_at": "2026-08-12T04:34:09.512477+00:00",
+  "schema_version": "1.0"
+}

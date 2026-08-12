@@ -11,9 +11,12 @@ import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
 import re
 import secrets
 from typing import Any, Dict, Iterable, List
+
+import yaml
 
 
 _NORMATIVE_ROLES = frozenset({
@@ -74,7 +77,11 @@ def grounding_enabled() -> bool:
 
 
 def _verified_rule_binding(rule_id: str) -> Dict[str, Any] | None:
-    """Load the audited rule-to-unit binding, never a caller-supplied claim."""
+    """Load and content-address the audited binding plus its live YAML rule.
+
+    Applicability is deliberately obtained from repository-owned artifacts.
+    Candidate fields are observations, not a trust root.
+    """
     if not rule_id:
         return None
     from app.services.mapping_service import get_evidence_audit
@@ -82,6 +89,8 @@ def _verified_rule_binding(rule_id: str) -> Dict[str, Any] | None:
     row = get_evidence_audit(rule_id)
     locator = row.get("source_locator") or {}
     unit_ids = row.get("evidence_unit_ids") or []
+    applicability = row.get("applicability") or {}
+    rule_file = row.get("rule_file")
     if (
         row.get("status") != "verified"
         or row.get("review_required", False)
@@ -91,12 +100,66 @@ def _verified_rule_binding(rule_id: str) -> Dict[str, Any] | None:
         or not unit_ids
         or not locator.get("source_id")
         or not re.fullmatch(r"[0-9a-f]{64}", str(row.get("source_sha256") or ""))
+        or not isinstance(applicability, dict)
+        or not isinstance(rule_file, str)
     ):
         return None
+    backend = Path(__file__).resolve().parents[2]
+    path = (backend / rule_file.removeprefix("backend/")).resolve()
+    rules_root = (backend / "rules").resolve()
+    try:
+        path.relative_to(rules_root)
+        raw = path.read_bytes()
+        payload = yaml.safe_load(raw) or {}
+        rules = payload.get("rules", []) if isinstance(payload, dict) else payload
+        live = next(
+            item for item in rules
+            if isinstance(item, dict) and str(item.get("id") or "").upper() == rule_id.upper()
+        )
+    except (OSError, ValueError, TypeError, StopIteration, yaml.YAMLError):
+        return None
+
+    def values(source: Dict[str, Any], key: str) -> frozenset[str]:
+        value = source.get(key, [])
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return frozenset()
+        return frozenset(str(item).upper() for item in value if str(item).strip())
+
+    audited_algorithms = values(applicability, "algorithm")
+    audited_modes = values(applicability, "mode")
+    live_algorithms = values(live, "algorithm")
+    live_modes = values(live, "mode")
+    # An audited restriction may not disagree with the active YAML contract.
+    # Absence in both is a valid generic rule; absence on only one side is not.
+    if (
+        (audited_algorithms or live_algorithms)
+        and (not audited_algorithms or not live_algorithms or not live_algorithms.issubset(audited_algorithms))
+    ) or (
+        (audited_modes or live_modes)
+        and (not audited_modes or not live_modes or not live_modes.issubset(audited_modes))
+    ):
+        return None
+    provenance = {
+        "rule_id": rule_id.upper(),
+        "rule_file": str(path.relative_to(backend)),
+        "rule_file_sha256": hashlib.sha256(raw).hexdigest(),
+        "algorithm": sorted(audited_algorithms),
+        "mode": sorted(audited_modes),
+        "source_id": str(locator["source_id"]),
+        "source_sha256": str(row["source_sha256"]),
+        "unit_ids": sorted(str(value) for value in unit_ids),
+    }
     return {
         "source_id": str(locator["source_id"]),
         "source_sha256": str(row["source_sha256"]),
         "unit_ids": frozenset(str(value) for value in unit_ids),
+        "algorithms": audited_algorithms,
+        "modes": audited_modes,
+        "rule_provenance_sha256": hashlib.sha256(json.dumps(
+            provenance, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode()).hexdigest(),
     }
 
 
@@ -320,6 +383,9 @@ def verify_citation_bound_decision(
     binding = _verified_rule_binding(rule_id)
     if binding is None:
         return {"verified": False, "reason": "rule_evidence_binding_missing", "cited_unit_ids": cited_ids}
+    expected_rule_seal = binding.get("rule_provenance_sha256")
+    if expected_rule_seal and candidate.get("rule_provenance_sha256") != expected_rule_seal:
+        return {"verified": False, "reason": "rule_provenance_mismatch", "cited_unit_ids": cited_ids}
     if any(item not in binding["unit_ids"] for item in cited_ids):
         return {"verified": False, "reason": "citation_not_bound_to_rule", "cited_unit_ids": cited_ids}
     if any(str(unit.get("source_id")) != binding["source_id"] for unit in cited):
@@ -373,9 +439,9 @@ def verify_citation_bound_decision(
             return {str(v).upper() for v in raw if str(v).strip()}
         algorithms = values("algorithm")
         modes = values("mode")
-        if algorithms and not any(token in rule_id for token in algorithms):
+        if algorithms and not algorithms.intersection(binding.get("algorithms") or set()):
             return {"verified": False, "reason": "source_applicability_mismatch", "cited_unit_ids": cited_ids}
-        if modes and not any(token in rule_id for token in modes):
+        if modes and not modes.intersection(binding.get("modes") or set()):
             return {"verified": False, "reason": "source_applicability_mismatch", "cited_unit_ids": cited_ids}
     quoted = decision.get("supporting_spans") or []
     if isinstance(quoted, str):

@@ -55,6 +55,12 @@ CTR-001과 CBC-001 두 규칙만으로 21/81건(25.93%)이 우선 검토 범위�
 
 baseline 81건과 승격 후 결과는 같은 artifact로 덮어쓰지 않는다. mapping tree와 evidence audit 입력 hash가 다른 별도 결과로 보존하여 정책 변화에 따른 순증감을 계산한다.
 
+## 6. 53개 verified 승격 후 재생
+
+승격 후 mapping/evidence hash로 다시 재생한 단계 분포는 deterministic 30건, AI-ready 41건, hold 194건이다. 이들 중 hold ∩ proxy violation은 63건으로 baseline 81건보다 18건(22.22%) 감소한다. 이 변화는 routing coverage 변화이며 recall이나 정확도 향상을 의미하지 않는다.
+
+승격 후 63건의 격차는 detector scope 35건, authority 17건, applicability 5건, exact locator 5건, verified routing/selector 1건이다. 따라서 exact-locator 승격으로 18건이 hold에서 벗어난 후에는 검출기 35건과 권위 출처 17건이 주요 병목으로 남는다. 별도 폐쇄형 artifact는 `backend/mapping/hold_proxy_violation_priority_after_promotion.json`에 보존한다.
+
 ## 6. 1차 승격 결과
 
 독립 원문 감사를 통과한 `CBC-001`, `CTR-001`, `CTR-002` 세 규칙만 승격했다. 적용 범위는 LEA로 봉인했고 COM-003·004 등은 승격하지 않았다. 265건 historical-policy replay에서 AI-ready는 8→41건(3.02%→15.47%), hold는 227→194건(85.66%→73.21%)으로 변했다. binary-eligible AI-ready는 3→26건이었고, hold 내부 proxy 위반은 81→63건으로 18건 감소했다. 결정적 routing은 30건으로 같았다.

@@ -1,0 +1,469 @@
+{
+  "analysis_scope": {
+    "claim_limit": "Prioritization proxy only; not independent human ground truth or measured accuracy gain.",
+    "content_policy": "aggregate_only_no_occurrence_id_source_path_line_or_snippet",
+    "input_sha256": {
+      "evidence_audit": "96fff8e74d9b7bca2dc6970b05fd21352b01ed2bef2068f0fe2c0924588495f6",
+      "gap_audit": "2c7eb0156852c99ad45ce7c197c656a0984950ad007926e582e7f1a4c7c15a6c",
+      "proxy_gt": "a42b9e40f42f007b22881413feec3c51d55df7752f253552fcccb1f8941ce9ab",
+      "sidecar": "c34381dc8aaac39ceea2b00d76b06c63a16d22694376feba6cc6c7c56ed81cdf",
+      "snapshot": "2ad50dc8525b1f5c2f2948b2440dff188966ef67a732286f934e28517c4556f3"
+    },
+    "population": "historical_265_hold_same_model_proxy_violation"
+  },
+  "baseline_comparison": {
+    "absolute_change": -18,
+    "after_proxy_violation_hold": 63,
+    "baseline_proxy_violation_hold": 81,
+    "interpretation": "historical policy replay routing delta; not recall or accuracy gain",
+    "relative_reduction": 0.22222222
+  },
+  "coverage_potential_upper_bound": {
+    "detector_change_occurrences": 35,
+    "detector_change_ratio": 0.55555556,
+    "evidence_or_contract_work_occurrences": 22,
+    "evidence_or_contract_work_ratio": 0.34920635,
+    "warning": "Potential means candidates eligible for remediation review, not automatic promotion or realized AI-ready coverage."
+  },
+  "evidence_mapping_priority": [
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 5,
+      "cumulative_occurrences": 35,
+      "cumulative_population_ratio": 0.55555556,
+      "cumulative_target_population_ratio": 0.07936508,
+      "family": "CBC",
+      "mapping_rank": 1,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 5,
+      "rank": 3,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CBC-005",
+      "unique_clone_groups": 5
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 8,
+      "cumulative_occurrences": 41,
+      "cumulative_population_ratio": 0.65079365,
+      "cumulative_target_population_ratio": 0.12698413,
+      "family": "CTR",
+      "mapping_rank": 2,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 3,
+      "rank": 5,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CTR-LEA-001",
+      "unique_clone_groups": 3
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 11,
+      "cumulative_occurrences": 44,
+      "cumulative_population_ratio": 0.6984127,
+      "cumulative_target_population_ratio": 0.17460317,
+      "family": "COM",
+      "mapping_rank": 3,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 3,
+      "rank": 6,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-001",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 13,
+      "cumulative_occurrences": 48,
+      "cumulative_population_ratio": 0.76190476,
+      "cumulative_target_population_ratio": 0.20634921,
+      "family": "CBC",
+      "mapping_rank": 4,
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 8,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "CBC-LEA-005",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 15,
+      "cumulative_occurrences": 50,
+      "cumulative_population_ratio": 0.79365079,
+      "cumulative_target_population_ratio": 0.23809524,
+      "family": "COM",
+      "mapping_rank": 5,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 9,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-002",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 17,
+      "cumulative_occurrences": 54,
+      "cumulative_population_ratio": 0.85714286,
+      "cumulative_target_population_ratio": 0.26984127,
+      "family": "LEA",
+      "mapping_rank": 6,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 11,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "LEA-032",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 19,
+      "cumulative_occurrences": 56,
+      "cumulative_population_ratio": 0.88888889,
+      "cumulative_target_population_ratio": 0.3015873,
+      "family": "LEA",
+      "mapping_rank": 7,
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 12,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "LEA-057",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 20,
+      "cumulative_occurrences": 57,
+      "cumulative_population_ratio": 0.9047619,
+      "cumulative_target_population_ratio": 0.31746032,
+      "family": "CBC",
+      "mapping_rank": 8,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 13,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CBC-061",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 21,
+      "cumulative_occurrences": 58,
+      "cumulative_population_ratio": 0.92063492,
+      "cumulative_target_population_ratio": 0.33333333,
+      "family": "COM",
+      "mapping_rank": 9,
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 14,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-005",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_mapping_occurrences": 22,
+      "cumulative_occurrences": 59,
+      "cumulative_population_ratio": 0.93650794,
+      "cumulative_target_population_ratio": 0.34920635,
+      "family": "CTR",
+      "mapping_rank": 10,
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 15,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "CTR-LEA-006",
+      "unique_clone_groups": 1
+    }
+  ],
+  "family_priority": [
+    {
+      "family": "COM",
+      "gap_counts": {
+        "authority_gap": 6,
+        "detector_scope": 30
+      },
+      "proxy_violation_occurrences": 36,
+      "unique_clone_groups": 28,
+      "unique_rules": 5
+    },
+    {
+      "family": "CBC",
+      "gap_counts": {
+        "applicability_gap": 2,
+        "authority_gap": 6,
+        "routing_or_selector_gap": 2
+      },
+      "proxy_violation_occurrences": 10,
+      "unique_clone_groups": 10,
+      "unique_rules": 4
+    },
+    {
+      "family": "LEA",
+      "gap_counts": {
+        "applicability_gap": 2,
+        "authority_gap": 2,
+        "detector_scope": 5,
+        "routing_or_selector_gap": 1
+      },
+      "proxy_violation_occurrences": 10,
+      "unique_clone_groups": 10,
+      "unique_rules": 7
+    },
+    {
+      "family": "CTR",
+      "gap_counts": {
+        "applicability_gap": 1,
+        "authority_gap": 3,
+        "routing_or_selector_gap": 3
+      },
+      "proxy_violation_occurrences": 7,
+      "unique_clone_groups": 7,
+      "unique_rules": 3
+    }
+  ],
+  "gap_distribution": {
+    "applicability_gap": 5,
+    "authority_gap": 17,
+    "detector_scope": 35,
+    "routing_or_selector_gap": 6
+  },
+  "rule_priority": [
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 16,
+      "cumulative_population_ratio": 0.25396825,
+      "family": "COM",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 16,
+      "rank": 1,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "COM-004",
+      "unique_clone_groups": 10
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 30,
+      "cumulative_population_ratio": 0.47619048,
+      "family": "COM",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 14,
+      "rank": 2,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "COM-003",
+      "unique_clone_groups": 14
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 35,
+      "cumulative_population_ratio": 0.55555556,
+      "family": "CBC",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 5,
+      "rank": 3,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CBC-005",
+      "unique_clone_groups": 5
+    },
+    {
+      "audit_status": "verified",
+      "cumulative_occurrences": 38,
+      "cumulative_population_ratio": 0.6031746,
+      "family": "CTR",
+      "primary_gap": "routing_or_selector_gap",
+      "proxy_violation_occurrences": 3,
+      "rank": 4,
+      "required_action": "routing_or_selector_review",
+      "rule_id": "CTR-001",
+      "unique_clone_groups": 3
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 41,
+      "cumulative_population_ratio": 0.65079365,
+      "family": "CTR",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 3,
+      "rank": 5,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CTR-LEA-001",
+      "unique_clone_groups": 3
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 44,
+      "cumulative_population_ratio": 0.6984127,
+      "family": "COM",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 3,
+      "rank": 6,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-001",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "verified",
+      "cumulative_occurrences": 46,
+      "cumulative_population_ratio": 0.73015873,
+      "family": "CBC",
+      "primary_gap": "routing_or_selector_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 7,
+      "required_action": "routing_or_selector_review",
+      "rule_id": "CBC-001",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 48,
+      "cumulative_population_ratio": 0.76190476,
+      "family": "CBC",
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 8,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "CBC-LEA-005",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 50,
+      "cumulative_population_ratio": 0.79365079,
+      "family": "COM",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 9,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-002",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 52,
+      "cumulative_population_ratio": 0.82539683,
+      "family": "LEA",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 2,
+      "rank": 10,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "LEA-028",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 54,
+      "cumulative_population_ratio": 0.85714286,
+      "family": "LEA",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 11,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "LEA-032",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 56,
+      "cumulative_population_ratio": 0.88888889,
+      "family": "LEA",
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 2,
+      "rank": 12,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "LEA-057",
+      "unique_clone_groups": 2
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 57,
+      "cumulative_population_ratio": 0.9047619,
+      "family": "CBC",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 13,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "CBC-061",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 58,
+      "cumulative_population_ratio": 0.92063492,
+      "family": "COM",
+      "primary_gap": "authority_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 14,
+      "required_action": "source_acquisition_then_mapping",
+      "rule_id": "COM-005",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 59,
+      "cumulative_population_ratio": 0.93650794,
+      "family": "CTR",
+      "primary_gap": "applicability_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 15,
+      "required_action": "applicability_contract_then_mapping",
+      "rule_id": "CTR-LEA-006",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 60,
+      "cumulative_population_ratio": 0.95238095,
+      "family": "LEA",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 1,
+      "rank": 16,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "LEA-009",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "verified",
+      "cumulative_occurrences": 61,
+      "cumulative_population_ratio": 0.96825397,
+      "family": "LEA",
+      "primary_gap": "routing_or_selector_gap",
+      "proxy_violation_occurrences": 1,
+      "rank": 17,
+      "required_action": "routing_or_selector_review",
+      "rule_id": "LEA-011",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 62,
+      "cumulative_population_ratio": 0.98412698,
+      "family": "LEA",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 1,
+      "rank": 18,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "LEA-016",
+      "unique_clone_groups": 1
+    },
+    {
+      "audit_status": "review_required",
+      "cumulative_occurrences": 63,
+      "cumulative_population_ratio": 1.0,
+      "family": "LEA",
+      "primary_gap": "detector_scope",
+      "proxy_violation_occurrences": 1,
+      "rank": 19,
+      "required_action": "detector_change_not_mapping_only",
+      "rule_id": "LEA-027",
+      "unique_clone_groups": 1
+    }
+  ],
+  "schema_version": "1.0",
+  "target": {
+    "proxy_violation_occurrences": 63,
+    "unique_clone_groups": 55,
+    "unique_families": 4,
+    "unique_rules": 19
+  }
+}

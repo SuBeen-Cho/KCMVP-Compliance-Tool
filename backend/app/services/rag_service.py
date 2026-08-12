@@ -26,6 +26,7 @@ from app.services.mapping_service import (
     lookup,
 )
 from app.services.rag_grounding import (
+    _verified_rule_binding,
     normalize_evidence_bundle,
     render_evidence_bundle,
     route_rag,
@@ -625,6 +626,15 @@ def run_l2_rag_context(violations: list, max_chars: int = 4000) -> list:
                 stamp(v, "hold", "official_evidence_absent", "prohibited",
                       history=["retrieval_required", "hold"])
             else:
+                binding = _verified_rule_binding(str(rid).upper())
+                if binding is None:
+                    v["rag_guideline_text"] = ""
+                    v["rag_evidence_bundle"] = []
+                    v["rag_grounding_status"] = "rule_provenance_unavailable"
+                    stamp(v, "hold", "rule_provenance_unavailable", "prohibited",
+                          history=["retrieval_required", "hold"])
+                    continue
+                v["rule_provenance_sha256"] = binding["rule_provenance_sha256"]
                 stamp(v, "ai_required", "retrieved_evidence_requires_contextual_judgment", "required",
                       history=["retrieval_required", "evidence_verified", "ai_required"])
         elif v["rag_route"]["decision"] == "deterministic_verified_rule":
