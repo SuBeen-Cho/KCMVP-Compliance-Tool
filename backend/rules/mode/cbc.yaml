@@ -13,6 +13,7 @@ rules:
   - id: CBC-001
     category: mode
     mode: CBC
+    algorithm: LEA
     name: "CBC 암호화 연쇄(Chaining) 수식 준수"
     pattern_type: ast
     severity: high

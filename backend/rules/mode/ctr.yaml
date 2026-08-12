@@ -13,6 +13,7 @@ rules:
   - id: CTR-001
     category: mode
     mode: CTR
+    algorithm: LEA
     name: "CTR 암·복호화 수식 및 대칭성 준수"
     pattern_type: ast
     severity: high
@@ -23,10 +24,11 @@ rules:
   - id: CTR-002
     category: mode
     mode: CTR
+    algorithm: LEA
     name: "카운터 초기값의 유일성(Nonce) 보장"
     pattern_type: ast
     severity: high
-    description: "CTR 모드는 보안 유지를 위해 매 암호화 시마다 반드시 서로 다른 카운터 초기값을 사용해야 함"
+    description: "LEA CTR 모드는 동일한 비밀키로 암호화되는 모든 평문 블록에 대해 카운터가 유일하도록 초기값과 각 암호화 실행의 카운터 사용 구간이 중복되지 않게 관리해야 함"
     fallback_pattern: '(?i)(ctr_init|nonce_init|counter.*init|lea_ctr_init|\bnonce\s*\[|ctr_nonce|static\s+\w+\s+\w*counter\w*\s*\[|static\s+uint\d+_t\s+\w*counter\w*|static\s+(?:const\s+)?\w+\s+\w*ctr\w*\s*\[)'
     kcmvp_ref: "LEA 검증시스템 §5.5"
 

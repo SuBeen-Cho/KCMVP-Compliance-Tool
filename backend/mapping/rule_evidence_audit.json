@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "policy": "fail_closed",
   "inventory": {
-    "active_rule_count": 165,
-    "mapped_legacy_count": 158,
+    "active_rule_count": 166,
+    "mapped_legacy_count": 159,
     "unmapped_count": 7,
-    "verified_count": 65,
-    "review_required_count": 100
+    "verified_count": 53,
+    "review_required_count": 113
   },
   "rules": {
     "AES-001": {
@@ -66,18 +66,33 @@
       "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
     },
     "CBC-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_test_interface",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KISA-LEA-Validation-System",
+        "algorithm": ["LEA"],
+        "mode": ["CBC"],
+        "operation": "encryption_chaining"
+      },
+      "source_locator": {
+        "source_id": "LEA_VALIDATION_SYSTEM",
+        "pages": [8],
+        "section": "5.2 CBC 운영모드",
+        "blocks": [3, 4, 5, 6]
+      },
+      "source_sha256": "743060e6690e2157c8955bbc57df70f7edbdcb245db8bcc06faa8a75cc8fed42",
+      "evidence_unit_ids": [
+        "LEA_VALIDATION_SYSTEM:p0008:b003",
+        "LEA_VALIDATION_SYSTEM:p0008:b004",
+        "LEA_VALIDATION_SYSTEM:p0008:b005",
+        "LEA_VALIDATION_SYSTEM:p0008:b006"
+      ],
       "rule_file": "rules/mode/cbc.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "LEA 검증시스템의 CBC 암호화 연쇄 수식과 첫 블록 IV XOR 원문에 직접 결합함; LEA CBC candidate에만 적용함"
     },
     "CBC-002": {
       "status": "review_required",
@@ -534,32 +549,62 @@
       "audit_note": "known incorrect or overgeneralized legacy mapping removed; exact official locator required"
     },
     "CTR-001": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_test_interface",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KISA-LEA-Validation-System",
+        "algorithm": ["LEA"],
+        "mode": ["CTR"],
+        "operation": "encryption_and_decryption"
+      },
+      "source_locator": {
+        "source_id": "LEA_VALIDATION_SYSTEM",
+        "pages": [11],
+        "section": "5.5 CTR 운영모드",
+        "blocks": [3, 4, 5, 6, 7]
+      },
+      "source_sha256": "743060e6690e2157c8955bbc57df70f7edbdcb245db8bcc06faa8a75cc8fed42",
+      "evidence_unit_ids": [
+        "LEA_VALIDATION_SYSTEM:p0011:b003",
+        "LEA_VALIDATION_SYSTEM:p0011:b004",
+        "LEA_VALIDATION_SYSTEM:p0011:b005",
+        "LEA_VALIDATION_SYSTEM:p0011:b006",
+        "LEA_VALIDATION_SYSTEM:p0011:b007"
+      ],
       "rule_file": "rules/mode/ctr.yaml",
-      "audit_note": "known incorrect or overgeneralized legacy mapping removed; exact official locator required"
+      "audit_note": "LEA 검증시스템의 CTR 카운터 증가, XOR, 암·복호화 ENC-only 수식에 직접 결합함; LEA CTR candidate에만 적용함"
     },
     "CTR-002": {
-      "status": "review_required",
-      "review_required": true,
+      "status": "verified",
+      "review_required": false,
       "legacy_mapping_present": true,
       "legacy_mapping_trusted": false,
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "applicability": {},
-      "source_locator": null,
-      "source_sha256": null,
-      "evidence_unit_ids": [],
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "applicability": {
+        "profile": "KCMVP-GVI-Part2-2024.03",
+        "algorithm": ["LEA"],
+        "mode": ["CTR"],
+        "condition": "same_key_counter_range_uniqueness"
+      },
+      "source_locator": {
+        "source_id": "KCMVP_GVI_PART2_2024_03",
+        "pages": [23],
+        "section": "CTR 운영모드",
+        "blocks": [3, 5, 6]
+      },
+      "source_sha256": "c2487f8fd3fb22048f4676e79a352286adc85d278acbda93ba1958e30599d2d1",
+      "evidence_unit_ids": [
+        "KCMVP_GVI_PART2_2024_03:p0023:b003",
+        "KCMVP_GVI_PART2_2024_03:p0023:b005",
+        "KCMVP_GVI_PART2_2024_03:p0023:b006"
+      ],
       "rule_file": "rules/mode/ctr.yaml",
-      "audit_note": "legacy mapping is not normative evidence until evidence-unit review completes"
+      "audit_note": "CTR 카운터는 동일 비밀키로 암호화되는 모든 평문 블록에 대해 유일해야 한다는 KCMVP GVI 원문에 직접 결합함; LEA CTR candidate에만 적용함"
     },
     "CTR-003": {
       "status": "review_required",

@@ -63,9 +63,14 @@ def test_retired_guideline_requires_explicit_opt_in():
 
 
 def test_unverified_mapping_fails_closed_but_legacy_is_explicitly_available():
-    assert mapping_service.get_guideline_path("CTR-001") is None
-    assert mapping_service.get_evidence_audit("CTR-001")["review_required"] is True
-    assert not mapping_service.has_verified_normative_evidence("CTR-001")
+    assert mapping_service.get_guideline_path("COM-003") is None
+    assert mapping_service.get_evidence_audit("COM-003")["review_required"] is True
+    assert not mapping_service.has_verified_normative_evidence("COM-003")
+
+
+def test_promoted_ctr_mapping_exposes_verified_official_evidence_only():
+    assert mapping_service.get_evidence_audit("CTR-001")["review_required"] is False
+    assert mapping_service.has_verified_normative_evidence("CTR-001")
 
 
 def test_removed_first_filename_heuristic_does_not_resolve_item_id_only():

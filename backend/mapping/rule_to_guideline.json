@@ -821,13 +821,18 @@
     }
   },
   "CTR-002": {
-    "item_ids": [
-      "CTR.002"
-    ],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.2 CTR",
-    "l3_search_query": "CTR 카운터 유일성 재사용 금지",
+    "item_ids": [],
+    "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) CTR 운영모드",
+    "l3_search_query": "LEA CTR 동일 비밀키 모든 평문 블록 카운터 유일 사용 구간 중복 금지",
     "l3_required": true,
-    "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_002_카운터_유일성.md"
+    "guideline_file": "database/LEA/02_운영모드/02_02_CTR/CTR_002_카운터_유일성.md",
+    "provenance": {
+      "status": "verified",
+      "authority_class": "normative_guidance",
+      "evidence_role": "normative_requirement",
+      "source_locator": "KCMVP_GVI_PART2_2024_03:p0023:b003,b005-b006",
+      "applies_to": ["LEA", "CTR", "same_secret_key"]
+    }
   },
   "CTR-003": {
     "item_ids": [
@@ -1045,28 +1050,30 @@
     "guideline_file": "guidelines/CCM-001_nonce.md"
   },
   "CBC-001": {
-    "item_ids": [
-      "AS09.06"
-    ],
-    "kcmvp_ref": "암호알고리즘 구현안내서 §4.1 CBC",
-    "l3_search_query": "CBC IV 무작위 생성 CSPRNG 예측 불가",
+    "item_ids": [],
+    "kcmvp_ref": "LEA 검증시스템 §5.2 CBC 운영모드",
+    "l3_search_query": "LEA CBC 현재 평문 이전 암호문 XOR ENC 연쇄 수식",
     "l3_required": false,
-    "guideline_file": "guidelines/CBC-001_iv.md"
+    "guideline_file": "guidelines/CBC-001_iv.md",
+    "provenance": {
+      "status": "verified",
+      "authority_class": "normative_test_interface",
+      "evidence_role": "normative_requirement",
+      "source_locator": "LEA_VALIDATION_SYSTEM:p0008:b003-b006",
+      "applies_to": ["LEA", "CBC"]
+    }
   },
   "CTR-001": {
     "item_ids": [],
-    "kcmvp_ref": "암호알고리즘 구현안내서(GVI Part 2, 2024.03) CTR 절 — 정확 locator 재검토 필요",
-    "l3_search_query": "CTR 카운터 재사용 금지 초기값",
+    "kcmvp_ref": "LEA 검증시스템 §5.5 CTR 운영모드",
+    "l3_search_query": "LEA CTR 카운터 증가 XOR ENC 암호화 복호화 수식",
     "l3_required": false,
     "provenance": {
-      "status": "review_required",
-      "authority_class": "unverified",
-      "evidence_role": "unverified_claim",
-      "source_locator": null,
-      "applies_to": [],
-      "does_not_establish": [
-        "원문 evidence unit 검증 전 RAG 판정 근거"
-      ]
+      "status": "verified",
+      "authority_class": "normative_test_interface",
+      "evidence_role": "normative_requirement",
+      "source_locator": "LEA_VALIDATION_SYSTEM:p0011:b003-b007",
+      "applies_to": ["LEA", "CTR"]
     }
   },
   "CMAC-001": {

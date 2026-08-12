@@ -9,8 +9,8 @@ def test_active_rules_have_explicit_fail_closed_audit_state():
     result = validator.validate_evidence_mapping_registry()
 
     assert result["active_rule_count"] == 166
-    assert result["verified_count"] == 50
-    assert result["review_required_count"] == 116
+    assert result["verified_count"] == 53
+    assert result["review_required_count"] == 113
 
 
 def test_submission_guide_promotions_are_source_bound_and_fail_closed():
@@ -40,7 +40,7 @@ def test_submission_guide_promotions_are_source_bound_and_fail_closed():
 
 def test_validator_rejects_unverified_exposed_evidence_unit(tmp_path, monkeypatch):
     source = json.loads(validator._AUDIT.read_text(encoding="utf-8"))
-    source["rules"]["CTR-001"]["evidence_unit_ids"] = ["fabricated-unit"]
+    source["rules"]["COM-003"]["evidence_unit_ids"] = ["fabricated-unit"]
     broken = tmp_path / "audit.json"
     broken.write_text(json.dumps(source), encoding="utf-8")
     monkeypatch.setattr(validator, "_AUDIT", broken)
@@ -52,13 +52,40 @@ def test_validator_rejects_unverified_exposed_evidence_unit(tmp_path, monkeypatc
 def test_known_bad_legacy_mappings_are_not_presented_as_verified():
     payload = json.loads(validator._AUDIT.read_text(encoding="utf-8"))
     for rule_id in (
-        "CTR-001", "CBC-LEA-005", "COM-002", "COM-003", "COM-005"
+        "CBC-LEA-005", "COM-002", "COM-003", "COM-005"
     ):
         row = payload["rules"][rule_id]
         assert row["status"] == "review_required"
         assert row["authority_class"] == "unverified"
         assert row["evidence_unit_ids"] == []
         assert "incorrect or overgeneralized" in row["audit_note"]
+
+
+def test_lea_cbc_ctr_promotions_are_exact_and_algorithm_scoped():
+    rows = json.loads(validator._AUDIT.read_text(encoding="utf-8"))["rules"]
+    expected = {
+        "CBC-001": (
+            "LEA_VALIDATION_SYSTEM", [8], [3, 4, 5, 6],
+            "normative_test_interface",
+        ),
+        "CTR-001": (
+            "LEA_VALIDATION_SYSTEM", [11], [3, 4, 5, 6, 7],
+            "normative_test_interface",
+        ),
+        "CTR-002": (
+            "KCMVP_GVI_PART2_2024_03", [23], [3, 5, 6],
+            "normative_guidance",
+        ),
+    }
+    for rule_id, (source_id, pages, blocks, authority) in expected.items():
+        row = rows[rule_id]
+        assert row["status"] == "verified"
+        assert row["authority_class"] == authority
+        assert row["applicability"]["algorithm"] == ["LEA"]
+        assert row["source_locator"]["source_id"] == source_id
+        assert row["source_locator"]["pages"] == pages
+        assert row["source_locator"]["blocks"] == blocks
+        assert all(unit_id.startswith(f"{source_id}:") for unit_id in row["evidence_unit_ids"])
 
 
 def test_lea001_is_bound_to_self_contained_normative_standard_units():
