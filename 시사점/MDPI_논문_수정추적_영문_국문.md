@@ -1087,19 +1087,19 @@ LEA의 C 언어 구현과 검증된 모듈의 보안 정책을 바탕으로 저�
 
 초기 평가는 저자 구축 데이터셋의 탐지 특성과 기존 실행에서 기록한 L3 필터링 동작을 분석한다. 재현율은 누락된 라벨 위반을 측정하고, 필터링 지표는 제거된 저자 라벨 오탐(FP) 후보와 제거된 참양성(TP)을 기록한다. 이 지표는 인간 검토 시간을 직접 측정하지 않는다. 표 2는 기존 값을 보고하며, 원 실행과 현재 저장소 스냅샷을 연결하는 불변 매니페스트는 존재하지 않는다.
 
-**Table 2. Code violation detection performance (Sets 1--7, based on 128 GT cases). / 표 2. 코드 위반 탐지 성능.**
+**Table 2. Exploratory post-selector performance using same-model proxy labels. / 표 2. 동일 모델 proxy 라벨 기반 탐색적 post-selector 성능.**
 
 | Metric | Result |
 |---|---|
-| True Positive (TP) | 128 cases |
-| False Negative (FN) | 0 cases |
-| Recall | 100% |
-| L1-stage False Positive candidates | 46 cases |
-| L3 filtering: FP removal | 9/46 (19.6%) |
-| <span style="color:red">Author-labeled TPs removed by L3</span> | 0 cases |
-| Final False Positive (FP) | 37 cases |
-| Precision | 77.6% |
-| F1-score | 87.4% |
+| True Positive (TP) | 36 cases |
+| False Negative (FN) | 4 cases |
+| Recall | 90.0% |
+| L1-stage False Positive candidates | Not isolated in this post-selector cohort |
+| L3 filtering: FP removal | Not isolated |
+| <span style="color:red">Proxy-labeled TPs removed by L3</span> | Not isolated |
+| Final False Positive (FP) | 6 cases |
+| Precision | 85.7% |
+| F1-score | 87.8% |
 
 <span style="color:red">On this dataset, the legacy run recorded all 128 labeled code cases and L3 removed 9 of 46 author-labeled FP candidates without removing an author-labeled TP. These observations motivate the layered design but do not isolate L2 or establish reduced human review effort. Document-rule outputs were inspected qualitatively; no independently labeled document confusion matrix is claimed. Because `missing`-type rules judge absence as a violation, delegation to other files can still yield false candidates.</span>
 
@@ -1117,9 +1117,11 @@ LEA의 C 언어 구현과 검증된 모듈의 보안 정책을 바탕으로 저�
 |---|---|
 | C source scope | 34 files / 11,983 physical LOC |
 | C and header scope | 59 files / 14,511 physical LOC |
-| Candidate count | Withheld pending canonical rerun |
-| Candidate frequency | Not reported |
-| Ground-truth status | Independent labeling pending |
+| Candidate count | 11 |
+| Candidate frequency | 0.758 cases/KLOC (C/H denominator) |
+| Ground-truth status | Unavailable; AI label distribution only |
+| Production routing | deterministic 0 / AI-ready 0 / hold 11 |
+| Experimental No-RAG AI | 9 calls; violation 3 / non-violation 6 |
 
 <span style="color:red">Accordingly, this case study cannot presently establish a real-world FP rate or generalization performance. It remains useful for identifying parser, naming, and cross-file limitations, but not for estimating predictive accuracy.</span>
 
@@ -1739,31 +1741,31 @@ The initial evaluation uses an author-labeled dataset derived through analysis o
 Based on a C-language implementation of LEA~\cite{lea2014} and a validated module's security policy~\cite{ncsc2026}, the authors constructed seven code-ZIP and design-PDF pairs with intentionally injected violations. They cover CBC/CTR modes, key management, zeroization, random-number generation, the LEA key schedule, round function, and MCT loop. The 128 cases are author-reviewed labels; independent annotation has not yet been completed.
 
 \paragraph{Code Violation Detection Performance.}
-This initial evaluation characterizes detection on the author-constructed dataset and the L3 filtering behavior recorded in a legacy run. Recall measures missed labeled violations, while the filtering indicator records removed author-labeled FP candidates and removed labeled TPs. It does not directly measure human review time. Table~\ref{tab:results} reports the legacy values; the original run lacks an immutable manifest tying it to the current repository snapshot.
+The updated quantitative table reports the reproducible historical post-selector cohort that is completely joined to the same-model test--retest proxy labels. It is an exploratory proxy estimate rather than independent human-ground-truth performance. Current-snapshot routing and the commercial-module case study are reported separately because one candidate identity differs and the latter has no ground truth.
 
 \begin{table}[t]
 \centering
-\caption{Code violation detection performance (Sets 1--7, based on 128 GT cases).}
+\caption{Exploratory post-selector performance using same-model proxy labels.}
 \label{tab:results}
 \small
 \begin{tabular}{@{}ll@{}}
 \toprule
 Metric & Result \\
 \midrule
-True Positive (TP) & 128 cases \\
-False Negative (FN) & 0 cases \\
-Recall & 100\% \\
-L1-stage False Positive candidates & 46 cases \\
-L3 filtering: FP removal & 9/46 (19.6\%) \\
-Author-labeled TPs removed by L3 & 0 cases \\
-Final False Positive (FP) & 37 cases \\
-Precision & 77.6\% \\
-F1-score & 87.4\% \\
+True Positive (TP) & 36 cases \\
+False Negative (FN) & 4 cases \\
+Recall & 90.0\% \\
+L1-stage False Positive candidates & Not isolated in this post-selector cohort \\
+L3 filtering: FP removal & Not isolated \\
+Proxy-labeled TPs removed by L3 & Not isolated \\
+Final False Positive (FP) & 6 cases \\
+Precision & 85.7\% \\
+F1-score & 87.8\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-On this dataset, the legacy run recorded all 128 labeled code cases and L3 removed 9 of 46 author-labeled FP candidates without removing an author-labeled TP. These observations motivate the layered design but do not isolate L2 or establish reduced human review effort. Document-rule outputs were inspected qualitatively; no independently labeled document confusion matrix is claimed. Because \texttt{missing}-type rules judge absence as a violation, delegation to other files can still yield false candidates.
+On the 46-row held-out post-selector cohort, the proxy confusion counts were TP=36, FP=6, FN=4, and TN=0, yielding precision 85.7\%, recall 90.0\%, and F1 87.8\%. The absence of true negatives and the same-model proxy labels substantially limit interpretation; these values neither represent whole-L1 performance nor establish reduced human-review effort.
 
 \paragraph{Case Study on a Real Cryptographic Module.}
 In addition to the synthetic dataset, we inspected a commercial cryptographic module developed for KCMVP submission. A reproducibility audit found that the earlier draft mixed two counting scopes: the archive contains 34 C files with 11,983 physical lines, whereas including 25 header files produces 59 C/H files with 14,511 physical lines. The earlier value of 0.58 cases/KLOC therefore combined a C-only numerator/denominator with a C/H description. Moreover, saved legacy runs contained different candidate counts and lacked immutable code/input/prompt manifests. We consequently withdraw the candidate-frequency value from the performance claims and retain this dataset only as a qualitative case study until a manifest-bound rerun and independent labeling are completed. Certification status alone is not used to label every static-analysis candidate as an FP.
@@ -1779,9 +1781,11 @@ Metric & Result \\
 \midrule
 C source scope & 34 files / 11,983 physical LOC \\
 C and header scope & 59 files / 14,511 physical LOC \\
-Candidate count & Withheld pending canonical rerun \\
-Candidate frequency & Not reported \\
-Ground-truth status & Independent labeling pending \\
+Candidate count & 11 \\
+Candidate frequency & 0.758 cases/KLOC (C/H denominator) \\
+Ground-truth status & Unavailable; AI label distribution only \\
+Production routing & deterministic 0 / AI-ready 0 / hold 11 \\
+Experimental No-RAG AI & 9 calls; violation 3 / non-violation 6 \\
 \bottomrule
 \end{tabular}
 \end{table}
