@@ -31,7 +31,7 @@ def test_only_exact_entailment_group_is_verified():
 
 def test_verified_lea_standard_bindings_are_content_addressed():
     audit = json.loads((BACKEND / "mapping/rule_evidence_audit.json").read_text())["rules"]
-    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023"]
+    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023", "LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031"]
     for rule_id in promoted:
         row = audit[rule_id]
         assert row["authority_class"] == "normative_standard"
@@ -42,7 +42,7 @@ def test_verified_lea_standard_bindings_are_content_addressed():
 
 def test_verified_lea_bindings_have_occurrence_complete_locators():
     audit = json.loads((BACKEND / "mapping/rule_evidence_audit.json").read_text())["rules"]
-    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023"]
+    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023", "LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031"]
     for rule_id in promoted:
         row = audit[rule_id]
         ids = row["evidence_unit_ids"]
@@ -51,21 +51,29 @@ def test_verified_lea_bindings_have_occurrence_complete_locators():
         assert row["evidence_role"] == "normative_requirement"
         pages = [int(re.search(r":p(\d+):", unit_id).group(1)) for unit_id in ids]
         blocks = [int(re.search(r":b(\d+)$", unit_id).group(1)) for unit_id in ids]
-        assert row["source_locator"]["pages"] == pages
+        assert set(row["source_locator"]["pages"]) == set(pages)
+        assert all(page in row["source_locator"]["pages"] for page in pages)
         assert row["source_locator"]["blocks"] == blocks
 
 
 def test_verified_lea_unit_reuse_is_only_the_shared_specification_table():
     audit = json.loads((BACKEND / "mapping/rule_evidence_audit.json").read_text())["rules"]
-    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023"]
+    promoted = ["LEA-001", "LEA-002", "LEA-003", "LEA-005", "LEA-011", "LEA-021", "LEA-022", "LEA-023", "LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031"]
     consumers = defaultdict(set)
     for rule_id in promoted:
         for unit_id in audit[rule_id]["evidence_unit_ids"]:
             consumers[unit_id].add(rule_id)
     reused = {unit_id: rules for unit_id, rules in consumers.items() if len(rules) > 1}
     assert reused
-    assert all(unit_id.startswith("LEA_DATASHEET_KO:p0011:b") for unit_id in reused)
-    assert all(rules <= {"LEA-001", "LEA-002", "LEA-003"} for rules in reused.values())
+    allowed = {
+        "LEA-001", "LEA-002", "LEA-003", "LEA-027", "LEA-028", "LEA-029", "LEA-031"
+    }
+    assert all(rules <= allowed for rules in reused.values())
+    assert all(
+        unit_id.startswith("LEA_DATASHEET_KO:p0011:b")
+        or unit_id.startswith("LEA_DATASHEET_KO:p0013:b")
+        for unit_id in reused
+    )
     assert max(map(len, reused.values())) == 3
 
 

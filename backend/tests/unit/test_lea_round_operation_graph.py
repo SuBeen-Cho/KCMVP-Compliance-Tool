@@ -1,9 +1,11 @@
 import pytest
 import shutil
 import hashlib
+import json
 from pathlib import Path
 
 import app.services.clang_straightline_reaching_def as rd
+import app.services.lea_round_operation_graph as graph
 from app.services.lea_round_operation_graph import prove_lea_round_operation_graph
 
 GOOD = """
@@ -28,17 +30,23 @@ def binding(source):
         _attestor=rd._BINDING_ATTESTOR)
 
 
-def test_exact_graph_is_only_structural_and_binds_current_evidence_gap():
+def test_exact_graph_binds_live_evidence_but_remains_unknown_without_callers():
     result = prove_lea_round_operation_graph(GOOD, preprocessing_binding=binding(GOOD))
     assert result["state"] == "unknown"
     assert result["structural_complete"] and result["graph_equal"]
     assert result["observed_graph_sha256"] == result["expected_graph_sha256"]
     assert result["claim_id"] == "LEA.014"
     assert result["rule_ids"] == ["LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031"]
-    assert result["evidence_unit_ids"] == []
-    assert result["evidence_binding_complete"] is False
+    assert len(result["evidence_unit_ids"]) == 10
+    assert result["evidence_binding_complete"] is True
+    binding_result = result["evidence_binding"]
+    assert binding_result["reason"] == "exact_live_evidence_bound"
+    assert all(len(binding_result[name]) == 64 for name in (
+        "mapping_registry_sha256", "atomic_registry_sha256",
+        "official_index_sha256", "official_units_manifest_sha256",
+    ))
     assert len(result["function_ast_sha256"]) == 64
-    assert result["reason"] == "official_evidence_units_unbound_and_independent_audit_pending"
+    assert result["reason"] == "callsite_and_caller_semantics_unproved"
 
 
 @pytest.mark.parametrize("old,new,reason", [
@@ -94,3 +102,39 @@ def test_alias_freedom_must_be_in_the_function_contract():
     assert result["state"] == "unknown"
     assert result.get("structural_complete") is not True
     assert result["reason"] == "closed_uint32_io_shape_unproved"
+
+
+def _tampered_copy(monkeypatch, tmp_path, path_name, mutate):
+    original = getattr(graph, path_name)
+    payload = json.loads(original.read_text(encoding="utf-8"))
+    mutate(payload)
+    target = tmp_path / original.name
+    target.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setattr(graph, path_name, target)
+
+
+def test_partial_mapping_or_atomic_claim_fails_closed(monkeypatch, tmp_path):
+    _tampered_copy(monkeypatch, tmp_path, "_AUDIT", lambda value:
+                   value["rules"]["LEA-028"]["evidence_unit_ids"].pop())
+    result = prove_lea_round_operation_graph(GOOD, preprocessing_binding=binding(GOOD))
+    assert result["reason"] == "mapping_row_not_exact:LEA-028"
+    assert result["evidence_binding_complete"] is False
+
+    monkeypatch.undo()
+    _tampered_copy(monkeypatch, tmp_path, "_ATOMIC", lambda value:
+                   value["rules"]["LEA-031"][0]["applicability"].update({"operation": ["round"]}))
+    result = prove_lea_round_operation_graph(GOOD, preprocessing_binding=binding(GOOD))
+    assert result["reason"] == "atomic_claim_not_exact:LEA-031"
+    assert result.get("structural_complete") is not True
+
+
+def test_live_official_unit_content_tampering_fails_closed(monkeypatch, tmp_path):
+    def mutate(value):
+        unit = next(row for row in value["units"]
+                    if row["unit_id"] == "LEA_DATASHEET_KO:p0013:b015")
+        unit["text"] += "x"
+
+    _tampered_copy(monkeypatch, tmp_path, "_INDEX", mutate)
+    result = prove_lea_round_operation_graph(GOOD, preprocessing_binding=binding(GOOD))
+    assert result["reason"] == "official_unit_not_exact:LEA_DATASHEET_KO:p0013:b015"
+    assert result["evidence_binding_complete"] is False

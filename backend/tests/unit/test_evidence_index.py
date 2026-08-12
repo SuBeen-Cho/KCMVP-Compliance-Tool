@@ -77,7 +77,7 @@ def test_local_official_pdfs_build_deterministically(tmp_path):
     assert all("text" in unit for unit in private_a["units"])
     audit = json.loads((backend / "mapping/rule_evidence_audit.json").read_text(encoding="utf-8"))
     validate_verified_rule_mappings(public_a, audit)
-    assert sum(row["status"] == "verified" for row in audit["rules"].values()) == 53
+    assert sum(row["status"] == "verified" for row in audit["rules"].values()) == 58
     assert hashlib.sha256(json.dumps(public_a, sort_keys=True).encode()).hexdigest() == hashlib.sha256(json.dumps(public_b, sort_keys=True).encode()).hexdigest()
 
 

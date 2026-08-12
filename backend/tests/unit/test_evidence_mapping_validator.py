@@ -9,8 +9,8 @@ def test_active_rules_have_explicit_fail_closed_audit_state():
     result = validator.validate_evidence_mapping_registry()
 
     assert result["active_rule_count"] == 166
-    assert result["verified_count"] == 53
-    assert result["review_required_count"] == 113
+    assert result["verified_count"] == 58
+    assert result["review_required_count"] == 108
 
 
 def test_submission_guide_promotions_are_source_bound_and_fail_closed():
@@ -96,6 +96,29 @@ def test_lea001_is_bound_to_self_contained_normative_standard_units():
     assert row["evidence_unit_ids"] == [
         f"LEA_DATASHEET_KO:p0011:b{block:03d}" for block in range(3, 9)
     ]
+
+
+def test_lea_round_graph_promotions_bind_complete_equations_not_keyword_fragments():
+    rows = json.loads(validator._AUDIT.read_text(encoding="utf-8"))["rules"]
+    expected = {
+        "LEA-027": [7, 8, 6],
+        "LEA-028": [10, 11, 9],
+        "LEA-029": [13, 14, 12],
+        "LEA-030": [15],
+        "LEA-031": [7, 8, 6, 10, 11, 9, 13, 14, 12],
+    }
+    for rule_id, blocks in expected.items():
+        row = rows[rule_id]
+        assert row["status"] == "verified"
+        assert row["authority_class"] == "normative_standard"
+        assert row["source_sha256"] == (
+            "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795"
+        )
+        assert row["source_locator"]["pages"] == [13]
+        assert row["source_locator"]["blocks"] == blocks
+        assert row["evidence_unit_ids"] == [
+            f"LEA_DATASHEET_KO:p0013:b{block:03d}" for block in blocks
+        ]
 
 
 @pytest.mark.parametrize(

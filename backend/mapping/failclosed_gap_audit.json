@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "collection": "failclosed_gap_audit",
-  "source_audit_sha256": "96fff8e74d9b7bca2dc6970b05fd21352b01ed2bef2068f0fe2c0924588495f6",
-  "failclosed_rule_count": 113,
+  "source_audit_sha256": "7e8ff1f876115ef8c4a3d537dce13f083115c33202447e5cabf8a40c33920359",
+  "failclosed_rule_count": 108,
   "gap_counts": {
     "applicability_gap": 10,
     "authority_gap": 30,
-    "detector_scope": 49,
-    "exact_locator_gap": 24
+    "detector_scope": 46,
+    "exact_locator_gap": 22
   },
   "rules": [
     {
@@ -957,66 +957,6 @@
       "primary_gap": "detector_scope",
       "decision": "remain_fail_closed",
       "reason": "absence or lexical evidence cannot prove all equivalent implementations and project boundaries"
-    },
-    {
-      "rule_id": "LEA-027",
-      "category": "algorithm",
-      "pattern_type": "missing",
-      "authority_gap": false,
-      "detector_scope": true,
-      "applicability_gap": false,
-      "exact_locator_gap": false,
-      "primary_gap": "detector_scope",
-      "decision": "remain_fail_closed",
-      "reason": "absence or lexical evidence cannot prove all equivalent implementations and project boundaries"
-    },
-    {
-      "rule_id": "LEA-028",
-      "category": "algorithm",
-      "pattern_type": "missing",
-      "authority_gap": false,
-      "detector_scope": true,
-      "applicability_gap": false,
-      "exact_locator_gap": false,
-      "primary_gap": "detector_scope",
-      "decision": "remain_fail_closed",
-      "reason": "absence or lexical evidence cannot prove all equivalent implementations and project boundaries"
-    },
-    {
-      "rule_id": "LEA-029",
-      "category": "algorithm",
-      "pattern_type": "missing",
-      "authority_gap": false,
-      "detector_scope": true,
-      "applicability_gap": false,
-      "exact_locator_gap": false,
-      "primary_gap": "detector_scope",
-      "decision": "remain_fail_closed",
-      "reason": "absence or lexical evidence cannot prove all equivalent implementations and project boundaries"
-    },
-    {
-      "rule_id": "LEA-030",
-      "category": "algorithm",
-      "pattern_type": "ast",
-      "authority_gap": false,
-      "detector_scope": false,
-      "applicability_gap": false,
-      "exact_locator_gap": true,
-      "primary_gap": "exact_locator_gap",
-      "decision": "remain_fail_closed",
-      "reason": "related official material exists but complete claim-to-unit entailment is not yet sealed"
-    },
-    {
-      "rule_id": "LEA-031",
-      "category": "algorithm",
-      "pattern_type": "ast",
-      "authority_gap": false,
-      "detector_scope": false,
-      "applicability_gap": false,
-      "exact_locator_gap": true,
-      "primary_gap": "exact_locator_gap",
-      "decision": "remain_fail_closed",
-      "reason": "related official material exists but complete claim-to-unit entailment is not yet sealed"
     },
     {
       "rule_id": "LEA-032",

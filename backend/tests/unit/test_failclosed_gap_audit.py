@@ -11,9 +11,9 @@ def test_failclosed_taxonomy_is_exhaustive_and_closed():
     validate(payload)
     audit = json.loads((BACKEND / "mapping/rule_evidence_audit.json").read_text())["rules"]
     expected = {rule_id for rule_id, row in audit.items() if row["status"] != "verified"}
-    assert payload["failclosed_rule_count"] == 113
+    assert payload["failclosed_rule_count"] == 108
     assert {row["rule_id"] for row in payload["rules"]} == expected
-    assert sum(payload["gap_counts"].values()) == 113
+    assert sum(payload["gap_counts"].values()) == 108
 
 
 def test_no_failclosed_row_is_accidentally_promoted():

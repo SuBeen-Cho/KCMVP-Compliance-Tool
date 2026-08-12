@@ -53,4 +53,5 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 - [48_LEA001_current_HEAD_전처리_AST_shadow평가.md](48_LEA001_current_HEAD_전처리_AST_shadow평가.md): LEA-001 2건의 manifest 부재와 unknown-only current 평가
 - [49_전처리_Clang_LEA001_E2E_구조증명.md](49_전처리_Clang_LEA001_E2E_구조증명.md): capture→replay→Clang→coverage 합성 E2E와 semantic 승인 0건 경계
 - [50_LEA_operation_graph_동등성_합성평가.md](50_LEA_operation_graph_동등성_합성평가.md): 폐쇄 연산 그래프 합성 동등성 및 alias·ABI·공식근거 결합 한계
+- [48_LEA_라운드_공식근거_폐쇄감사.md](48_LEA_라운드_공식근거_폐쇄감사.md): LEA-027~031 원문 수식 10개 unit의 폐쇄 감사와 verified 승격
 - [50_LEA_operation_graph_동등성_합성평가.md](50_LEA_operation_graph_동등성_합성평가.md): exact·교환 동치와 순서·회전량·무관 복사를 분리한 폐쇄형 합성 oracle 평가

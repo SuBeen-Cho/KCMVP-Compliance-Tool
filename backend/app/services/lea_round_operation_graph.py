@@ -13,13 +13,46 @@ from app.services.clang_straightline_reaching_def import (
     VerifiedPreprocessingBinding, verified_binding_matches_source,
 )
 
-PROOF_ID, PROOF_VERSION = "lea-round-operation-graph", "1.0.0"
+PROOF_ID, PROOF_VERSION = "lea-round-operation-graph", "1.1.0"
 CLAIM_ID = "LEA.014"
 RULE_IDS = ("LEA-027", "LEA-028", "LEA-029", "LEA-030", "LEA-031")
 SOURCE_ID = "LEA_DATASHEET_KO"
 SOURCE_SHA256 = "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795"
-# rule_evidence_audit.json currently leaves these exact rules unbound.
-EVIDENCE_UNIT_IDS: tuple[str, ...] = ()
+_BACKEND = Path(__file__).resolve().parents[2]
+_AUDIT = _BACKEND / "mapping" / "rule_evidence_audit.json"
+_ATOMIC = _BACKEND / "mapping" / "atomic_claim_evidence_registry.json"
+_INDEX = _BACKEND / "data" / "evidence" / "official_units.local.json"
+_REQUIRED_UNITS = {
+    "LEA-027": ("LEA_DATASHEET_KO:p0013:b007", "LEA_DATASHEET_KO:p0013:b008", "LEA_DATASHEET_KO:p0013:b006"),
+    "LEA-028": ("LEA_DATASHEET_KO:p0013:b010", "LEA_DATASHEET_KO:p0013:b011", "LEA_DATASHEET_KO:p0013:b009"),
+    "LEA-029": ("LEA_DATASHEET_KO:p0013:b013", "LEA_DATASHEET_KO:p0013:b014", "LEA_DATASHEET_KO:p0013:b012"),
+    "LEA-030": ("LEA_DATASHEET_KO:p0013:b015",),
+    "LEA-031": ("LEA_DATASHEET_KO:p0013:b007", "LEA_DATASHEET_KO:p0013:b008", "LEA_DATASHEET_KO:p0013:b006", "LEA_DATASHEET_KO:p0013:b010", "LEA_DATASHEET_KO:p0013:b011", "LEA_DATASHEET_KO:p0013:b009", "LEA_DATASHEET_KO:p0013:b013", "LEA_DATASHEET_KO:p0013:b014", "LEA_DATASHEET_KO:p0013:b012"),
+}
+_AUDIT_APPLICABILITY = {
+    "LEA-027": {"algorithm": ["LEA"], "operation": ["encryption_round"], "output_word": [0]},
+    "LEA-028": {"algorithm": ["LEA"], "operation": ["encryption_round"], "output_word": [1]},
+    "LEA-029": {"algorithm": ["LEA"], "operation": ["encryption_round"], "output_word": [2]},
+    "LEA-030": {"algorithm": ["LEA"], "operation": ["encryption_round"], "output_word": [3]},
+    "LEA-031": {"algorithm": ["LEA"], "operation": ["encryption_round"], "expression_order": "xor_then_modular_add_then_rotate"},
+}
+_ATOMIC_APPLICABILITY = {
+    rule_id: {key: value for key, value in applicability.items() if key != "expression_order"}
+    for rule_id, applicability in _AUDIT_APPLICABILITY.items()
+}
+_UNIT_TEXT_SHA256 = {
+    "LEA_DATASHEET_KO:p0013:b006": "2ac68d1c79b788c9e80be3ddbdd3d11b0e7a1ae725d122b3931d312fe1f066f5",
+    "LEA_DATASHEET_KO:p0013:b007": "531c77cd66d8e658b9c05197cb1e26d57a1f908091c2adfdf4f026d1488d9188",
+    "LEA_DATASHEET_KO:p0013:b008": "173852e2e2daa18c84b640492bdcfc15180c930c7076543f65f0253d4f26c595",
+    "LEA_DATASHEET_KO:p0013:b009": "277625ccc2189098d9b5fa3e5f2f0bcaf67b36d8b034e2a1e421ba37af83fc8a",
+    "LEA_DATASHEET_KO:p0013:b010": "9d80cb72a7d665184e2104b838dde0ce6da1adb58589dc46b900a417cf7432c8",
+    "LEA_DATASHEET_KO:p0013:b011": "c9c7f0c018da62c6e60d0a00b5fcaaa756f6284daebdd4a4d9bab9c88380fc89",
+    "LEA_DATASHEET_KO:p0013:b012": "1130ad7e3e1e27f127968b891137c5546c4ab044d31fdeefc427a3e14fae82b9",
+    "LEA_DATASHEET_KO:p0013:b013": "0aab8d48a12f98ac3c6072f507fc9034663f5ac233501c8003eef02df6cc35e6",
+    "LEA_DATASHEET_KO:p0013:b014": "d624ee3ceabf8edbe0a99c3c3fba3a5077ce17a7b458abaad0d23b29561c6bbf",
+    "LEA_DATASHEET_KO:p0013:b015": "769755bac55d0faeb71e05acf6632f9e24144425f1ed2d57f742b66162d96f29",
+}
+EVIDENCE_UNIT_IDS = tuple(_UNIT_TEXT_SHA256)
 
 
 def _sha(value: bytes) -> str:
@@ -28,6 +61,86 @@ def _sha(value: bytes) -> str:
 
 def _canon(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+
+
+def _load_json(path: Path) -> tuple[dict[str, Any], str]:
+    raw = path.read_bytes()
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError("root_not_object")
+    return value, _sha(raw)
+
+
+def _live_evidence_binding() -> dict[str, Any]:
+    """Bind the proof to the current, closed official evidence registries."""
+    try:
+        audit, audit_sha = _load_json(_AUDIT)
+        atomic, atomic_sha = _load_json(_ATOMIC)
+        index, index_sha = _load_json(_INDEX)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {"complete": False, "reason": f"evidence_registry_unreadable:{type(exc).__name__}"}
+    result = {"mapping_registry_sha256": audit_sha, "atomic_registry_sha256": atomic_sha,
+              "official_index_sha256": index_sha,
+              "official_units_manifest_sha256": index.get("units_manifest_sha256")}
+    audit_rows, atomic_rows = audit.get("rules"), atomic.get("rules")
+    if audit.get("policy") != "fail_closed" or not isinstance(audit_rows, dict):
+        return {**result, "complete": False, "reason": "mapping_registry_not_fail_closed"}
+    if not isinstance(atomic_rows, dict):
+        return {**result, "complete": False, "reason": "atomic_registry_invalid"}
+    for rule_id in RULE_IDS:
+        row = audit_rows.get(rule_id)
+        if (not isinstance(row, dict) or row.get("status") != "verified"
+                or row.get("review_required") is not False
+                or row.get("authority_class") != "normative_standard"
+                or row.get("evidence_role") != "normative_requirement"
+                or row.get("source_sha256") != SOURCE_SHA256
+                or row.get("evidence_unit_ids") != list(_REQUIRED_UNITS[rule_id])
+                or row.get("applicability") != _AUDIT_APPLICABILITY[rule_id]):
+            return {**result, "complete": False, "reason": f"mapping_row_not_exact:{rule_id}"}
+        claims = atomic_rows.get(rule_id)
+        if (not isinstance(claims, list) or len(claims) != 1
+                or not isinstance(claims[0], dict)
+                or claims[0].get("claim_id") != f"{rule_id}:C1"
+                or claims[0].get("polarity") != "required"
+                or claims[0].get("allowed_evidence_unit_ids") != list(_REQUIRED_UNITS[rule_id])
+                or claims[0].get("applicability") != _ATOMIC_APPLICABILITY[rule_id]
+                or claims[0].get("exceptions") != []
+                or claims[0].get("program_fact", {}).get("context_required") is not True):
+            return {**result, "complete": False, "reason": f"atomic_claim_not_exact:{rule_id}"}
+    sources, units = index.get("sources"), index.get("units")
+    if (index.get("schema_version") != "1.0"
+            or index.get("collection") != "official_source"
+            or not isinstance(sources, list) or not isinstance(units, list)):
+        return {**result, "complete": False, "reason": "official_index_invalid"}
+    public_units = [{key: value for key, value in row.items() if key != "text"}
+                    for row in units if isinstance(row, dict)]
+    if (len(public_units) != len(units)
+            or _sha(json.dumps(public_units, ensure_ascii=False, sort_keys=True,
+                               separators=(",", ":")).encode())
+            != index.get("units_manifest_sha256")):
+        return {**result, "complete": False, "reason": "official_units_manifest_mismatch"}
+    source_rows = [row for row in sources if row.get("source_id") == SOURCE_ID]
+    if len(source_rows) != 1 or source_rows[0].get("sha256") != SOURCE_SHA256:
+        return {**result, "complete": False, "reason": "official_source_hash_mismatch"}
+    by_id = {row.get("unit_id"): row for row in units if isinstance(row, dict)}
+    if len(by_id) != len(units):
+        return {**result, "complete": False, "reason": "official_unit_id_duplicate"}
+    for unit_id, expected_hash in _UNIT_TEXT_SHA256.items():
+        unit = by_id.get(unit_id)
+        block = int(unit_id.rsplit("b", 1)[1])
+        if (not isinstance(unit, dict) or unit.get("source_id") != SOURCE_ID
+                or unit.get("authority_tier") != "standard"
+                or unit.get("collection") != "official_source"
+                or unit.get("locator", {}).get("page") != 13
+                or unit.get("locator", {}).get("block") != block
+                or unit.get("applicability") != {"algorithm": ["LEA"]}
+                or unit.get("text_sha256") != expected_hash
+                or not isinstance(unit.get("text"), str)
+                or _sha(unit["text"].encode()) != expected_hash
+                or unit.get("text_length") != len(unit["text"])):
+            return {**result, "complete": False, "reason": f"official_unit_not_exact:{unit_id}"}
+    return {**result, "complete": True, "reason": "exact_live_evidence_bound",
+            "source_sha256": SOURCE_SHA256, "evidence_unit_ids": list(EVIDENCE_UNIT_IDS)}
 
 
 def _leaf(space: str, index: int) -> dict[str, Any]:
@@ -145,11 +258,16 @@ def _uint32_pointer(node: dict[str, Any], const: bool, alias_proved: bool) -> bo
 def prove_lea_round_operation_graph(
     source: str, *, preprocessing_binding: VerifiedPreprocessingBinding | None = None,
 ) -> dict[str, Any]:
+    evidence = _live_evidence_binding()
     base = {"proof_id": PROOF_ID, "proof_version": PROOF_VERSION, "state": "unknown",
             "claim_id": CLAIM_ID, "rule_ids": list(RULE_IDS), "source_id": SOURCE_ID,
             "normative_source_sha256": SOURCE_SHA256,
             "evidence_unit_ids": list(EVIDENCE_UNIT_IDS),
+            "evidence_binding": evidence,
+            "evidence_binding_complete": evidence.get("complete") is True,
             "expected_graph_sha256": EXPECTED_GRAPH_SHA256}
+    if evidence.get("complete") is not True:
+        return {**base, "reason": evidence.get("reason", "official_evidence_binding_unproved")}
     if not verified_binding_matches_source(preprocessing_binding, source):
         return {**base, "reason": "preprocessor_provenance_unproved"}
     bind = preprocessing_binding
@@ -238,5 +356,4 @@ def prove_lea_round_operation_graph(
     return {**base, "preprocessing": prep, "toolchain": tool,
             "function_ast_sha256": ast_hash, "observed_graph_sha256": observed,
             "structural_complete": True, "graph_equal": True,
-            "evidence_binding_complete": False,
-            "reason": "official_evidence_units_unbound_and_independent_audit_pending"}
+            "reason": "callsite_and_caller_semantics_unproved"}
