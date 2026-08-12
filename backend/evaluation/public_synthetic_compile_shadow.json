@@ -1,0 +1,105 @@
+{
+  "aggregate": {
+    "elapsed_ms": 3412.888,
+    "pass_rate": 0.2543859649122807,
+    "sets": 7,
+    "syntax_fail": 85,
+    "syntax_pass": 29,
+    "translation_units": 114
+  },
+  "api_calls": 0,
+  "authenticated_compile_context_coverage": 0.0,
+  "claim_limit": "Synthetic syntax shadow only; not the original build, program semantics, or final performance.",
+  "compiler": {
+    "binary_sha256": "7f30f076d0e9c38f772a76449fca9da8cf97f6a3d43b94c90a00e4f9ce7ad39e",
+    "version": "Apple clang version 17.0.0 (clang-1700.6.3.2)"
+  },
+  "evaluation": "synthetic_compile_shadow",
+  "profile": {
+    "include_policy": "archive_root/include_only",
+    "language": "c11",
+    "warnings": "suppressed"
+  },
+  "schema_version": "1.0",
+  "semantic_authorization": 0,
+  "sets": [
+    {
+      "archive_sha256": "3ff4c0913ed79598f00a84498f56ad6dd3c76ac6cd887bf02eba801f7ec51c84",
+      "failure_classes": {
+        "missing_include_or_declaration": 1
+      },
+      "latency_ms_total": 127.463,
+      "pass_rate": 0.6666666666666666,
+      "set": 1,
+      "syntax_fail": 1,
+      "syntax_pass": 2,
+      "translation_units": 3
+    },
+    {
+      "archive_sha256": "3ff5fb68a24511572649ea92435183e61b8cd80cdcd65323338d011cce6e4870",
+      "failure_classes": {},
+      "latency_ms_total": 81.503,
+      "pass_rate": 1.0,
+      "set": 2,
+      "syntax_fail": 0,
+      "syntax_pass": 3,
+      "translation_units": 3
+    },
+    {
+      "archive_sha256": "710eb6bd25921b8bb28262b1488bd0661f43e4965040e6531662516a30a6e001",
+      "failure_classes": {},
+      "latency_ms_total": 87.808,
+      "pass_rate": 1.0,
+      "set": 3,
+      "syntax_fail": 0,
+      "syntax_pass": 3,
+      "translation_units": 3
+    },
+    {
+      "archive_sha256": "99fcf97940355ac556b605e8c5c1a5853a8ece8c8699f53a8eda7877af27f0e0",
+      "failure_classes": {},
+      "latency_ms_total": 81.593,
+      "pass_rate": 1.0,
+      "set": 4,
+      "syntax_fail": 0,
+      "syntax_pass": 3,
+      "translation_units": 3
+    },
+    {
+      "archive_sha256": "ceaa8f4a71422fb2f424320890bcc6c2636c95c08036cf2e78b1650da88be370",
+      "failure_classes": {
+        "missing_include_or_declaration": 28
+      },
+      "latency_ms_total": 868.732,
+      "pass_rate": 0.17647058823529413,
+      "set": 5,
+      "syntax_fail": 28,
+      "syntax_pass": 6,
+      "translation_units": 34
+    },
+    {
+      "archive_sha256": "0984ee6d2b4e4795759cb7e56e82790ad6fc70ff933716fbd209d9252ee3db8e",
+      "failure_classes": {
+        "missing_include_or_declaration": 28
+      },
+      "latency_ms_total": 825.526,
+      "pass_rate": 0.17647058823529413,
+      "set": 6,
+      "syntax_fail": 28,
+      "syntax_pass": 6,
+      "translation_units": 34
+    },
+    {
+      "archive_sha256": "4043adc560940b2198ffaf2ed0a8eea69831f65c12c2c2a51972c875ff827cd0",
+      "failure_classes": {
+        "missing_include_or_declaration": 28
+      },
+      "latency_ms_total": 947.291,
+      "pass_rate": 0.17647058823529413,
+      "set": 7,
+      "syntax_fail": 28,
+      "syntax_pass": 6,
+      "translation_units": 34
+    }
+  ]
+}
