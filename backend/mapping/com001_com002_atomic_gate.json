@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "rules": {
+    "COM-001": {
+      "direct_evidence_units": [
+        "KCMVP_GVI_PART2_2024_03:p0014:b028",
+        "KCMVP_GVI_PART2_2024_03:p0014:b029",
+        "KCMVP_GVI_PART2_2024_03:p0188:b007"
+      ],
+      "directly_entailed": [
+        "Sensitive security parameters must be zeroized after use.",
+        "Data created and used inside an API must be zeroized before API return."
+      ],
+      "not_directly_entailed": [
+        "Only the listed function names can implement safe zeroization.",
+        "Every ordinary memset occurrence is necessarily optimized away.",
+        "The absence of one lexical function name proves project-wide zeroization failure."
+      ],
+      "decision": "remain_fail_closed"
+    },
+    "COM-002": {
+      "direct_evidence_units": [
+        "KCMVP_SUBMISSION_GUIDE_2025_09:p0024:b026",
+        "LEA_SOURCE_MANUAL_V1:p0016:b004",
+        "LEA_SOURCE_MANUAL_V1:p0028:b027"
+      ],
+      "directly_entailed": [
+        "An error returns only an error code through status output after internal data zeroization.",
+        "Applicable LEA mode APIs return a negative value on error and a non-negative value on success.",
+        "lea_set_key itself is documented as a void function."
+      ],
+      "not_directly_entailed": [
+        "Every cryptographic function has the same return signature.",
+        "Every caller must be inferred incorrect from a void wrapper containing lea_set_key.",
+        "All failure causes must use one identical numeric code in every API."
+      ],
+      "decision": "remain_fail_closed"
+    }
+  },
+  "production_authorized": false,
+  "claim_limit": "Atomic normative claims only; program behavior and project-wide absence remain unproved."
+}
