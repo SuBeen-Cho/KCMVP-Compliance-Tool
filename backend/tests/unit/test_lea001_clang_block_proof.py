@@ -1,5 +1,6 @@
 import pytest
 
+import app.services.clang_straightline_reaching_def as rd
 from app.services.lea001_clang_block_proof import prove_lea001_block_semantics
 
 
@@ -12,8 +13,18 @@ void lea_encrypt_block(const uint8_t *input, uint8_t *output) {
 """
 
 
+def binding(source: str):
+    return rd.VerifiedPreprocessingBinding(
+        original_source_sha256="a" * 64,
+        preprocessed_sha256=rd._sha(source.encode()),
+        input_manifest_sha256="b" * 64,
+        compiler_binary_sha256="c" * 64,
+        _attestor=rd._BINDING_ATTESTOR,
+    )
+
+
 def test_exact_typed_operative_shape_is_only_structural_evidence():
-    result = prove_lea001_block_semantics(GOOD, preprocessed=True)
+    result = prove_lea001_block_semantics(GOOD, preprocessing_binding=binding(GOOD))
     assert result["state"] == "unknown"
     assert result["structural_complete"] is True
     assert result["observation"]["extent"] == 16
@@ -37,7 +48,7 @@ def test_exact_typed_operative_shape_is_only_structural_evidence():
      "canonical_lea_entrypoint_unproved"),
 ])
 def test_unrelated_or_ambiguous_16_never_promotes(mutated, reason):
-    result = prove_lea001_block_semantics(mutated, preprocessed=True)
+    result = prove_lea001_block_semantics(mutated, preprocessing_binding=binding(mutated))
     assert result["state"] == "unknown"
     assert result["reason"] == reason
     assert "structural_complete" not in result
@@ -47,6 +58,6 @@ def test_unsealed_preprocessing_and_later_overwrite_abstain():
     assert prove_lea001_block_semantics(GOOD, preprocessed=False)["reason"] == \
         "preprocessor_provenance_unproved"
     attacked = GOOD.replace("output[i] = input[i];", "output[i] = input[i]; output[i] = 0;")
-    result = prove_lea001_block_semantics(attacked, preprocessed=True)
+    result = prove_lea001_block_semantics(attacked, preprocessing_binding=binding(attacked))
     assert result["state"] == "unknown"
     assert result["reason"] == "direct_block_io_influence_unproved"

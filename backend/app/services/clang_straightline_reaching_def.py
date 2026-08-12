@@ -62,6 +62,15 @@ def _sha(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def verified_binding_matches_source(
+    binding: VerifiedPreprocessingBinding | None, source: str,
+) -> bool:
+    """Return whether an unforgeable binding names these exact UTF-8 bytes."""
+    return (isinstance(binding, VerifiedPreprocessingBinding)
+            and binding._attestor is _BINDING_ATTESTOR
+            and binding.preprocessed_sha256 == _sha(source.encode("utf-8")))
+
+
 def _children(node: dict[str, Any]) -> list[dict[str, Any]]:
     return [child for child in node.get("inner", []) if isinstance(child, dict)]
 
@@ -111,6 +120,15 @@ def _pointer_type(node: dict[str, Any]) -> bool:
         return False
     spelling = str(info.get("desugaredQualType", info.get("qualType", "")))
     return "*" in spelling
+
+
+def _read_only_single_pointer(node: dict[str, Any]) -> bool:
+    """A second pointer is safe only as a single-level pointer-to-const input."""
+    info = node.get("type", {})
+    if not isinstance(info, dict):
+        return False
+    spelling = " ".join(str(info.get("desugaredQualType", info.get("qualType", ""))).split())
+    return spelling.count("*") == 1 and spelling.startswith("const ")
 
 
 def _single_object_pointer(node: dict[str, Any]) -> bool:
@@ -167,9 +185,7 @@ def prove_straightline_output_reaching_defs(
         return {**base, "reason": ("legacy_preprocessed_flag_untrusted"
                                     if preprocessed is True
                                     else "preprocessor_provenance_unproved")}
-    if (not isinstance(preprocessing_binding, VerifiedPreprocessingBinding)
-            or preprocessing_binding._attestor is not _BINDING_ATTESTOR
-            or preprocessing_binding.preprocessed_sha256 != base["source_sha256"]):
+    if not verified_binding_matches_source(preprocessing_binding, source):
         return {**base, "reason": "preprocessor_provenance_unproved"}
     preprocessing = {
         "original_source_sha256": preprocessing_binding.original_source_sha256,
@@ -222,9 +238,12 @@ def prove_straightline_output_reaching_defs(
     outputs = [node for node in parameters if node.get("name") == output_parameter]
     if len(outputs) != 1 or not _single_object_pointer(outputs[0]):
         return {**base, "toolchain": toolchain, "reason": "output_pointer_identity_unproved"}
-    # A second pointer, a local pointer, or a pointer-returning call can alias
-    # the output and invalidate a syntactic last-write claim.
-    if sum(_pointer_type(node) for node in parameters) != 1:
+    # A read-only input may alias output without creating a hidden store.  Any
+    # second writable pointer still invalidates the syntactic last-write claim.
+    pointer_parameters = [node for node in parameters if _pointer_type(node)]
+    if (len(pointer_parameters) > 2
+            or any(node is not outputs[0] and not _read_only_single_pointer(node)
+                   for node in pointer_parameters)):
         return {**base, "toolchain": toolchain, "reason": "output_alias_freedom_unproved"}
     body = next(child for child in _children(function) if child.get("kind") == "CompoundStmt")
     forbidden = {

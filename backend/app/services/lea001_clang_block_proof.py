@@ -15,6 +15,11 @@ import tempfile
 from pathlib import Path
 from typing import Any, Iterator
 
+from app.services.clang_straightline_reaching_def import (
+    VerifiedPreprocessingBinding,
+    verified_binding_matches_source,
+)
+
 PROOF_ID = "lea001-clang-operative-block"
 PROOF_VERSION = "1.0.0"
 
@@ -126,11 +131,17 @@ def _function_shape(function: dict[str, Any], *,
     }
 
 
-def prove_lea001_block_semantics(source: str, *, preprocessed: bool) -> dict[str, Any]:
+def prove_lea001_block_semantics(
+    source: str, *,
+    preprocessing_binding: VerifiedPreprocessingBinding | None = None,
+    preprocessed: bool | None = None,
+) -> dict[str, Any]:
     """Recognize a narrow operative 16-byte shape; never emit an observed fact."""
     base = {"proof_id": PROOF_ID, "proof_version": PROOF_VERSION, "state": "unknown"}
-    if not preprocessed:
-        return {**base, "reason": "preprocessor_provenance_unproved"}
+    if not verified_binding_matches_source(preprocessing_binding, source):
+        return {**base, "reason": ("legacy_preprocessed_flag_untrusted"
+                                    if preprocessed is True
+                                    else "preprocessor_provenance_unproved")}
     clang = shutil.which("clang")
     if clang is None:
         return {**base, "reason": "clang_unavailable"}

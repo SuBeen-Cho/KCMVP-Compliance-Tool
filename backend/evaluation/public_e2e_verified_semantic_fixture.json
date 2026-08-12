@@ -1,0 +1,38 @@
+{
+  "benchmark": "sealed-preprocess-clang-lea001-synthetic-e2e",
+  "interpretation": "structural_only_semantic_authorization_forbidden",
+  "latency_ms": {
+    "cold": 581.774,
+    "warm_max": 251.538,
+    "warm_mean": 238.655,
+    "warm_median": 236.134
+  },
+  "population": {
+    "synthetic_fixtures": 1,
+    "warm_runs": 3
+  },
+  "repeat_invariant": true,
+  "result": {
+    "api_calls": 0,
+    "exact_rhs_ast_coverage": {
+      "covered": 2,
+      "total": 2
+    },
+    "lea001_structural_complete": true,
+    "lea001_rhs_coverage": {
+      "covered": 16,
+      "structural_complete": true,
+      "total": 16
+    },
+    "mutation_attacks_blocked": {
+      "analyzed_byte_mutation": true,
+      "lea_extent_rebinding": true,
+      "reaching_source_rebinding": true,
+      "wrong_runtime_secret": true
+    },
+    "preprocessing_binding": true,
+    "reaching_definition_structural_complete": true,
+    "semantic_authorization": 0
+  },
+  "schema_version": "1.0"
+}

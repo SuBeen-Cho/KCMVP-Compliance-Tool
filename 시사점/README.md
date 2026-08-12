@@ -51,3 +51,4 @@ AI 필요도를 결정적 판정·공식 근거 검색·근거 검증·AI 판정
 - [46_LEA011_defuse_current_HEAD_평가.md](46_LEA011_defuse_current_HEAD_평가.md): 완전 소스 2/2 재결합과 전처리·SSA 증거 부족으로 인한 안전한 unknown 결과
 - [47_전처리_capture와_LEA001_AST_안전경계.md](47_전처리_capture와_LEA001_AST_안전경계.md): compiler replay 봉인과 LEA-001 타입·구조 증명의 fail-closed 경계
 - [48_LEA001_current_HEAD_전처리_AST_shadow평가.md](48_LEA001_current_HEAD_전처리_AST_shadow평가.md): LEA-001 2건의 manifest 부재와 unknown-only current 평가
+- [49_전처리_Clang_LEA001_E2E_구조증명.md](49_전처리_Clang_LEA001_E2E_구조증명.md): capture→replay→Clang→coverage 합성 E2E와 semantic 승인 0건 경계
