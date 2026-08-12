@@ -1,0 +1,48 @@
+{
+  "ai_ready_universe": {
+    "atomic_v3_alignment_contract": "same select_exact_ai_ready function and ordered envelope binding",
+    "count": 0,
+    "ordered_candidate_hashes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "ordered_envelope_binding_hashes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "api_calls": 0,
+  "claim_limit": "Routing coverage and latency only; no LLM decisions or accuracy claim.",
+  "historical_aggregate_comparison": null,
+  "latency_ms": {
+    "cold_batch": 3.3173750271089375,
+    "cold_per_candidate": 0.30157954791899433,
+    "warm_batch_mean": 2.8672334039583802,
+    "warm_batch_median": 2.826334035489708,
+    "warm_batch_p95_nearest_rank": 3.0203339993022382,
+    "warm_per_candidate_mean": 0.2606575821780346
+  },
+  "manifest": {
+    "git_dirty": false,
+    "git_head": "849de1bc4d815d8650f05b603bcea09c4a199825",
+    "mapping_tree_sha256": "f70c2368f2ade7d11d696de3bb38af149a7545834e1037656a580eda17c21d1f",
+    "official_index_sha256": "e7e747b52ef568227292a132917dff1d2f570456088e5d342475d3a8d7bd2846",
+    "rules_tree_sha256": "91c38f8f97d45508e5907680b34792065c31240646cc642a1ccfa6b9e30bff9d",
+    "snapshot_source_tree_sha256": "802c893a4d95da93a8c06e74b7c59eb4491807ae2971a991e8f2a6fdb0c9d8f4"
+  },
+  "schema_version": "1.0",
+  "scope": "current_head_snapshot_current_router_api_free",
+  "snapshot": {
+    "candidate_count": 11,
+    "file_sha256": "490489fa891aff6a36a4043dad36a8ae89dc33955e2b8b4cbfbbb888e4407114",
+    "snapshot_id": "803ffef337aff9ce044d532b1242ae349ea2da637a82ef3e63e42dd782de0cbb"
+  },
+  "stage_distribution": {
+    "ai_ready": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "deterministic": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "hold": {
+      "count": 11,
+      "ratio": 1.0
+    }
+  }
+}

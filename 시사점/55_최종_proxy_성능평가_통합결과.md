@@ -43,3 +43,7 @@ AI-ready 41건 paired v2에서 grounded verifier pass는 14/41(34.15%), 최종 a
 ## 무결성
 
 라벨 독립 clone split은 248 group을 development 174 group/189건, held-out 74 group/76건으로 동결했다. 공개 산출물은 집계와 SHA-256만 포함하고 소스, 절대경로, API key, 비공개 occurrence ID를 포함하지 않는다.
+
+## 0_KCMVP 원본 직접 재평가
+
+세트 5–7과 별개로 보존된 `smart-crypto-master.zip` 원본(SHA-256 `3f4b865e…de93`)을 현재 L1에 직접 재실행했다. 59 C/H, 14,511 LOC에서 11개 후보(0.758/KLOC)가 발생했다. production router는 공식 evidence 미매핑으로 11건 전체를 hold했다. 별도 No-RAG AI comparator는 9건을 실제 호출하여 violation 3/non-violation 6을 반환했고, 1,645/732 token, 평균 1,098.614 ms, USD 0.0004573을 기록했다. GT가 없으므로 정확도나 FP 제거율로 해석하지 않는다. 상세는 `56_0_KCMVP_smart_crypto_원본_최신_AI_성능평가.md`에 분리했다.

@@ -1,0 +1,36 @@
+{
+  "claim_limit": "Isolated no-RAG AI label distribution only; no GT, accuracy, verified verdict, or production authorization.",
+  "execution": {
+    "api_calls": 9,
+    "duplicate": 0,
+    "estimated_cost_usd": 0.0004573,
+    "input_tokens": 1645,
+    "output_tokens": 732,
+    "retry": 0
+  },
+  "experiment": "smartcrypto_original_isolated_no_rag_ai",
+  "grounded_rag": {
+    "eligible": 0,
+    "reason": "no verified official evidence bundle for the five detected rule families"
+  },
+  "labels": {
+    "non_violation": 6,
+    "violation": 3
+  },
+  "latency_ms": {
+    "mean": 1098.614,
+    "median": 1110.69,
+    "p95_nearest_rank": 1234.897
+  },
+  "model": "gemini-2.5-flash-lite",
+  "population": {
+    "l1_candidates": 11,
+    "production_ai_ready": 0,
+    "production_hold": 11,
+    "selector_candidates": 9
+  },
+  "private_ledger_sha256": "49ebedf9b9468882fe5070ac59192e25885d3e6ba8563e58b26bcb2eff5a3178",
+  "schema_version": "1.0",
+  "snapshot_sha256": "490489fa891aff6a36a4043dad36a8ae89dc33955e2b8b4cbfbbb888e4407114",
+  "temperature": 0
+}
