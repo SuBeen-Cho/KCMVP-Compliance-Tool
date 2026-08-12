@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "CTR-LEA-001",
+  "review_scope": "exact official evidence-unit locator and complete-claim entailment",
+  "detector_claim": "A LEA CTR initial-counter role must have an operative width of 16 bytes.",
+  "evidence_review": [
+    {
+      "source_id": "LEA_DATASHEET_KO",
+      "source_sha256": "b0c065c527be33984c779b16f9bd26024b92254bf8bf374a13b95d599fb3b795",
+      "locators": ["LEA_DATASHEET_KO:p0011:b003", "LEA_DATASHEET_KO:p0011:b004", "LEA_DATASHEET_KO:p0011:b005", "LEA_DATASHEET_KO:p0011:b006", "LEA_DATASHEET_KO:p0011:b007", "LEA_DATASHEET_KO:p0011:b008", "LEA_DATASHEET_KO:p0011:b009", "LEA_DATASHEET_KO:p0011:b010"],
+      "unit_text_sha256": ["1809b446eff786875f86981a124534ac3787b5336833f9729531bedd14d28c2a", "0fa8fe078cc6d7af90c42b11d17ae306d46c0db70bc84fd5459385a377351490", "f1bbe74f2d6579a8ba66a23f6bbee4714d1b8007ec302603e6755bc10c0de833", "fd31d48c2d151659474dcaef8ae52d41e1428dafda16bcdae000fd6547e30400", "8efa683dddbee952a9c51881687cd7aa1f9d71b24c7791ca335aae40462c338c", "faa7ae913308c7c39a144b39630bef893442f6a5e46be5c9bad1062928f3325d", "ed4f57852c0482e336409d4dba35cd5b71960ce4a16b245525f237b456c29c3c", "92083b88e5cb9ff6ee1c556d5b0c57ffc3ba19b609be1622abca1322dbba9051"],
+      "entailed_fragment": "LEA has a 16-byte block for every specified key-size variant.",
+      "missing_fragment": "The units do not state that every CTR initial-counter object must be represented by one 16-byte C array."
+    },
+    {
+      "source_id": "LEA_VALIDATION_SYSTEM",
+      "source_sha256": "743060e6690e2157c8955bbc57df70f7edbdcb245db8bcc06faa8a75cc8fed42",
+      "locators": ["LEA_VALIDATION_SYSTEM:p0011:b003", "LEA_VALIDATION_SYSTEM:p0011:b004", "LEA_VALIDATION_SYSTEM:p0011:b005", "LEA_VALIDATION_SYSTEM:p0011:b006", "LEA_VALIDATION_SYSTEM:p0011:b007"],
+      "unit_text_sha256": ["89f55810f1f3b968534130fdc8a42cd344b10d9165e0006c84b2b4922b9cc681", "91017efdc93713fd8a1c6f510dc1b4e7fde6093d8627a54601428a770c7c75fc", "a67a1dc28c99c79dc91928d9c3f7f2b738db1a199165c0e7b615129ce43a7eab", "3d9def521b61c5653a71db479c43bf3bc4b5e99ff026bcc485dfa1c8508ab2a0", "e9f4f38dff6c54d3aef47dbdf51eb8dcafa8735a9314668452c5d41121da7438"],
+      "entailed_fragment": "CTR uses an incrementing counter as the encryption-transform input and requires a different initial value per encryption.",
+      "missing_fragment": "The located units do not give an exact initial-counter byte extent or a C declaration representation requirement."
+    }
+  ],
+  "atomic_entailment": {
+    "block_size_16_bytes": "entailed",
+    "ctr_initial_counter_extent_16_bytes": "not_exactly_entailed",
+    "c_array_declaration_proves_counter_role": "program_fact_not_normative_text"
+  },
+  "program_fact_requirements": ["authenticated exact preprocessing binding", "authenticated build manifest binding compiler, arguments, include roots, macros, and source occurrence", "complete translation unit", "Clang-resolved array extent and symbol identity", "dataflow proof that the symbol is the operative CTR initial counter"],
+  "decision": "remain_fail_closed",
+  "extractor_gate": "blocked_until_complete_claim_has_direct_normative_entailment",
+  "atomic_registry_authorized": false,
+  "production_authorized": false,
+  "legacy_mapping_trusted": false,
+  "review_note": "LEA block width alone cannot bridge the normative, representation, and symbol-role claims. No shadow extractor may be treated as semantic evidence at this gate."
+}

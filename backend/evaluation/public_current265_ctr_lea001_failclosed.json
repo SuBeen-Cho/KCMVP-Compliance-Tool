@@ -1,0 +1,33 @@
+{
+  "api_calls": 0,
+  "authenticated_program_context": {
+    "clang_extent_and_symbol_role_fact": 0,
+    "unknown_or_abstain": 6,
+    "verified_build_manifest": 0,
+    "verified_preprocessing_binding": 0
+  },
+  "claim_limit": "Evidence/extractor gating only; no detector accuracy or semantic correctness claim.",
+  "evaluation": "frozen_current265_ctr_lea001_entailment_gate_api_free",
+  "evidence_gate": {
+    "exact_complete_claim_entailed": 0,
+    "extractor_implemented": 0,
+    "remain_fail_closed": 6
+  },
+  "population": {
+    "ctr_lea001_occurrences": 6,
+    "frozen_candidates": 265,
+    "prioritized_proxy_violations": 3
+  },
+  "privacy": "aggregate_only; no candidate id, source, path, snippet, span, or manifest persisted",
+  "production_authorized": 0,
+  "provenance": {
+    "entailment_audit_sha256": "5a1df9946350f588dd120fdced429dc78205cdf827824a1864a70f2523831c72",
+    "freeze_sha256": "b9faee3eec3d58f158ea0c8c709f63f5eb7e39f882498de7c0418a0df924ed00",
+    "frozen_git_commit": "1f7e50c9f8f1b80d3b206d4147eba78653ae4fef",
+    "priority_report_sha256": "91f0de642be5cc59eb10227e1272c866a71f7eca99169e8e7c8514994237ab55",
+    "runner_sha256": "19cc5fd8b5a0d33d3408ab3f39281a8aeac3cf0e5442278d16d3340b777bd122",
+    "snapshot_id": "9314f4dfd756efef6c74d62350cfde6d08dfb334b007637861439cc6f24bbb06",
+    "snapshot_sha256": "4f0418dd711d4c164e3c0eef126d162c8e9d249f8caa7b6d333a19d536bfecc2"
+  },
+  "schema_version": "1.0"
+}
