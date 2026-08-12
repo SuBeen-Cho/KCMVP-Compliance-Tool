@@ -1,0 +1,17 @@
+{
+  "api_calls": 0,
+  "benchmark": "lea-closed-operation-graph-equivalence-synthetic",
+  "cases": [
+    {"case": "exact", "correct": true, "expected_equivalent": true, "observed_equivalent": true},
+    {"case": "commutative_equivalent", "correct": true, "expected_equivalent": true, "observed_equivalent": true},
+    {"case": "wrong_order", "correct": true, "expected_equivalent": false, "observed_equivalent": false},
+    {"case": "wrong_rotate", "correct": true, "expected_equivalent": false, "observed_equivalent": false},
+    {"case": "unrelated_copy", "correct": true, "expected_equivalent": false, "observed_equivalent": false}
+  ],
+  "interpretation": "synthetic_oracle_only_pending_independent_semantic_audit",
+  "latency_us_per_comparison": {"max": 48.926, "mean": 42.373, "median": 40.95},
+  "metrics": {"accuracy": 1.0, "fn": 0, "fp": 0, "negative_recall": 1.0, "positive_recall": 1.0, "tn": 3, "tp": 2},
+  "population": {"iterations_per_sample": 10000, "latency_samples": 5, "synthetic_cases": 5},
+  "schema_version": "1.0",
+  "semantic_authorization": 0
+}
