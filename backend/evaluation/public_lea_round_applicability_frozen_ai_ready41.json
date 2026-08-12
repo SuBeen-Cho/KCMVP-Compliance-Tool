@@ -1,0 +1,33 @@
+{
+  "api_calls": 0,
+  "claim_limit": "Applicability/input-availability audit only; zero occurrences is not detector accuracy.",
+  "coverage": {
+    "complete_source_resolved": 0,
+    "fully_applicability_provable": 0,
+    "trusted_build_or_preprocessing_manifest": 0,
+    "trusted_callsite_context": 0
+  },
+  "evaluation": "frozen_exact_ai_ready41_lea027_031_applicability_audit",
+  "lineage_warning": "Membership is the sealed historical AI-ready41; live routing is not recomputed or relabelled.",
+  "population": {
+    "sealed_exact_ai_ready": 41,
+    "target_occurrences": 0
+  },
+  "privacy": "aggregate_only; no source, candidate, path, snippet, command, macro, or callsite identity persisted",
+  "production_authorized": 0,
+  "provenance": {
+    "git_head_at_audit": "fe434ada1244abc343a8e56ef9ddd9d5491f1802",
+    "private_membership_ledger_sha256": "1a9e385eecc218718194fb9a1b9d766720bc783f172101e45a7a236835b1c4ee",
+    "runner_sha256": "111ab6b3330648b955be01d80076fab921e29d14bf3bd6e5046d076205668de2",
+    "snapshot_sha256": "9d491f2b83e7ed077a16aa45fe73715e4e4d0842aad6cc4eb372618a10a36d7b"
+  },
+  "reason": "no_target_occurrence_in_frozen_ai_ready41",
+  "schema_version": "1.0",
+  "target_rule_counts": {
+    "LEA-027": 0,
+    "LEA-028": 0,
+    "LEA-029": 0,
+    "LEA-030": 0,
+    "LEA-031": 0
+  }
+}

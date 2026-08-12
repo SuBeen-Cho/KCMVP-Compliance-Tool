@@ -1,0 +1,73 @@
+{
+  "api_calls": 0,
+  "benchmark": "lea-round-sealed-shadow-chain-synthetic",
+  "claim_limit": "Synthetic structural chain only; caller algorithm/applicability and GT unproved.",
+  "fact_state": "unknown",
+  "latency_ms_end_to_end": {
+    "max": 352.569,
+    "mean": 350.794,
+    "median": 351.877
+  },
+  "metrics": {
+    "correct": 6,
+    "false_accepts": 0,
+    "false_rejects": 0
+  },
+  "population": {
+    "cases": 6,
+    "latency_samples": 3,
+    "mutation_attacks": 5
+  },
+  "results": [
+    {
+      "case": "exact",
+      "correct": true,
+      "expected_complete": true,
+      "observed_complete": true,
+      "reason": "caller_algorithm_applicability_and_ground_truth_unproved",
+      "state": "unknown"
+    },
+    {
+      "case": "wrong_rotate",
+      "correct": true,
+      "expected_complete": false,
+      "observed_complete": false,
+      "reason": "shadow_chain_stage_incomplete",
+      "state": "unknown"
+    },
+    {
+      "case": "aliased_arrays",
+      "correct": true,
+      "expected_complete": false,
+      "observed_complete": false,
+      "reason": "shadow_chain_stage_incomplete",
+      "state": "unknown"
+    },
+    {
+      "case": "pointer_arithmetic",
+      "correct": true,
+      "expected_complete": false,
+      "observed_complete": false,
+      "reason": "shadow_chain_stage_incomplete",
+      "state": "unknown"
+    },
+    {
+      "case": "undersized_round_key",
+      "correct": true,
+      "expected_complete": false,
+      "observed_complete": false,
+      "reason": "shadow_chain_stage_incomplete",
+      "state": "unknown"
+    },
+    {
+      "case": "post_capture_source_tamper",
+      "correct": true,
+      "expected_complete": false,
+      "observed_complete": false,
+      "reason": "shadow_chain_stage_incomplete",
+      "state": "unknown"
+    }
+  ],
+  "schema_version": "1.0",
+  "semantic_authorization": 0
+}
